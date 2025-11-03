@@ -161,12 +161,189 @@ class _HomePageState extends State<HomePage> {
 // ---------- Course ----------
 class CoursePage extends StatelessWidget {
   const CoursePage({super.key});
+
+  final List<Map<String, String>> topics = const [
+    {
+      "title": "1.1 Strategi Penyelesaian Masalah",
+      "note": """MASALAH - Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang 
+\n(4) TEKNIK PEMIKIRAN KOMPUTASIONAL
+• Leraian – Memecahkan masalah kepada bahagian yang lebih kecil & terkawal
+• Pengecaman corak – Mencari persamaan antara masalah & dalam masalah
+• Peniskalaan – Menjana penyelesaian yang tepat kepada masalah yang dihadapi
+• Algoritma – Membangunkan penyelesaian langkah demi langkah terhadap masalah yang dihadapi
+\n(3) CIRI PENYELESAIAN MASALAH BERKESAN 
+• Kos 
+• Masa
+• Sumber
+\n(8) PROSES PENYELESAIAN MASALAH
+1. Mengumpulkan & menganalisis data
+2. Menentukan masalah
+3. Menjana idea
+4. Menjana penyelesaian
+5. Menentukan tindakan
+6. Melaksanakan penyelesaian
+7. Membuat penilaian
+8. Membuat penambahbaikan"""
+    },
+    {
+      "title": "1.2 Algoritma",
+      "note": """Algoritma - Satu set arahan untuk menyelesaikan masalah 
+\n(3) CIRI ALGORITMA
+• Butiran jelas
+• Boleh dilaksanakan
+• Mempunyai batasan
+\nINPUT -> PROSES -> OUTPUT
+\nPSEUDOKOD - Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan
+\nCARTA ALIR - Alternatif kepada pseudokod menggunakan simbol grafik untuk mewakili arahanarahan penyelesaian
+\n(3) STRUKTUR KAWALAN DALAM PENGATURCARAAN
+• Struktur Kawalan Urutan
+• Struktur Kawalan Pilihan
+• Struktur Kawalan Pengulangan
+\nTulis Algortima -> Uji ALgortima -> Pembetulan -> Pengaturcaraan
+\n (3) RALAT
+• Ralat Sintaks
+• Ralat Logik
+• Ralat Masa Larian
+\n(4) LANGKAH PENGUJIAN ALGORITMA
+1. Kenal pasti "Output Dijangka"
+2. Kenal pasti "Output Diperoleh"
+3. Bandingkan "Output Diperoleh" dengan "Output Dijangka"
+4. Analisis & baiki algoritma
+"""
+    },
+    {
+      "title": "1.3 Pemboleh Ubah, Pemalar dan Jenis Data",
+      "note": """PEMBOLEH UBAH - Ruang simpanan sementara untuk nombor, teks & objek
+\nPEMALAR - Tetap & tidak akan berubah
+\n(6) JENIS DATA
+• Integer
+• float
+• double
+• char
+• String
+• Boolean
+\nPEMBOLEH UBAH SEJAGAT (GLOBAL) - Hanya berfungsi dalam atur cara sahaja
+PEMBOLEH UBAH SETEMPAT (LOCAL) - Hanya berfungsi dalam subatur cara yang diisytiharkan
+
+"""
+    },
+    {
+      "title": "1.4 Struktur Kawalan",
+      "note": """(3) STRUKTUR KAWALAN 
+• Kawalan Urutan - Tidak bervariasi
+• Kawalan Pilihan - If-else-if, Switch-case
+• Kawalan Pengulangan - For, While, Do-while
+\n(6) OPERATOR HUBUNGAN
+• Sama dengan (==)
+• Tidak sama dengan (!=)
+• Lebih besar daripada (>)
+• Lebih besar / sama dengan (>=)
+• Kurang daripada (<)
+• Kurang / sama dengan (<=)
+\n(3) OPERATOR LOGICAL
+• AND
+• OR
+• NOT
+"""
+    },
+    {
+      "title": "1.5 Amalan Terbaik Pengaturcaraan",
+      "note": """AMALAN TERBAIK PENGATURCARAAN - Apabila pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghasilkan
+atur cara yang baik
+\n(4) FAKTOR MEMPENGARUHI KEBOLEHBACAAN KOD
+• Inden yang konsisten
+• Jenis data
+• Pemboleh ubah yang bermakna
+• Komen
+\nRALAT SINTAKS
+• Kesalahan tatabahasa
+• Penggunaan objek / aksara yang tidak dikenali
+\nRALAT MASA LARIAN
+• Pengiraan data bukan berangka
+• Pembahagian dengan digit 0
+• Mencari punca kuasa dua bagi nombor negatif
+\nRALAT MASA LARIAN
+• Atur cara tidak berfungsi seperti yang diingini
+• Tidak dapat dikesan
+"""
+    },
+    {
+      "title": "1.6 Struktur Data dan Modular",
+      "note": """TATASUSUNAN - Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks
+\n(5) KELEBIHAN MENGGUNAKAN STRUKTUR MODUL
+• Lebih mudah untuk digunakan semula
+• Lebih mudah untuk diuji, dinyah pijat & dibaiki
+• Projek kompleks menjadi lebiringkas
+• Lebih mudah untuk menangani projek komputer
+• Membolehkan tugasan pengaturcaraan dibahagikan kepada ahli kumpulan yang berbeza
+"""
+    },
+    {
+      "title": "1.7 Pembagunan Aplikasi",
+      "note": """KITARAN HAYAT PEMBANGUNAN SISTEM (SDLC)
+1. Analisis masalah
+2. Reka bentuk penyelesaian - Logikal, Fizikal
+3. Laksana penyelesaian
+4. Uji & nyah ralat
+5. Dokumentasi
+"""
+    },
+  ];
+
   @override
-  Widget build(BuildContext context) => const Text(
-        'This is the Course Page',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      );
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('📘 Courses'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: ListView.builder(
+          itemCount: topics.length,
+          itemBuilder: (context, index) {
+            final topic = topics[index];
+            return Card(
+              elevation: 2,
+              color: Colors.grey[100],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Topic title
+                    Text(
+                      topic["title"]!,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.lightBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Pre-written note (read-only)
+                    Text(
+                      topic["note"]!,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
+
 
 // ---------- Quiz ----------
 class QuizPage extends StatelessWidget {
