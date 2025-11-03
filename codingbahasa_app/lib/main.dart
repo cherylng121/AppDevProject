@@ -366,13 +366,119 @@ class AIChatbotPage extends StatelessWidget {
 }
 
 // ---------- Progress ----------
-class ProgressPage extends StatelessWidget {
+class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
+
   @override
-  Widget build(BuildContext context) => const Text(
-        'Your Learning Progress',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      );
+  _ProgressPageState createState() => _ProgressPageState();
+}
+
+class ProgressRecord {
+  final String activity;
+  final double score;
+  final String grade;
+  final String comments;
+
+  ProgressRecord({
+    required this.activity,
+    required this.score,
+    required this.grade,
+    required this.comments,
+  });
+}
+
+class _ProgressPageState extends State<ProgressPage> {
+  final List<ProgressRecord> progressList = [];
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _activityController = TextEditingController();
+  final TextEditingController _scoreController = TextEditingController();
+  final TextEditingController _gradeController = TextEditingController();
+  final TextEditingController _commentsController = TextEditingController();
+
+  void _addProgress() {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        progressList.add(
+          ProgressRecord(
+            activity: _activityController.text,
+            score: double.parse(_scoreController.text),
+            grade: _gradeController.text,
+            comments: _commentsController.text,
+          ),
+        );
+      });
+      _activityController.clear();
+      _scoreController.clear();
+      _gradeController.clear();
+      _commentsController.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Your Learning Progress')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: progressList.length,
+                itemBuilder: (context, index) {
+                  final record = progressList[index];
+                  return Card(
+                    child: ListTile(
+                      title: Text('${record.activity} - ${record.grade}'),
+                      subtitle: Text(
+                          'Score: ${record.score}\nComments: ${record.comments}'),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Divider(),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _activityController,
+                    decoration:
+                        const InputDecoration(labelText: 'Activity Type'),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Please enter an activity' : null,
+                  ),
+                  TextFormField(
+                    controller: _scoreController,
+                    decoration: const InputDecoration(labelText: 'Score'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) =>
+                        value!.isEmpty ? 'Please enter a score' : null,
+                  ),
+                  TextFormField(
+                    controller: _gradeController,
+                    decoration: const InputDecoration(labelText: 'Grade'),
+                    validator: (value) =>
+                        value!.isEmpty ? 'Please enter a grade' : null,
+                  ),
+                  TextFormField(
+                    controller: _commentsController,
+                    decoration: const InputDecoration(labelText: 'Comments'),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: _addProgress,
+                    child: const Text('Add Progress'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ---------- Achievements ----------
