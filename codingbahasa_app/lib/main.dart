@@ -20,7 +20,7 @@ class CodingBahasa extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          scaffoldBackgroundColor: Colors.white, // main content background
+          scaffoldBackgroundColor: Colors.white,
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
@@ -100,7 +100,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          // ---------- SLIDING MENU BAR ----------
+          // ---------- MENU ----------
           Container(
             color: Colors.grey[200],
             height: 50,
@@ -218,7 +218,7 @@ class ProfilePage extends StatelessWidget {
       );
 }
 
-// ---------- Learning Material Model ----------
+// ---------- Learning Material ----------
 class LearningMaterial {
   String name, description, file;
   DateTime time;
