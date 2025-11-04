@@ -397,11 +397,13 @@ class _ChatBody extends StatefulWidget {
 class _ChatBodyState extends State<_ChatBody> {
   @override
   Widget build(BuildContext context) {
+    print('Building _ChatBodyState'); 
     return Column(
       children: [
         Expanded(
           child: BlocBuilder<ChatBloc, ChatState>(
             builder: (context, state) {
+              print('Current state: $state');
               if (state is ChatLoaded) {
                 return _buildChatList(state.messages);
               } else if (state is ChatError) {
@@ -438,7 +440,7 @@ class _ChatBodyState extends State<_ChatBody> {
             ),
             SizedBox(height: 8),
             Text(
-              'Try asking about: photosynthesis, quadratic equations, Java, etc.',
+              'Try asking about: Java, etc.',
               style: TextStyle(fontSize: 14, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
@@ -727,11 +729,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   // Predefined FAQs for Sprint 1
   final Map<String, Map<String, dynamic>> _faqs = {
-    'photosynthesis': {
-      'answer': 'Photosynthesis is the process plants use to convert sunlight, water, and carbon dioxide into glucose and oxygen. The chemical equation is: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂',
-      'keywords': ['photosynthesis', 'plants', 'energy', 'sunlight', 'oxygen'],
-      'category': 'biology'
-    },
+    
     'quadratic equation': {
       'answer': 'A quadratic equation is in the form ax² + bx + c = 0. Solve using the quadratic formula: x = [-b ± √(b² - 4ac)] / 2a. The discriminant (b² - 4ac) determines the nature of roots.',
       'keywords': ['quadratic', 'equation', 'formula', 'algebra', 'solve'],
@@ -742,16 +740,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       'keywords': ['java', 'programming', 'language', 'oop', 'jvm'],
       'category': 'computer science'
     },
-    'gravity': {
-      'answer': 'Gravity is the force that attracts two bodies toward each other. Newton\'s law: F = G(m₁m₂)/r². On Earth, acceleration due to gravity is approximately 9.8 m/s².',
-      'keywords': ['gravity', 'force', 'newton', 'earth', 'attraction'],
-      'category': 'physics'
-    },
-    'mitochondria': {
-      'answer': 'Mitochondria are the powerhouse of the cell! They generate most of the cell\'s supply of adenosine triphosphate (ATP), used as a source of chemical energy.',
-      'keywords': ['mitochondria', 'powerhouse', 'cell', 'energy', 'atp'],
-      'category': 'biology'
-    },
+    
   };
 
   ChatBloc() : super(ChatInitial()) {
