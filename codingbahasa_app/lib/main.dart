@@ -794,6 +794,8 @@ class CodingBahasa extends StatelessWidget {
 
 // ========== HOME PAGE ==========
 class HomePage extends StatefulWidget {
+  const HomePage({super.key}); 
+  
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -903,387 +905,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// ========== PROFILE PAGE ==========
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    final userState = context.watch<FirebaseUserState>();
-    final user = userState.currentUser;
-
-    if (user == null) return const Center(child: Text('Not logged in'));
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('👤 User Profile'),
-        backgroundColor: Colors.lightBlue,
-        foregroundColor: Colors.white,
-        actions: [
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit Profile')])),
-              const PopupMenuItem(value: 'password', child: Row(children: [Icon(Icons.lock, size: 20), SizedBox(width: 8), Text('Change Password')])),
-              const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 8), Text('Delete Account', style: TextStyle(color: Colors.red))])),
-              const PopupMenuItem(value: 'logout', child: Row(children: [Icon(Icons.logout, size: 20), SizedBox(width: 8), Text('Logout')])),
-            ],
-            onSelected: (value) {
-              if (value == 'edit') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage()));
-              } else if (value == 'password') {
-                _showChangePasswordDialog(context);
-              } else if (value == 'delete') {
-                _showDeleteDialog(context);
-              } else if (value == 'logout') {
-                _handleLogout(context);
-              }
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.blue[700]!, Colors.blue[300]!])),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    child: const Icon(Icons.person, size: 50, color: Colors.blue),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(user.username, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), borderRadius: BorderRadius.circular(20)),
-                    child: Text(user.userType == UserType.student ? 'Student' : 'Teacher', style: const TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildInfoCard(icon: Icons.email, title: 'Email', value: user.email),
-                  if (user.userType == UserType.student) ...[
-                    _buildInfoCard(icon: Icons.school, title: 'Form Level', value: user.formLevel ?? 'Not set'),
-                    _buildInfoCard(icon: Icons.class_, title: 'Class', value: user.className ?? 'Not set'),
-                  ],
-                  _buildInfoCard(icon: Icons.stars, title: 'Total Points', value: user.points.toString()),
-                  _buildInfoCard(icon: Icons.emoji_events, title: 'Badges Earned', value: user.badges.length.toString()),
-                  _buildInfoCard(icon: Icons.trending_up, title: 'Completion Level', value: '${(user.completionLevel * 100).toStringAsFixed(1)}%'),
-                  if (user.badges.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Your Badges', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: user.badges.map((badge) => Chip(label: Text(badge), avatar: const Icon(Icons.emoji_events, size: 16))).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoCard({required IconData icon, required String title, required String value}) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.blue[700]),
-        title: Text(title),
-        trailing: Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  void _showChangePasswordDialog(BuildContext context) {
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password', border: OutlineInputBorder()),
-                validator: (value) => value == null || value.isEmpty ? 'Please enter current password' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter new password';
-                  if (value.length < 6) return 'Password must be at least 6 characters';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm New Password', border: OutlineInputBorder()),
-                validator: (value) => value != newPasswordController.text ? 'Passwords do not match' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState!.validate()) {
-                final userState = context.read<FirebaseUserState>();
-                final success = await userState.changePassword(currentPasswordController.text, newPasswordController.text);
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(success ? 'Password changed successfully' : userState.errorMessage ?? 'Failed to change password'),
-                      backgroundColor: success ? Colors.green : Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Change'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context) {
-    final passwordController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('This action cannot be undone. All your data will be permanently deleted.', style: TextStyle(color: Colors.red)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Enter your password to confirm', border: OutlineInputBorder()),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              final userState = context.read<FirebaseUserState>();
-              final success = await userState.deleteAccount(passwordController.text);
-              if (context.mounted) {
-                if (success) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginPage()),
-                    (route) => false,
-                  );
-                } else {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(userState.errorMessage ?? 'Failed to delete account'), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              context.read<FirebaseUserState>().logout();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-                (route) => false,
-              );
-            },
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ========== EDIT PROFILE PAGE ==========
-class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({super.key});
-
-  @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
-}
-
-class _EditProfilePageState extends State<EditProfilePage> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _usernameController;
-  late TextEditingController _classNameController;
-  String? _selectedFormLevel;
-
-  @override
-  void initState() {
-    super.initState();
-    final user = context.read<FirebaseUserState>().currentUser!;
-    _usernameController = TextEditingController(text: user.username);
-    _classNameController = TextEditingController(text: user.className ?? '');
-    _selectedFormLevel = user.formLevel;
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _classNameController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final userState = context.read<FirebaseUserState>();
-    final success = await userState.updateUserProfile(
-      username: _usernameController.text.trim(),
-      className: _classNameController.text.trim().isEmpty ? null : _classNameController.text.trim(),
-      formLevel: _selectedFormLevel,
-    );
-
-    if (!mounted) return;
-
-    if (success) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully'), backgroundColor: Colors.green),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(userState.errorMessage ?? 'Update failed'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final user = context.watch<FirebaseUserState>().currentUser!;
-    final userState = context.watch<FirebaseUserState>();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile'), backgroundColor: Colors.lightBlue, foregroundColor: Colors.white),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Update Your Information', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  prefixIcon: const Icon(Icons.person),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter username';
-                  if (value.length < 3) return 'Username must be at least 3 characters';
-                  return null;
-                },
-              ),
-              if (user.userType == UserType.student) ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedFormLevel,
-                  decoration: InputDecoration(
-                    labelText: 'Form Level',
-                    prefixIcon: const Icon(Icons.school),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  items: ['Form 4', 'Form 5'].map((level) => DropdownMenuItem(value: level, child: Text(level))).toList(),
-                  onChanged: (value) => setState(() => _selectedFormLevel = value),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _classNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Class Name',
-                    prefixIcon: const Icon(Icons.class_),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: userState.isLoading ? null : _handleSave,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: userState.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Save Changes', style: TextStyle(fontSize: 16)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ========== USER SEARCH PAGE ==========
 class UserSearchPage extends StatefulWidget {
@@ -2449,6 +2071,10 @@ class AddAchievementPage extends StatefulWidget {
   State<AddAchievementPage> createState() => _AddAchievementPageState();
 }
 
+<<<<<<< HEAD
+
+// ========== PROFILE PAGE ==========
+=======
 class _AddAchievementPageState extends State<AddAchievementPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
@@ -2557,13 +2183,393 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 }
 
 // ---------- Profile ----------
+>>>>>>> de7de7e8dc401ecbbe8a513fc0b80aa64bf8d210
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
+
   @override
   Widget build(BuildContext context) => const Text(
         '👤 User Profile Page',
         style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
       );
+
+  @override
+  Widget build(BuildContext context) {
+    final userState = context.watch<FirebaseUserState>();
+    final user = userState.currentUser;
+    
+
+    if (user == null) return const Center(child: Text('Not logged in'));
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('👤 User Profile'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          PopupMenuButton(
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit Profile')])),
+              const PopupMenuItem(value: 'password', child: Row(children: [Icon(Icons.lock, size: 20), SizedBox(width: 8), Text('Change Password')])),
+              const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 8), Text('Delete Account', style: TextStyle(color: Colors.red))])),
+              const PopupMenuItem(value: 'logout', child: Row(children: [Icon(Icons.logout, size: 20), SizedBox(width: 8), Text('Logout')])),
+            ],
+            onSelected: (value) {
+              if (value == 'edit') {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage()));
+              } else if (value == 'password') {
+                _showChangePasswordDialog(context);
+              } else if (value == 'delete') {
+                _showDeleteDialog(context);
+              } else if (value == 'logout') {
+                _handleLogout(context);
+              }
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.blue[700]!, Colors.blue[300]!])),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.white,
+                    child: const Icon(Icons.person, size: 50, color: Colors.blue),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(user.username, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), borderRadius: BorderRadius.circular(20)),
+                    child: Text(user.userType == UserType.student ? 'Student' : 'Teacher', style: const TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildInfoCard(icon: Icons.email, title: 'Email', value: user.email),
+                  if (user.userType == UserType.student) ...[
+                    _buildInfoCard(icon: Icons.school, title: 'Form Level', value: user.formLevel ?? 'Not set'),
+                    _buildInfoCard(icon: Icons.class_, title: 'Class', value: user.className ?? 'Not set'),
+                  ],
+                  _buildInfoCard(icon: Icons.stars, title: 'Total Points', value: user.points.toString()),
+                  _buildInfoCard(icon: Icons.emoji_events, title: 'Badges Earned', value: user.badges.length.toString()),
+                  _buildInfoCard(icon: Icons.trending_up, title: 'Completion Level', value: '${(user.completionLevel * 100).toStringAsFixed(1)}%'),
+                  if (user.badges.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Your Badges', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: user.badges.map((badge) => Chip(label: Text(badge), avatar: const Icon(Icons.emoji_events, size: 16))).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({required IconData icon, required String title, required String value}) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.blue[700]),
+        title: Text(title),
+        trailing: Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog(BuildContext context) {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Change Password'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: currentPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Current Password', border: OutlineInputBorder()),
+                validator: (value) => value == null || value.isEmpty ? 'Please enter current password' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please enter new password';
+                  if (value.length < 6) return 'Password must be at least 6 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Confirm New Password', border: OutlineInputBorder()),
+                validator: (value) => value != newPasswordController.text ? 'Passwords do not match' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final userState = context.read<FirebaseUserState>();
+                final success = await userState.changePassword(currentPasswordController.text, newPasswordController.text);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(success ? 'Password changed successfully' : userState.errorMessage ?? 'Failed to change password'),
+                      backgroundColor: success ? Colors.green : Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Change'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context) {
+    final passwordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('This action cannot be undone. All your data will be permanently deleted.', style: TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'Enter your password to confirm', border: OutlineInputBorder()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () async {
+              final userState = context.read<FirebaseUserState>();
+              final success = await userState.deleteAccount(passwordController.text);
+              if (context.mounted) {
+                if (success) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    (route) => false,
+                  );
+                } else {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(userState.errorMessage ?? 'Failed to delete account'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              context.read<FirebaseUserState>().logout();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            },
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ========== EDIT PROFILE PAGE ==========
+class EditProfilePage extends StatefulWidget {
+  const EditProfilePage({super.key});
+
+  @override
+  State<EditProfilePage> createState() => _EditProfilePageState();
+}
+
+class _EditProfilePageState extends State<EditProfilePage> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _usernameController;
+  late TextEditingController _classNameController;
+  String? _selectedFormLevel;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = context.read<FirebaseUserState>().currentUser!;
+    _usernameController = TextEditingController(text: user.username);
+    _classNameController = TextEditingController(text: user.className ?? '');
+    _selectedFormLevel = user.formLevel;
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _classNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final userState = context.read<FirebaseUserState>();
+    final success = await userState.updateUserProfile(
+      username: _usernameController.text.trim(),
+      className: _classNameController.text.trim().isEmpty ? null : _classNameController.text.trim(),
+      formLevel: _selectedFormLevel,
+    );
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile updated successfully'), backgroundColor: Colors.green),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(userState.errorMessage ?? 'Update failed'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser!;
+    final userState = context.watch<FirebaseUserState>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit Profile'), backgroundColor: Colors.lightBlue, foregroundColor: Colors.white),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Update Your Information', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              TextFormField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  prefixIcon: const Icon(Icons.person),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please enter username';
+                  if (value.length < 3) return 'Username must be at least 3 characters';
+                  return null;
+                },
+              ),
+              if (user.userType == UserType.student) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedFormLevel,
+                  decoration: InputDecoration(
+                    labelText: 'Form Level',
+                    prefixIcon: const Icon(Icons.school),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: ['Form 4', 'Form 5'].map((level) => DropdownMenuItem(value: level, child: Text(level))).toList(),
+                  onChanged: (value) => setState(() => _selectedFormLevel = value),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _classNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Class Name',
+                    prefixIcon: const Icon(Icons.class_),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: userState.isLoading ? null : _handleSave,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: userState.isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ---------- Learning Material ----------
