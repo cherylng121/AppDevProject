@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "365610873055",
+    "project_id": "codingbahasa",
+    "storage_bucket": "codingbahasa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:365610873055:android:62bf6fc0e19e644d86f96a",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZI67tEtKNRvt7jnsD60YmqWVD6rHFBMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:365610873055:android:99a012345c0404d686f96a",
+        "android_client_info": {
+          "package_name": "softwareSymphony.codingbahasa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZI67tEtKNRvt7jnsD60YmqWVD6rHFBMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
