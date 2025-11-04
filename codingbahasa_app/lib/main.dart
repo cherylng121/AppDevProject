@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_file/open_file.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
+
 
 void main() {
   runApp(const CodingBahasa());
@@ -53,28 +56,28 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         );
-        break;
+        
       case 1:
         page = const CoursePage();
-        break;
+       
       case 2:
         page = MaterialsPage();
-        break;
+       
       case 3:
         page = const QuizPage();
-        break;
+        
       case 4:
         page = const AIChatbotPage();
-        break;
+        
       case 5:
         page = const ProgressPage();
-        break;
+       
       case 6:
         page = const AchievementsPage();
-        break;
+        
       case 7:
         page = const ProfilePage();
-        break;
+        
       default:
         page = const Center(child: Text('Page not found'));
     }
@@ -356,13 +359,528 @@ class QuizPage extends StatelessWidget {
 }
 
 // ---------- AI Chatbot ----------
+// ---------- AI Chatbot ----------
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
+
   @override
-  Widget build(BuildContext context) => const Text(
-        '🤖 AI Chatbot Page',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => ChatBloc(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Column(
+          children: [
+            AppBar(
+              title: const Text('🤖 AI Study Buddy'),
+              backgroundColor: Colors.lightBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            const Expanded(
+              child: _ChatBody(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatBody extends StatefulWidget {
+  const _ChatBody();
+
+  @override
+  State<_ChatBody> createState() => _ChatBodyState();
+}
+
+class _ChatBodyState extends State<_ChatBody> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(
+          child: BlocBuilder<ChatBloc, ChatState>(
+            builder: (context, state) {
+              if (state is ChatLoaded) {
+                return _buildChatList(state.messages);
+              } else if (state is ChatError) {
+                return Center(
+                  child: Text(
+                    'Error: ${state.error}',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              } else if (state is ChatLoading) {
+                return _buildChatList(const []);
+              } else {
+                return const Center(child: CircularProgressIndicator());
+              }
+            },
+          ),
+        ),
+        _buildMessageInput(),
+      ],
+    );
+  }
+
+  Widget _buildChatList(List<ChatMessage> messages) {
+    if (messages.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'Start a conversation with AI Study Buddy!',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Try asking about: photosynthesis, quadratic equations, Java, etc.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      reverse: false,
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        return _buildChatBubble(message);
+      },
+    );
+  }
+
+  Widget _buildChatBubble(ChatMessage message) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0), // ← FIX 2: properties first
+      child: Row( // ← FIX 2: child last
+        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!message.isUser) ...[
+            CircleAvatar(
+              backgroundColor: Colors.lightBlue,
+              radius: 16, // ← Also fix this CircleAvatar
+              child: Text(
+                'AI',
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: message.isUser 
+                    ? Colors.lightBlue[50] 
+                    : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.text,
+                    style: const TextStyle(fontSize: 16, height: 1.4),
+                  ),
+                  if (message.responseTime != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule, size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${message.responseTime}ms',
+                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                        if (message.confidence != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _getConfidenceColor(message.confidence!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              message.confidence!.toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 8, 
+                                color: Colors.white, 
+                                fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (message.isUser) ...[
+            const SizedBox(width: 8),
+            CircleAvatar(
+              backgroundColor: Colors.green,
+              radius: 16, // ← Fix child order here too
+              child: const Icon(Icons.person, color: Colors.white, size: 16),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Color _getConfidenceColor(String confidence) {
+    switch (confidence) {
+      case 'high': return Colors.green;
+      case 'medium': return Colors.orange;
+      case 'low': return Colors.red;
+      default: return Colors.grey;
+    }
+  }
+
+  Widget _buildMessageInput() {
+    final controller = TextEditingController();
+    
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[300]!)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: 'Ask about Math, Science, Programming...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24.0),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              ),
+              onSubmitted: (value) => _sendMessage(controller),
+            ),
+          ),
+          const SizedBox(width: 8),
+          BlocBuilder<ChatBloc, ChatState>(
+            builder: (context, state) {
+              final isLoading = state is ChatLoading;
+              return Container(
+                decoration: BoxDecoration(
+                  color: isLoading ? Colors.grey : Colors.lightBlue,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.send, color: Colors.white),
+                  onPressed: isLoading ? null : () => _sendMessage(controller),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendMessage(TextEditingController controller) {
+    final text = controller.text.trim();
+    if (text.isNotEmpty) {
+      // FIX 3: Now we can use mounted safely
+      if (mounted) {
+        context.read<ChatBloc>().add(SendMessageEvent(text));
+      }
+      controller.clear();
+    }
+  }
+}
+
+// ========== AI CHATBOT SUPPORTING CLASSES ==========
+
+// Chat Message Model
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final DateTime timestamp;
+  final int? responseTime;
+  final String? confidence;
+
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    required this.timestamp,
+    this.responseTime,
+    this.confidence,
+  });
+
+  @override
+  String toString() {
+    return 'ChatMessage{text: $text, isUser: $isUser, timestamp: $timestamp}';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatMessage &&
+          runtimeType == other.runtimeType &&
+          text == other.text &&
+          isUser == other.isUser &&
+          timestamp == other.timestamp;
+
+  @override
+  int get hashCode => text.hashCode ^ isUser.hashCode ^ timestamp.hashCode;
+}
+
+// Chat BLoC Events
+abstract class ChatEvent extends Equatable {
+  const ChatEvent();
+
+  @override
+  List<Object> get props => [];
+}
+
+class SendMessageEvent extends ChatEvent {
+  final String message;
+
+  const SendMessageEvent(this.message);
+
+  @override
+  List<Object> get props => [message];
+}
+
+class ClearChatEvent extends ChatEvent {}
+
+// Chat BLoC Events 
+class LoadWelcomeEvent extends ChatEvent {
+  const LoadWelcomeEvent();
+
+  @override
+  List<Object> get props => [];
+}
+
+// Chat BLoC States
+abstract class ChatState extends Equatable {
+  const ChatState();
+
+  @override
+  List<Object> get props => [];
+}
+
+class ChatInitial extends ChatState {
+  const ChatInitial();
+}
+
+class ChatLoading extends ChatState {
+  const ChatLoading();
+}
+
+class ChatLoaded extends ChatState {
+  final List<ChatMessage> messages;
+  final int responseTime;
+
+  const ChatLoaded({required this.messages, this.responseTime = 0});
+
+  @override
+  List<Object> get props => [messages, responseTime];
+}
+
+class ChatError extends ChatState {
+  final String error;
+
+  const ChatError({required this.error});
+
+  @override
+  List<Object> get props => [error];
+}
+
+// Chat BLoC Implementation
+
+class ChatBloc extends Bloc<ChatEvent, ChatState> {
+  final List<ChatMessage> _messages = [
+    ChatMessage(
+      text: "Hello! I'm your AI study buddy. Ask me about: photosynthesis, quadratic equations, Java programming, gravity, or mitochondria!",
+      isUser: false,
+      timestamp: DateTime.now(),
+    ),
+  ];
+
+  // Predefined FAQs for Sprint 1
+  final Map<String, Map<String, dynamic>> _faqs = {
+    'photosynthesis': {
+      'answer': 'Photosynthesis is the process plants use to convert sunlight, water, and carbon dioxide into glucose and oxygen. The chemical equation is: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂',
+      'keywords': ['photosynthesis', 'plants', 'energy', 'sunlight', 'oxygen'],
+      'category': 'biology'
+    },
+    'quadratic equation': {
+      'answer': 'A quadratic equation is in the form ax² + bx + c = 0. Solve using the quadratic formula: x = [-b ± √(b² - 4ac)] / 2a. The discriminant (b² - 4ac) determines the nature of roots.',
+      'keywords': ['quadratic', 'equation', 'formula', 'algebra', 'solve'],
+      'category': 'math'
+    },
+    'java programming': {
+      'answer': 'Java is an object-oriented programming language known for its "write once, run anywhere" capability using the Java Virtual Machine (JVM). It\'s strongly typed and platform-independent.',
+      'keywords': ['java', 'programming', 'language', 'oop', 'jvm'],
+      'category': 'computer science'
+    },
+    'gravity': {
+      'answer': 'Gravity is the force that attracts two bodies toward each other. Newton\'s law: F = G(m₁m₂)/r². On Earth, acceleration due to gravity is approximately 9.8 m/s².',
+      'keywords': ['gravity', 'force', 'newton', 'earth', 'attraction'],
+      'category': 'physics'
+    },
+    'mitochondria': {
+      'answer': 'Mitochondria are the powerhouse of the cell! They generate most of the cell\'s supply of adenosine triphosphate (ATP), used as a source of chemical energy.',
+      'keywords': ['mitochondria', 'powerhouse', 'cell', 'energy', 'atp'],
+      'category': 'biology'
+    },
+  };
+
+  ChatBloc() : super(ChatInitial()) {
+    on<SendMessageEvent>(_onSendMessage);
+    on<ClearChatEvent>(_onClearChat);
+    on<LoadWelcomeEvent>(_onLoadWelcome);
+    
+    // Initialize with welcome message
+    add(const LoadWelcomeEvent());
+  }
+
+  void _onLoadWelcome(LoadWelcomeEvent event, Emitter<ChatState> emit) {
+    emit(ChatLoaded(messages: List.from(_messages)));
+  }
+
+  Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
+    if (event.message.trim().isEmpty) return;
+
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      // Add user message immediately
+      _messages.add(ChatMessage(
+        text: event.message,
+        isUser: true,
+        timestamp: DateTime.now(),
+      ));
+
+      emit(ChatLoading());
+
+      // Simulate API call delay
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Get FAQ response
+      final response = _getFAQResponse(event.message);
+      stopwatch.stop();
+
+      // Add bot response
+      _messages.add(ChatMessage(
+        text: response['answer'],
+        isUser: false,
+        timestamp: DateTime.now(),
+        responseTime: stopwatch.elapsedMilliseconds,
+        confidence: response['confidence'],
+      ));
+
+      emit(ChatLoaded(
+        messages: List.from(_messages),
+        responseTime: stopwatch.elapsedMilliseconds,
+      ));
+
+    } catch (e) {
+      // Add error message
+      _messages.add(ChatMessage(
+        text: "Sorry, I encountered an error. Please try again.",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+
+      emit(ChatError(error: e.toString()));
+      
+      // Re-emit loaded state to show error message
+      await Future.delayed(const Duration(milliseconds: 100));
+      emit(ChatLoaded(messages: List.from(_messages)));
+    }
+  }
+
+  void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) {
+    _messages.clear();
+    // Add welcome message back
+    _messages.add(ChatMessage(
+      text: "Hello! I'm your AI study buddy. Ask me anything!",
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+    emit(ChatLoaded(messages: List.from(_messages)));
+  }
+
+  Map<String, dynamic> _getFAQResponse(String userMessage) {
+    final lowerMessage = userMessage.toLowerCase();
+    Map<String, dynamic>? bestMatch;
+    int highestScore = 0;
+
+    for (var faq in _faqs.entries) {
+      final keywords = List<String>.from(faq.value['keywords']);
+      int score = _calculateMatchScore(lowerMessage, keywords);
+
+      if (score > highestScore) {
+        highestScore = score;
+        bestMatch = {
+          'answer': faq.value['answer'],
+          'matchedQuestion': faq.key,
+          'confidence': score >= 3 ? 'high' : score >= 2 ? 'medium' : 'low',
+          'category': faq.value['category'],
+        };
+      }
+    }
+
+    if (bestMatch != null && highestScore >= 1) {
+      return bestMatch;
+    } else {
+      return {
+        'answer': "I'm still learning! I don't have an answer for that yet. Try asking about: ${_faqs.keys.join(', ')}",
+        'matchedQuestion': null,
+        'confidence': 'low',
+        'category': 'general',
+      };
+    }
+  }
+
+  int _calculateMatchScore(String userMessage, List<String> keywords) {
+    int score = 0;
+    
+    for (String keyword in keywords) {
+      final cleanKeyword = keyword.trim().toLowerCase();
+      if (cleanKeyword.isEmpty) continue;
+
+      // Exact word match (higher score)
+      if (RegExp(r'\b' + RegExp.escape(cleanKeyword) + r'\b').hasMatch(userMessage)) {
+        score += 2;
+      }
+      // Partial match
+      else if (userMessage.contains(cleanKeyword)) {
+        score += 1;
+      }
+    }
+    
+    return score;
+  }
 }
 
 // ---------- Progress ----------
@@ -491,6 +1009,7 @@ class MaterialsPage extends StatelessWidget {
                           );
                           if (confirm == true) {
                             appState.removeMaterial(material);
+                             if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -499,6 +1018,9 @@ class MaterialsPage extends StatelessWidget {
                               ),
                             );
                           }
+                          
+                        }
+
                         },
                       ),
                     ),
