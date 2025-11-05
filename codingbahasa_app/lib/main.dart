@@ -723,7 +723,7 @@ class _RegisterPageState extends State<RegisterPage> {
               if (_selectedUserType == UserType.student) ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedFormLevel,
+                  initialValue: _selectedFormLevel,
                   decoration: InputDecoration(
                     labelText: 'Form Level',
                     prefixIcon: const Icon(Icons.school),
@@ -766,31 +766,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 }
 
-// ---------- Root ----------
-class CodingBahasa extends StatelessWidget {
-  const CodingBahasa({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => MaterialAppState(),
-      child: MaterialApp(
-        title: 'CodingBahasa',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          scaffoldBackgroundColor: Colors.white,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-          ),
-        ),
-        home: HomePage(),
-        debugShowCheckedModeBanner: false,
-      ),
-    );
-  }
-}
 
 // ========== HOME PAGE ==========
 class HomePage extends StatefulWidget {
@@ -1003,7 +978,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: tempFormLevel,
+                  initialValue: tempFormLevel,
                   decoration: const InputDecoration(labelText: 'Form Level', border: OutlineInputBorder()),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All')),
@@ -2527,7 +2502,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               if (user.userType == UserType.student) ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _selectedFormLevel,
+                  initialValue: _selectedFormLevel,
                   decoration: InputDecoration(
                     labelText: 'Form Level',
                     prefixIcon: const Icon(Icons.school),
