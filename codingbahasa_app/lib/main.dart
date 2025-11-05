@@ -1464,13 +1464,592 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
 }
 
 // ---------- Quiz ----------
+enum QuestionType { mcq, shortAnswer }
+enum QuizStatus { draft, published }
+
+class Question {
+  final String questionText;
+  final QuestionType type;
+  final List<String> options; // For MCQ
+  final String answer; // For short answer and correct answer for MCQ
+
+  Question({
+    required this.questionText,
+    required this.type,
+    this.options = const [],
+    required this.answer,
+  });
+}
+
+class Quiz {
+  final String title;
+  final String topic;
+  final List<Question> questions;
+  QuizStatus status;
+
+  Quiz({
+    required this.title,
+    required this.topic,
+    required this.questions,
+    this.status = QuizStatus.draft,
+  });
+}
+List<Quiz> dummyQuizzes = [];
+// ----------System Quiz ----------
+final Map<String, List<Question>> systemQuizData = {
+  "1.1 Strategi Penyelesaian Masalah": [
+    Question(
+      questionText: 'State the four (4) reasons why strategy is needed in problem-solving.',
+      type: QuestionType.shortAnswer,
+      answer: 'Meningkatkan kemahiran berfikir, Membantu pengembangan sesuatu konsep, Mewujudkan komunikasi dua hala, Menggalakkan pembelajaran kendiri',
+    ),
+    Question(
+      questionText: 'Which of the following is NOT one of the four (4) techniques of Computational Thinking?',
+      type: QuestionType.mcq,
+      options: const ['Leraian', 'Pengecaman corak', 'Peniskalaan', 'Perhubungan'],
+      answer: 'Perhubungan',
+    ),
+    Question(
+      questionText: 'List the three (3) characteristics of effective problem-solving.',
+      type: QuestionType.shortAnswer,
+      answer: 'Kos, Masa, Sumber',
+    ),
+    Question(
+      questionText: 'Which step immediately follows "Menjana idea" in the eight (8) Problem-Solving Processes?',
+      type: QuestionType.mcq,
+      options: const ['Menentukan masalah', 'Menjana penyelesaian', 'Melaksanakan penyelesaian', 'Membuat penilaian'],
+      answer: 'Menjana penyelesaian',
+    ),
+  ],
+  "1.2 Algoritma": [
+    Question(
+      questionText: 'State the three (3) main characteristics of an effective Algorithm.',
+      type: QuestionType.shortAnswer,
+      answer: 'Butiran jelas, Boleh dilaksanakan, Mempunyai batasan',
+    ),
+    Question(
+      questionText: 'Which component is missing in the fundamental process flow: INPUT → ? → OUTPUT?',
+      type: QuestionType.mcq,
+      options: const ['Data', 'Pembolehubah', 'Proses', 'Algoritma'],
+      answer: 'Proses',
+    ),
+    Question(
+      questionText: 'What are the three (3) Control Structures found in programming?',
+      type: QuestionType.shortAnswer,
+      answer: 'Struktur Kawalan Urutan, Struktur Kawalan Pilihan, Struktur Kawalan Pengulangan',
+    ),
+    Question(
+      questionText: 'What type of error is one that does not perform the intended functions?',
+      type: QuestionType.mcq,
+      options: const ['Ralat Sintaks', 'Ralat Masa Larian', 'Ralat Logik', 'Ralat Kawalan'],
+      answer: 'Ralat Logik',
+    ),
+  ],
+  "1.3 Pemboleh Ubah, Pemalar dan Jenis Data": [
+    Question(
+      questionText: 'Briefly define a PEMBOLEH UBAH (Variable).',
+      type: QuestionType.shortAnswer,
+      answer: 'Ruang simpanan sementara untuk nombor, teks & objek',
+    ),
+    Question(
+      questionText: 'Which of the following data types would be most suitable for storing the value 17.9?',
+      type: QuestionType.mcq,
+      options: const ['Integer', 'double', 'char', 'Boolean'],
+      answer: 'double',
+    ),
+    Question(
+      questionText: 'What is the difference between a Pemboleh Ubah Sejagat (Global) and a Pemboleh Ubah Setempat (Local)?',
+      type: QuestionType.shortAnswer,
+      answer: 'Global functions in the entire program; Local functions only within the sub-program where it is declared.',
+    ),
+  ],
+  "1.4 Struktur Kawalan": [
+    Question(
+      questionText: 'The control structure that uses If-else-if and Switch-case is known as:',
+      type: QuestionType.mcq,
+      options: const ['Kawalan Urutan', 'Kawalan Pilihan', 'Kawalan Pengulangan', 'Kawalan Logikal'],
+      answer: 'Kawalan Pilihan',
+    ),
+    Question(
+      questionText: 'State the two (2) primary operators that check for equality and inequality in the Relational Operators.',
+      type: QuestionType.shortAnswer,
+      answer: 'Sama dengan (==), Tidak sama dengan (!=)',
+    ),
+    Question(
+      questionText: 'In Logical Operators, which operator is only TRUE (✅) if ALL conditions are TRUE?',
+      type: QuestionType.mcq,
+      options: const ['OR', 'NOT', 'AND', 'IF'],
+      answer: 'AND',
+    ),
+  ],
+  "1.5 Amalan Terbaik Pengaturcaraan": [
+    Question(
+      questionText: 'List the four (4) factors that influence code readability.',
+      type: QuestionType.shortAnswer,
+      answer: 'Inden yang konsisten, Jenis data, Pemboleh ubah yang bermakna, Komen',
+    ),
+    Question(
+      questionText: 'Which type of error occurs due to grammar mistakes or the use of unrecognized characters/objects?',
+      type: QuestionType.mcq,
+      options: const ['Ralat Masa Larian', 'Ralat Logik', 'Ralat Sintaks', 'Ralat Struktur'],
+      answer: 'Ralat Sintaks',
+    ),
+    Question(
+      questionText: 'Give two (2) examples of common Ralat Masa Larian (Runtime Errors).',
+      type: QuestionType.shortAnswer,
+      answer: 'Pembahagian dengan digit 0, Mencari punca kuasa dua bagi nombor negatif',
+    ),
+  ],
+  "1.6 Struktur Data dan Modular": [
+    Question(
+      questionText: 'What is the definition of a TATASUSUNAN (Array)?',
+      type: QuestionType.shortAnswer,
+      answer: 'Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks',
+    ),
+    Question(
+      questionText: 'Which of the following is NOT a benefit of using a Modular Structure?',
+      type: QuestionType.mcq,
+      options: const ['Projek kompleks menjadi lebiringkas', 'Lebih mudah untuk diuji', 'Lebih mudah untuk digunakan semula', 'Memastikan kod hanya ditulis oleh satu orang'],
+      answer: 'Memastikan kod hanya ditulis oleh satu orang',
+    ),
+  ],
+  "1.7 Pembagunan Aplikasi": [
+    Question(
+      questionText: 'What does the acronym SDLC stand for in software development?',
+      type: QuestionType.shortAnswer,
+      answer: 'Kitaran Hayat Pembangunan Sistem (System Development Life Cycle)',
+    ),
+    Question(
+      questionText: 'List the five (5) steps in the System Development Life Cycle (SDLC).',
+      type: QuestionType.shortAnswer,
+      answer: '1. Analisis masalah, 2. Reka bentuk penyelesaian, 3. Laksana penyelesaian, 4. Uji & nyah ralat, 5. Dokumentasi',
+    ),
+  ],
+};
+// ---------- Quiz Page ----------
 class QuizPage extends StatelessWidget {
   const QuizPage({super.key});
+
   @override
-  Widget build(BuildContext context) => const Text(
-        'This is the Quiz Page',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Quiz Management'),
+        backgroundColor: Colors.blueGrey,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            // --- 1. System Quiz Button ---
+            ElevatedButton.icon(
+              onPressed: () {
+                // Navigate to a page showing system-generated quizzes
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SystemQuizListPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.auto_stories),
+              label: const Text('Generate System Quizzes (From Notes)'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // --- 2. Teacher Create Quiz Button ---
+            ElevatedButton.icon(
+              onPressed: () {
+                // Navigate to the quiz creation form
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CreateQuizPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add_box),
+              label: const Text('Create New Quiz (Teacher)'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                backgroundColor: Colors.green, // Differentiate teacher function
+              ),
+            ),
+            const SizedBox(height: 40),
+            
+            // Placeholder for displaying saved/published quizzes (Note: This relies on a ListView which needs a StateFul Widget or Provider/Bloc listener to update in real-time. For simplicity, we use a ListView here, but a proper solution would use a state management solution to update `dummyQuizzes`.)
+            const Text(
+              'My Quizzes (Drafts & Published)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Expanded(
+              child: ValueListenableBuilder<int>(
+                valueListenable: ValueNotifier(dummyQuizzes.length),
+                builder: (context, _, child) {
+                  return ListView.builder(
+                    itemCount: dummyQuizzes.length,
+                    itemBuilder: (context, index) {
+                      final quiz = dummyQuizzes[index];
+                      return ListTile(
+                        title: Text(quiz.title),
+                        subtitle: Text('${quiz.topic} - Status: ${quiz.status.name.toUpperCase()}'),
+                        trailing: Icon(quiz.status == QuizStatus.published ? Icons.check_circle : Icons.edit),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+// ---------- System Quiz List Page ----------
+class SystemQuizListPage extends StatelessWidget {
+  const SystemQuizListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('System-Generated Quizzes')),
+      body: ListView.builder(
+        itemCount: systemQuizData.length,
+        itemBuilder: (context, index) {
+          final topicTitle = systemQuizData.keys.elementAt(index);
+          final generatedQuestions = systemQuizData[topicTitle]!;
+          
+          return Card(
+            margin: const EdgeInsets.all(8.0),
+            child: ListTile(
+              title: Text('Quiz for topicTitle'),
+              subtitle: Text('${generatedQuestions.length} Questions (System Generated)'),
+              trailing: const Icon(Icons.play_arrow),
+              onTap: () {
+                // Navigate to the detailed quiz view or start the quiz.
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DetailedQuizView(
+                      quizTitle: 'System Quiz: $topicTitle',
+                      questions: generatedQuestions,
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+class DetailedQuizView extends StatelessWidget {
+  final String quizTitle;
+  final List<Question> questions;
+
+  const DetailedQuizView({super.key, required this.quizTitle, required this.questions});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(quizTitle)),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: questions.length,
+        itemBuilder: (context, index) {
+          final q = questions[index];
+          return Card(
+            elevation: 2,
+            margin: const EdgeInsets.only(bottom: 12),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Q${index + 1}: ${q.questionText}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Type: ${q.type.name.toUpperCase()}'),
+                  if (q.type == QuestionType.mcq)
+                    ...q.options.asMap().entries.map((e) => Text('  - ${e.value}')),
+                  const SizedBox(height: 4),
+                  Text('Correct Answer: ${q.answer}', style: const TextStyle(color: Colors.green)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+// ---------- Quiz Creation ----------
+class CreateQuizPage extends StatefulWidget {
+  const CreateQuizPage({super.key});
+
+  @override
+  State<CreateQuizPage> createState() => _CreateQuizPageState();
+}
+
+class _CreateQuizPageState extends State<CreateQuizPage> {
+  final _titleController = TextEditingController();
+  final _topicController = TextEditingController();
+  List<Question> _questions = [];
+
+  // Used for adding a new question
+  final _newQuestionTextController = TextEditingController();
+  final _newAnswerController = TextEditingController();
+  QuestionType _newQuestionType = QuestionType.mcq;
+  final List<TextEditingController> _mcqOptionControllers = [
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController()
+  ];
+  int _correctMcqOptionIndex = 0; // Index of the correct option
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _topicController.dispose();
+    _newQuestionTextController.dispose();
+    _newAnswerController.dispose();
+    for (var controller in _mcqOptionControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  // Helper to add a question to the list
+  void _addQuestion() {
+    if (_newQuestionTextController.text.isEmpty || (_newQuestionType == QuestionType.shortAnswer && _newAnswerController.text.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in the question text and answer/options.')),
       );
+      return;
+    }
+
+    if (_newQuestionType == QuestionType.mcq) {
+      final options = _mcqOptionControllers.map((c) => c.text).toList();
+      if (options.any((opt) => opt.isEmpty)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please fill all 4 MCQ options.')),
+        );
+        return;
+      }
+      final correctAnswer = options[_correctMcqOptionIndex];
+
+      setState(() {
+        _questions.add(
+          Question(
+            questionText: _newQuestionTextController.text,
+            type: QuestionType.mcq,
+            options: options,
+            answer: correctAnswer,
+          ),
+        );
+      });
+    } else { // Short Answer
+      setState(() {
+        _questions.add(
+          Question(
+            questionText: _newQuestionTextController.text,
+            type: QuestionType.shortAnswer,
+            answer: _newAnswerController.text,
+          ),
+        );
+      });
+    }
+
+    // Reset controllers for next question
+    _newQuestionTextController.clear();
+    _newAnswerController.clear();
+    for (var c in _mcqOptionControllers) {
+      c.clear();
+    }
+    setState(() {
+      _newQuestionType = QuestionType.mcq; 
+      _correctMcqOptionIndex = 0;
+    });
+  }
+
+  // Save the quiz as draft or publish it
+  void _saveQuiz(QuizStatus status) {
+    if (_titleController.text.isEmpty || _questions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a title and add at least one question.')),
+      );
+      return;
+    }
+
+    final newQuiz = Quiz(
+      title: _titleController.text,
+      topic: _topicController.text.isEmpty ? 'General' : _topicController.text,
+      questions: _questions,
+      status: status,
+    );
+
+    // Add to dummy storage
+    dummyQuizzes.add(newQuiz);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${newQuiz.title} saved as ${status.name.toUpperCase()}!')),
+    );
+    
+    // Go back to the QuizPage
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create New Quiz (Teacher)'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // Quiz Title and Topic
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Quiz Title'),
+            ),
+            TextFormField(
+              controller: _topicController,
+              decoration: const InputDecoration(labelText: 'Topic (e.g., 1.1 Strategi Penyelesaian Masalah)'),
+            ),
+            const SizedBox(height: 20),
+
+            const Text('Add New Question:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            
+            // Question Type
+            Row(
+              children: [
+                const Text('Type:'),
+                Radio<QuestionType>(
+                  value: QuestionType.mcq,
+                  groupValue: _newQuestionType,
+                  onChanged: (QuestionType? value) {
+                    setState(() {
+                      _newQuestionType = value!;
+                    });
+                  },
+                ),
+                const Text('MCQ'),
+                Radio<QuestionType>(
+                  value: QuestionType.shortAnswer,
+                  groupValue: _newQuestionType,
+                  onChanged: (QuestionType? value) {
+                    setState(() {
+                      _newQuestionType = value!;
+                    });
+                  },
+                ),
+                const Text('Short Answer'),
+              ],
+            ),
+            
+            // Question Text
+            TextFormField(
+              controller: _newQuestionTextController,
+              decoration: const InputDecoration(labelText: 'Question Text'),
+            ),
+            const SizedBox(height: 10),
+
+            // MCQ Options / Short Answer Field
+            if (_newQuestionType == QuestionType.mcq) ...[
+              const Text('MCQ Options (Select the correct one):', style: TextStyle(fontWeight: FontWeight.w500)),
+              ...List.generate(_mcqOptionControllers.length, (index) {
+                return Row(
+                  children: [
+                    Radio<int>(
+                      value: index,
+                      groupValue: _correctMcqOptionIndex,
+                      onChanged: (int? value) {
+                        setState(() {
+                          _correctMcqOptionIndex = value!;
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _mcqOptionControllers[index],
+                        decoration: InputDecoration(labelText: 'Option ${index + 1}'),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ] else ...[
+              TextFormField(
+                controller: _newAnswerController,
+                decoration: const InputDecoration(labelText: 'Correct Short Answer'),
+              ),
+            ],
+            const SizedBox(height: 10),
+
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: _addQuestion,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Question'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+              ),
+            ),
+            const Divider(height: 30, thickness: 2),
+
+            // Added Questions List
+            const Text('Questions Added:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ..._questions.asMap().entries.map((entry) {
+              int index = entry.key;
+              Question q = entry.value;
+              return ListTile(
+                title: Text('Q${index + 1}: ${q.questionText}'),
+                subtitle: Text('Type: ${q.type.name.toUpperCase()} | Answer: ${q.answer}'),
+                trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                        setState(() {
+                            _questions.removeAt(index);
+                        });
+                    },
+                ),
+              );
+            }),
+            const SizedBox(height: 30),
+
+            // Save and Publish Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _saveQuiz(QuizStatus.draft),
+                  icon: const Icon(Icons.drafts),
+                  label: const Text('Save as Draft'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _saveQuiz(QuizStatus.published),
+                  icon: const Icon(Icons.cloud_upload),
+                  label: const Text('Publish Quiz'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+                ),
+              ],
+            ),
+            const SizedBox(height: 50),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ---------- AI Chatbot ----------
