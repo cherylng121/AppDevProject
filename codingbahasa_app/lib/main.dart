@@ -491,11 +491,11 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final userState = context.read<FirebaseUserState>();
-    final success = await userState.login(
+    final userState = success;
+    /*final success = await userState.login(
       _emailController.text.trim(),
       _passwordController.text,
-    );
+    );*/
 
     if (!mounted) return;
 
