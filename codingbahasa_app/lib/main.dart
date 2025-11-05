@@ -2158,7 +2158,6 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 }
 
 // ---------- Profile ----------
->>>>>>> de7de7e8dc401ecbbe8a513fc0b80aa64bf8d210
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
