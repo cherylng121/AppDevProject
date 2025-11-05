@@ -122,13 +122,11 @@ class FirebaseUserState extends ChangeNotifier {
   AppUser? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
-  String? _lastUnlockedMessage;
 
   AppUser? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  String? get lastUnlockedMessage => _lastUnlockedMessage;
 
   FirebaseUserState() {
     _auth.authStateChanges().listen((firebaseUser) {
@@ -380,43 +378,6 @@ class FirebaseUserState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> awardBadge({
-    required String title,
-    required String description,
-  }) async {
-    if (_currentUser == null) return;
-    try {
-      await _firestore.collection('achievements').add({
-        'studentId': _currentUser!.id,
-        'studentName': _currentUser!.username,
-        'title': title,
-        'type': 'Badge',
-        'description': description,
-        'dateEarned': FieldValue.serverTimestamp(),
-      });
-
-      final updatedBadges = List<String>.from(_currentUser!.badges);
-      if (!updatedBadges.contains(title)) {
-        updatedBadges.add(title);
-        await _firestore
-            .collection('users')
-            .doc(_currentUser!.id)
-            .update({'badges': updatedBadges});
-        _currentUser = _currentUser!.copyWith(badges: updatedBadges);
-      }
-
-      _lastUnlockedMessage = 'Achievement unlocked: $title';
-      notifyListeners();
-    } catch (e) {
-      _errorMessage = 'Error awarding achievement: $e';
-      notifyListeners();
-    }
-  }
-
-  void consumeLastUnlockedMessage() {
-    _lastUnlockedMessage = null;
-  }
-
   String _getAuthErrorMessage(String code) {
     switch (code) {
       case 'email-already-in-use': return 'Email already registered';
@@ -447,7 +408,7 @@ class CodingBahasa extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-       home: Consumer<FirebaseUserState>(
+       /*home: Consumer<FirebaseUserState>(
         builder: (context, userState, _) {
           if (userState.isLoading) {
             return const Scaffold(
@@ -462,6 +423,11 @@ class CodingBahasa extends StatelessWidget {
             : const LoginPage();
         },
       ),
+      debugShowCheckedModeBanner: false,
+    );*/
+    
+    // TEMP: bypass auth to test features
+      home: const HomePage(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -491,11 +457,11 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final userState = success;
-    /*final success = await userState.login(
+    final userState = context.read<FirebaseUserState>();
+    final success = await userState.login(
       _emailController.text.trim(),
       _passwordController.text,
-    );*/
+    );
 
     if (!mounted) return;
 
@@ -838,7 +804,7 @@ class _HomePageState extends State<HomePage> {
       case 2:
         page = MaterialsPage();
       case 3:
-        page = QuizPage();
+        page = const QuizPage();
       case 4:
         page = const AIChatbotPage();
       case 5:
@@ -924,7 +890,6 @@ class _HomePageState extends State<HomePage> {
           backgroundColor: isSelected ? Colors.blue[100] : Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        
         child: Text(label, style: const TextStyle(fontSize: 16)),
       ),
     );
@@ -1256,25 +1221,17 @@ class CoursePage extends StatelessWidget {
   final List<Map<String, String>> topics = const [
     {
       "title": "1.1 Strategi Penyelesaian Masalah",
-      "note": """MASALAH:
-Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang 
-\n🤔(4) MENGAPAKAH PERLUNYA STRATEGI DALAM PENYELESAIAN MASALAH?
-• Meningkatkan kemahiran berfikir
-• Membantu pengembangan sesuatu konsep
-• Mewujudkan komunikasi dua hala
-• Menggalakkan pembelajaran kendir
-\nPENYELESAIAN MASALAH:
-Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian
-\n🧠(4) TEKNIK PEMIKIRAN KOMPUTASIONAL
+      "note": """MASALAH - Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang 
+\n(4) TEKNIK PEMIKIRAN KOMPUTASIONAL
 • Leraian – Memecahkan masalah kepada bahagian yang lebih kecil & terkawal
 • Pengecaman corak – Mencari persamaan antara masalah & dalam masalah
 • Peniskalaan – Menjana penyelesaian yang tepat kepada masalah yang dihadapi
 • Algoritma – Membangunkan penyelesaian langkah demi langkah terhadap masalah yang dihadapi
-\n✅(3) CIRI PENYELESAIAN MASALAH BERKESAN 
+\n(3) CIRI PENYELESAIAN MASALAH BERKESAN 
 • Kos 
 • Masa
 • Sumber
-\n📋(8) PROSES PENYELESAIAN MASALAH
+\n(8) PROSES PENYELESAIAN MASALAH
 1. Mengumpulkan & menganalisis data
 2. Menentukan masalah
 3. Menjana idea
@@ -1286,49 +1243,24 @@ Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian
     },
     {
       "title": "1.2 Algoritma",
-      "note": """ALGORITMA
-      Satu set arahan untuk menyelesaikan masalah 
-\n✅(3) CIRI ALGORITMA
+      "note": """Algoritma - Satu set arahan untuk menyelesaikan masalah 
+\n(3) CIRI ALGORITMA
 • Butiran jelas
 • Boleh dilaksanakan
 • Mempunyai batasan
-\n----------------------
-INPUT➡️PROSES➡️OUTPUT
-----------------------
-\nPSEUDOKOD
-Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan
-1. Tulis kenyataan MULA
-2. Baca INPUT
-3. Proses data menggunakan ungkapan logik / matematik
-4. Papar OUTPUT
-5. Tulis kenyataan TAMAT
-\nCARTA ALIR
-Alternatif kepada pseudokod menggunakan simbol grafik untuk mewakili arahanarahan penyelesaian
-1. Lukis nod terminal Mula
-2. Lukis garis penghubung
-3. Lukis nod input
-4. Lukis garis penghubung
-5. Lukis nod proses
-6. Lukis garis penghubung
-7. Sekiranya perlu, lukis nod proses / nod input lain-lain 
-8. Sekiranya tiada, lukis nod terminal Tamat
-\n🧑‍💻(3) STRUKTUR KAWALAN DALAM PENGATURCARAAN
-• Struktur Kawalan Urutan - Melaksanakan arahan komputer satu per satu
-• Struktur Kawalan Pilihan - Membuat keputusan berasaskan syarat yang ditentukan
-• Struktur Kawalan Pengulangan - Mengulang arahan komputer dalam blok
-\n------------------------------------------------------------
-Tulis Algortima➡️Uji ALgortima➡️Pembetulan➡️Pengaturcaraan
-------------------------------------------------------------
-\n✅(4) CIRI ALGORITMA YANG TELAH DIUJI 
-• Mudah difahami
-• Lengkap
-• Efisien
-• Memenuhi kriteria reka bentuk
-\n❌(3) RALAT
-• Ralat Sintaks - Tidak wujud dalam algoritma
-• Ralat Logik - Tidak menjalankan fungsi-fungsi yang sepatutnya
-• Ralat Masa Larian -  Timbul apabila atur cara dijalankan
-\n📋(4) LANGKAH PENGUJIAN ALGORITMA
+\nINPUT -> PROSES -> OUTPUT
+\nPSEUDOKOD - Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan
+\nCARTA ALIR - Alternatif kepada pseudokod menggunakan simbol grafik untuk mewakili arahanarahan penyelesaian
+\n(3) STRUKTUR KAWALAN DALAM PENGATURCARAAN
+• Struktur Kawalan Urutan
+• Struktur Kawalan Pilihan
+• Struktur Kawalan Pengulangan
+\nTulis Algortima -> Uji ALgortima -> Pembetulan -> Pengaturcaraan
+\n (3) RALAT
+• Ralat Sintaks
+• Ralat Logik
+• Ralat Masa Larian
+\n(4) LANGKAH PENGUJIAN ALGORITMA
 1. Kenal pasti "Output Dijangka"
 2. Kenal pasti "Output Diperoleh"
 3. Bandingkan "Output Diperoleh" dengan "Output Dijangka"
@@ -1337,26 +1269,23 @@ Tulis Algortima➡️Uji ALgortima➡️Pembetulan➡️Pengaturcaraan
     },
     {
       "title": "1.3 Pemboleh Ubah, Pemalar dan Jenis Data",
-      "note": """PEMBOLEH UBAH
-Ruang simpanan sementara untuk nombor, teks & objek
-\nPEMALAR
-Tetap & tidak akan berubah
+      "note": """PEMBOLEH UBAH - Ruang simpanan sementara untuk nombor, teks & objek
+\nPEMALAR - Tetap & tidak akan berubah
 \n(6) JENIS DATA
-• Integer [26]
-• float [17.9]
-• double [11.5]
-• char [z]
-• String [hello world]
-• Boolean [true, false]
-\nPEMBOLEH UBAH SEJAGAT (GLOBAL)
-Hanya berfungsi dalam atur cara sahaja
-\nPEMBOLEH UBAH SETEMPAT (LOCAL)
-Hanya berfungsi dalam subatur cara yang diisytiharkan
+• Integer
+• float
+• double
+• char
+• String
+• Boolean
+\nPEMBOLEH UBAH SEJAGAT (GLOBAL) - Hanya berfungsi dalam atur cara sahaja
+PEMBOLEH UBAH SETEMPAT (LOCAL) - Hanya berfungsi dalam subatur cara yang diisytiharkan
+
 """
     },
     {
       "title": "1.4 Struktur Kawalan",
-      "note": """✅(3) STRUKTUR KAWALAN 
+      "note": """(3) STRUKTUR KAWALAN 
 • Kawalan Urutan - Tidak bervariasi
 • Kawalan Pilihan - If-else-if, Switch-case
 • Kawalan Pengulangan - For, While, Do-while
@@ -1367,18 +1296,17 @@ Hanya berfungsi dalam subatur cara yang diisytiharkan
 • Lebih besar / sama dengan (>=)
 • Kurang daripada (<)
 • Kurang / sama dengan (<=)
-\n✅(3) OPERATOR LOGICAL
-• AND - ✅ jika semua betul
-• OR - ✅ jika salah satu betul
-• NOT - Menukarkan status kepada lawannya
+\n(3) OPERATOR LOGICAL
+• AND
+• OR
+• NOT
 """
     },
     {
       "title": "1.5 Amalan Terbaik Pengaturcaraan",
-      "note": """AMALAN TERBAIK PENGATURCARAAN
-Apabila pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghasilkan
+      "note": """AMALAN TERBAIK PENGATURCARAAN - Apabila pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghasilkan
 atur cara yang baik
-\n🧑‍💻(4) FAKTOR MEMPENGARUHI KEBOLEHBACAAN KOD
+\n(4) FAKTOR MEMPENGARUHI KEBOLEHBACAAN KOD
 • Inden yang konsisten
 • Jenis data
 • Pemboleh ubah yang bermakna
@@ -1397,13 +1325,8 @@ atur cara yang baik
     },
     {
       "title": "1.6 Struktur Data dan Modular",
-      "note": """TATASUSUNAN
-Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks
-\n--------------------------------------------------
-jenisData [] namaTatasusunan;
-namaTatasusunan = new jenisData [saizTatasusunan];
---------------------------------------------------
-\n👍(5) KELEBIHAN MENGGUNAKAN STRUKTUR MODUL
+      "note": """TATASUSUNAN - Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks
+\n(5) KELEBIHAN MENGGUNAKAN STRUKTUR MODUL
 • Lebih mudah untuk digunakan semula
 • Lebih mudah untuk diuji, dinyah pijat & dibaiki
 • Projek kompleks menjadi lebiringkas
@@ -1414,8 +1337,7 @@ namaTatasusunan = new jenisData [saizTatasusunan];
     {
       "title": "1.7 Pembagunan Aplikasi",
       "note": """KITARAN HAYAT PEMBANGUNAN SISTEM (SDLC)
-Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu aplikasi / perisian
-\n1. Analisis masalah
+1. Analisis masalah
 2. Reka bentuk penyelesaian - Logikal, Fizikal
 3. Laksana penyelesaian
 4. Uji & nyah ralat
@@ -1478,480 +1400,17 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
   }
 }
 
-// ---------- Quiz Models ----------
-enum QuestionType { mcq, shortAnswer }
 
-class Question {
-  String id;
-  String questionText;
-  QuestionType type;
-  List<String>? options; // For MCQ
-  String? correctAnswer; // For MCQ, it's the option index; for short answer, it's the answer text
-  String? correctAnswerText; // For MCQ, the actual answer text
-  
-  Question({
-    required this.id,
-    required this.questionText,
-    required this.type,
-    this.options,
-    this.correctAnswer,
-    this.correctAnswerText,
-  });
-}
-
-class Quiz {
-  String id;
-  String title;
-  String topic;
-  List<Question> questions;
-  bool isPublished;
-  DateTime createdAt;
-  DateTime? publishedAt;
-  
-  Quiz({
-    required this.id,
-    required this.title,
-    required this.topic,
-    required this.questions,
-    this.isPublished = false,
-    required this.createdAt,
-    this.publishedAt,
-  });
-}
-
-// ---------- App State ----------
-// ---------- Quiz Page ----------
+// ---------- Quiz ----------
 class QuizPage extends StatelessWidget {
   const QuizPage({super.key});
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quiz Page'),
-        backgroundColor: Colors.lightBlue,
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(
-        child: Text(
-          'This is the quiz page!',
-          style: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const Text(
+        'This is the Quiz Page',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      );
 }
 
-class QuizAppState extends ChangeNotifier {
-  final List<Quiz> _quizzes = [];
-  
-  List<Quiz> get allQuizzes => _quizzes;
-  List<Quiz> get publishedQuizzes => _quizzes.where((q) => q.isPublished).toList();
-  List<Quiz> get draftQuizzes => _quizzes.where((q) => !q.isPublished).toList();
-  
-  void addQuiz(Quiz quiz) {
-    _quizzes.add(quiz);
-    notifyListeners();
-  }
-  
-  void removeQuiz(Quiz quiz) {
-    _quizzes.remove(quiz);
-    notifyListeners();
-  }
-  
-  void publishQuiz(Quiz quiz) {
-    quiz.isPublished = true;
-    quiz.publishedAt = DateTime.now();
-    notifyListeners();
-  }
-  
-  void unpublishQuiz(Quiz quiz) {
-    quiz.isPublished = false;
-    quiz.publishedAt = null;
-    notifyListeners();
-  }
-  
-  void updateQuiz(Quiz oldQuiz, Quiz newQuiz) {
-    final index = _quizzes.indexWhere((q) => q.id == oldQuiz.id);
-    if (index != -1) {
-      _quizzes[index] = newQuiz;
-      notifyListeners();
-    }
-  }
-
-// System Quiz Generator based on learning notes
-  void generateSystemQuizzes() {
-    // Quiz 1: Strategi Penyelesaian Masalah
-    _quizzes.add(Quiz(
-      id: 'system_quiz_1',
-      title: 'Quiz: Strategi Penyelesaian Masalah',
-      topic: '1.1 Strategi Penyelesaian Masalah',
-      createdAt: DateTime.now(),
-      isPublished: true,
-      publishedAt: DateTime.now(),
-      questions: [
-        Question(
-          id: 'q1_1',
-          questionText: 'Apakah maksud masalah?',
-          type: QuestionType.mcq,
-          options: [
-            'Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang',
-            'Hanya cabaran sahaja',
-            'Situasi yang diingini',
-            'Tiada jawapan yang betul',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang',
-        ),
-        Question(
-          id: 'q1_2',
-          questionText: 'Berapakah bilangan teknik pemikiran komputasional?',
-          type: QuestionType.shortAnswer,
-          correctAnswer: '4',
-        ),
-        Question(
-          id: 'q1_3',
-          questionText: 'Antara berikut, yang manakah BUKAN teknik pemikiran komputasional?',
-          type: QuestionType.mcq,
-          options: [
-            'Leraian',
-            'Pengecaman corak',
-            'Peniskalaan',
-            'Pengulangan',
-          ],
-          correctAnswer: '3',
-          correctAnswerText: 'Pengulangan',
-        ),
-        Question(
-          id: 'q1_4',
-          questionText: 'Apakah maksud Leraian dalam pemikiran komputasional?',
-          type: QuestionType.mcq,
-          options: [
-            'Memecahkan masalah kepada bahagian yang lebih kecil & terkawal',
-            'Mencari persamaan antara masalah',
-            'Menjana penyelesaian yang tepat',
-            'Membangunkan penyelesaian langkah demi langkah',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Memecahkan masalah kepada bahagian yang lebih kecil & terkawal',
-        ),
-        Question(
-          id: 'q1_5',
-          questionText: 'Nyatakan 3 ciri penyelesaian masalah berkesan.',
-          type: QuestionType.shortAnswer,
-          correctAnswer: 'Kos, Masa, Sumber',
-        ),
-      ],
-    ));
-      
- // Quiz 2: Algoritma
-    _quizzes.add(Quiz(
-      id: 'system_quiz_2',
-      title: 'Quiz: Algoritma',
-      topic: '1.2 Algoritma',
-      createdAt: DateTime.now(),
-      isPublished: true,
-      publishedAt: DateTime.now(),
-      questions: [
-        Question(
-          id: 'q2_1',
-          questionText: 'Apakah definisi algoritma?',
-          type: QuestionType.mcq,
-          options: [
-            'Satu set arahan untuk menyelesaikan masalah',
-            'Satu bahasa pengaturcaraan',
-            'Satu jenis pemboleh ubah',
-            'Satu struktur kawalan',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Satu set arahan untuk menyelesaikan masalah',
-        ),
-        Question(
-          id: 'q2_2',
-          questionText: 'Berapakah bilangan ciri algoritma?',
-          type: QuestionType.shortAnswer,
-          correctAnswer: '3',
-        ),
-        Question(
-          id: 'q2_3',
-          questionText: 'Apakah yang dimaksudkan dengan PSEUDOKOD?',
-          type: QuestionType.mcq,
-          options: [
-            'Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan',
-            'Simbol grafik untuk mewakili arahan-arahan penyelesaian',
-            'Bahasa pengaturcaraan tingkat tinggi',
-            'Struktur data linear',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan',
-        ),
-        Question(
-          id: 'q2_4',
-          questionText: 'Nyatakan 3 jenis ralat dalam pengaturcaraan.',
-          type: QuestionType.shortAnswer,
-          correctAnswer: 'Ralat Sintaks, Ralat Logik, Ralat Masa Larian',
-        ),
-        Question(
-          id: 'q2_5',
-          questionText: 'Apakah struktur kawalan dalam pengaturcaraan?',
-          type: QuestionType.mcq,
-          options: [
-            'Struktur Kawalan Urutan, Struktur Kawalan Pilihan, Struktur Kawalan Pengulangan',
-            'If, Else, While',
-            'Integer, Float, String',
-            'Input, Proses, Output',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Struktur Kawalan Urutan, Struktur Kawalan Pilihan, Struktur Kawalan Pengulangan',
-        ),
-      ],
-    ));
-    
-    // Quiz 3: Pemboleh Ubah, Pemalar dan Jenis Data
-    _quizzes.add(Quiz(
-      id: 'system_quiz_3',
-      title: 'Quiz: Pemboleh Ubah, Pemalar dan Jenis Data',
-      topic: '1.3 Pemboleh Ubah, Pemalar dan Jenis Data',
-      createdAt: DateTime.now(),
-      isPublished: true,
-      publishedAt: DateTime.now(),
-      questions: [
-        Question(
-          id: 'q3_1',
-          questionText: 'Apakah definisi PEMBOLEH UBAH?',
-          type: QuestionType.mcq,
-          options: [
-            'Ruang simpanan sementara untuk nombor, teks & objek',
-            'Nilai yang tetap dan tidak akan berubah',
-            'Struktur kawalan',
-            'Jenis data',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Ruang simpanan sementara untuk nombor, teks & objek',
-        ),
-        Question(
-          id: 'q3_2',
-          questionText: 'Berapakah bilangan jenis data asas?',
-          type: QuestionType.shortAnswer,
-          correctAnswer: '6',
-        ),
-        Question(
-          id: 'q3_3',
-          questionText: 'Antara berikut, yang manakah BUKAN jenis data?',
-          type: QuestionType.mcq,
-          options: [
-            'Integer',
-            'Double',
-            'Array',
-            'Boolean',
-          ],
-          correctAnswer: '2',
-          correctAnswerText: 'Array',
-        ),
-        Question(
-          id: 'q3_4',
-          questionText: 'Apakah perbezaan antara PEMBOLEH UBAH SEJAGAT dan PEMBOLEH UBAH SETEMPAT?',
-          type: QuestionType.mcq,
-          options: [
-            'Pemboleh ubah sejagat berfungsi dalam atur cara sahaja, manakala setempat hanya dalam subatur cara yang diisytiharkan',
-            'Tiada perbezaan',
-            'Pemboleh ubah setempat lebih besar',
-            'Pemboleh ubah sejagat lebih kecil',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Pemboleh ubah sejagat berfungsi dalam atur cara sahaja, manakala setempat hanya dalam subatur cara yang diisytiharkan',
-        ),
-      ],
-    ));
-
- // Quiz 4: Struktur Kawalan
-    _quizzes.add(Quiz(
-      id: 'system_quiz_4',
-      title: 'Quiz: Struktur Kawalan',
-      topic: '1.4 Struktur Kawalan',
-      createdAt: DateTime.now(),
-      isPublished: true,
-      publishedAt: DateTime.now(),
-      questions: [
-        Question(
-          id: 'q4_1',
-          questionText: 'Berapakah bilangan struktur kawalan?',
-          type: QuestionType.shortAnswer,
-          correctAnswer: '3',
-        ),
-        Question(
-          id: 'q4_2',
-          questionText: 'Antara berikut, yang manakah operator hubungan?',
-          type: QuestionType.mcq,
-          options: [
-            'Sama dengan (==)',
-            'AND',
-            'OR',
-            'NOT',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Sama dengan (==)',
-        ),
-        Question(
-          id: 'q4_3',
-          questionText: 'Nyatakan 3 struktur kawalan pengulangan.',
-          type: QuestionType.shortAnswer,
-          correctAnswer: 'For, While, Do-while',
-        ),
-        Question(
-          id: 'q4_4',
-          questionText: 'Apakah operator logik?',
-          type: QuestionType.mcq,
-          options: [
-            'AND, OR, NOT',
-            '==, !=, >, <',
-            '+, -, *, /',
-            'If, Else, Switch',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'AND, OR, NOT',
-        ),
-      ],
-    ));
-    
-    // Quiz 5: Amalan Terbaik Pengaturcaraan
-    _quizzes.add(Quiz(
-      id: 'system_quiz_5',
-      title: 'Quiz: Amalan Terbaik Pengaturcaraan',
-      topic: '1.5 Amalan Terbaik Pengaturcaraan',
-      createdAt: DateTime.now(),
-      isPublished: true,
-      publishedAt: DateTime.now(),
-      questions: [
-        Question(
-          id: 'q5_1',
-          questionText: 'Berapakah bilangan faktor mempengaruhi kebolehbacaan kod?',
-          type: QuestionType.shortAnswer,
-          correctAnswer: '4',
-        ),
-        Question(
-          id: 'q5_2',
-          questionText: 'Antara berikut, yang manakah faktor mempengaruhi kebolehbacaan kod?',
-          type: QuestionType.mcq,
-          options: [
-            'Inden yang konsisten',
-            'Warna skrin',
-            'Saiz fon',
-            'Jenis komputer',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Inden yang konsisten',
-        ),
-        Question(
-          id: 'q5_3',
-          questionText: 'Apakah yang dimaksudkan dengan RALAT SINTAKS?',
-          type: QuestionType.mcq,
-          options: [
-            'Kesalahan tatabahasa, penggunaan objek/aksara yang tidak dikenali',
-            'Atur cara tidak berfungsi seperti yang diingini',
-            'Pengiraan data bukan berangka',
-            'Tiada jawapan yang betul',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Kesalahan tatabahasa, penggunaan objek/aksara yang tidak dikenali',
-        ),
-      ],
-    ));
-
- // Quiz 6: Struktur Data dan Modular
-    _quizzes.add(Quiz(
-      id: 'system_quiz_6',
-      title: 'Quiz: Struktur Data dan Modular',
-      topic: '1.6 Struktur Data dan Modular',
-      createdAt: DateTime.now(),
-      isPublished: true,
-      publishedAt: DateTime.now(),
-      questions: [
-        Question(
-          id: 'q6_1',
-          questionText: 'Apakah definisi TATASUSUNAN?',
-          type: QuestionType.mcq,
-          options: [
-            'Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks',
-            'Satu jenis pemboleh ubah',
-            'Satu struktur kawalan',
-            'Satu jenis data',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks',
-        ),
-        Question(
-          id: 'q6_2',
-          questionText: 'Berapakah bilangan kelebihan menggunakan struktur modul?',
-          type: QuestionType.shortAnswer,
-          correctAnswer: '5',
-        ),
-        Question(
-          id: 'q6_3',
-          questionText: 'Antara berikut, yang manakah kelebihan menggunakan struktur modul?',
-          type: QuestionType.mcq,
-          options: [
-            'Lebih mudah untuk digunakan semula',
-            'Lebih sukar untuk diuji',
-            'Projek menjadi lebih kompleks',
-            'Tidak boleh dibahagikan kepada ahli kumpulan',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Lebih mudah untuk digunakan semula',
-        ),
-      ],
-    ));
-    
-    // Quiz 7: Pembangunan Aplikasi
-    _quizzes.add(Quiz(
-      id: 'system_quiz_7',
-      title: 'Quiz: Pembangunan Aplikasi',
-      topic: '1.7 Pembangunan Aplikasi',
-      createdAt: DateTime.now(),
-      isPublished: true,
-      publishedAt: DateTime.now(),
-      questions: [
-        Question(
-          id: 'q7_1',
-          questionText: 'Apakah singkatan SDLC?',
-          type: QuestionType.mcq,
-          options: [
-            'Kitaran Hayat Pembangunan Sistem',
-            'Sistem Data Lokal',
-            'Struktur Data Linear',
-            'Sistem Dokumentasi Lengkap',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Kitaran Hayat Pembangunan Sistem',
-        ),
-        Question(
-          id: 'q7_2',
-          questionText: 'Berapakah bilangan fasa dalam SDLC?',
-          type: QuestionType.shortAnswer,
-          correctAnswer: '5',
-        ),
-        Question(
-          id: 'q7_3',
-          questionText: 'Antara berikut, yang manakah fasa dalam SDLC?',
-          type: QuestionType.mcq,
-          options: [
-            'Analisis masalah',
-            'Pengujian sahaja',
-            'Dokumentasi sahaja',
-            'Pelaksanaan sahaja',
-          ],
-          correctAnswer: '0',
-          correctAnswerText: 'Analisis masalah',
-        ),
-      ],
-    ));
-    
-    notifyListeners();
-  }
-}
-
-
-      
 // ---------- AI Chatbot ----------
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
@@ -2743,9 +2202,6 @@ class AchievementsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final userState = context.watch<FirebaseUserState>();
-    final user = userState.currentUser;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -2753,145 +2209,32 @@ class AchievementsPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: user == null
-            ? null
-            : () async {
-                await context.read<FirebaseUserState>().awardBadge(
-                      title: 'Quiz Master',
-                      description: 'Scored 80% or above in a quiz',
-                    );
-                if (context.mounted) {
-                  final msg = context.read<FirebaseUserState>().lastUnlockedMessage;
-                  if (msg != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(msg), backgroundColor: Colors.green),
-                    );
-                    context.read<FirebaseUserState>().consumeLastUnlockedMessage();
-                  }
-                }
-              },
-        icon: const Icon(Icons.auto_awesome),
-        label: const Text('Simulate Milestone'),
-      ),
-      body: user == null
-          ? const Center(child: Text('Not logged in'))
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (userState.lastUnlockedMessage != null)
-                  Builder(
-                    builder: (ctx) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        final msg = userState.lastUnlockedMessage;
-                        if (msg != null) {
-                          ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text(msg), backgroundColor: Colors.green),
-                          );
-                          context.read<FirebaseUserState>().consumeLastUnlockedMessage();
-                        }
-                      });
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.emoji_events, size: 28, color: Colors.amber),
-                      const SizedBox(width: 8),
-                      const Text('Your Achievements',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const Spacer(),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const AddAchievementPage()),
-                          );
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Achievement'),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('achievements')
-                        .where('studentId', isEqualTo: user.id)
-                        .orderBy('dateEarned', descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasError) {
-                        return Center(
-                          child: Text('Error loading achievements: ${snapshot.error}'),
-                        );
-                      }
-                      final docs = snapshot.data?.docs ?? [];
-                      if (docs.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'No achievements yet. Complete milestones to earn badges!',
-                            style: TextStyle(color: Colors.grey[600]),
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      }
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final data = docs[index].data() as Map<String, dynamic>;
-                          final title = data['title'] as String? ?? 'Achievement';
-                          final type = data['type'] as String? ?? 'Badge';
-                          final description = data['description'] as String? ?? '';
-                          final ts = data['dateEarned'];
-                          DateTime? when;
-                          if (ts is Timestamp) when = ts.toDate();
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: type == 'Badge' ? Colors.amber[100] : Colors.blue[100],
-                                child: Icon(
-                                  type == 'Badge' ? Icons.emoji_events : Icons.workspace_premium,
-                                  color: type == 'Badge' ? Colors.amber[800] : Colors.blue[800],
-                                ),
-                              ),
-                              title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(description),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Chip(label: Text(type)),
-                                      const SizedBox(width: 8),
-                                      if (when != null)
-                                        Text(
-                                          'Earned: ${when.toLocal()}',
-                                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.emoji_events, size: 80, color: Colors.amber),
+            const SizedBox(height: 16),
+            const Text(
+              'Your Achievements',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddAchievementPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Achievement'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
