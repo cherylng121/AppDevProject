@@ -2046,10 +2046,7 @@ class AddAchievementPage extends StatefulWidget {
   State<AddAchievementPage> createState() => _AddAchievementPageState();
 }
 
-<<<<<<< HEAD
-
 // ========== PROFILE PAGE ==========
-=======
 class _AddAchievementPageState extends State<AddAchievementPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
@@ -2763,3 +2760,4 @@ class _UploadPageState extends State<UploadPage> {
     );
   }
 }
+
