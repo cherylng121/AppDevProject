@@ -24,6 +24,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (context) => FirebaseUserState()),
         ChangeNotifierProvider(create: (context) => MaterialAppState()),
+        ChangeNotifierProvider(create: (context) => QuizAppState()),
       ],
       child: const CodingBahasa(),
     ),
@@ -1396,17 +1397,1423 @@ atur cara yang baik
   }
 }
 
+enum QuestionType { mcq, shortAnswer }
 
-// ---------- Quiz ----------
-class QuizPage extends StatelessWidget {
-  const QuizPage({super.key});
-  @override
-  Widget build(BuildContext context) => const Text(
-        'This is the Quiz Page',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      );
+class Question {
+  String id;
+  String questionText;
+  QuestionType type;
+  List<String>? options; // For MCQ
+  String? correctAnswer; // For MCQ, it's the option index; for short answer, it's the answer text
+  String? correctAnswerText; // For MCQ, the actual answer text
+  
+  Question({
+    required this.id,
+    required this.questionText,
+    required this.type,
+    this.options,
+    this.correctAnswer,
+    this.correctAnswerText,
+  });
 }
 
+class Quiz {
+  String id;
+  String title;
+  String topic;
+  List<Question> questions;
+  bool isPublished;
+  DateTime createdAt;
+  DateTime? publishedAt;
+  
+  Quiz({
+    required this.id,
+    required this.title,
+    required this.topic,
+    required this.questions,
+    this.isPublished = false,
+    required this.createdAt,
+    this.publishedAt,
+  });
+}
+
+// ---------- App State ----------
+
+class QuizAppState extends ChangeNotifier {
+  final List<Quiz> _quizzes = [];
+  
+  List<Quiz> get allQuizzes => _quizzes;
+  List<Quiz> get publishedQuizzes => _quizzes.where((q) => q.isPublished).toList();
+  List<Quiz> get draftQuizzes => _quizzes.where((q) => !q.isPublished).toList();
+  
+  void addQuiz(Quiz quiz) {
+    _quizzes.add(quiz);
+    notifyListeners();
+  }
+  
+  void removeQuiz(Quiz quiz) {
+    _quizzes.remove(quiz);
+    notifyListeners();
+  }
+  
+  void publishQuiz(Quiz quiz) {
+    quiz.isPublished = true;
+    quiz.publishedAt = DateTime.now();
+    notifyListeners();
+  }
+  
+  void unpublishQuiz(Quiz quiz) {
+    quiz.isPublished = false;
+    quiz.publishedAt = null;
+    notifyListeners();
+  }
+  
+  void updateQuiz(Quiz oldQuiz, Quiz newQuiz) {
+    final index = _quizzes.indexWhere((q) => q.id == oldQuiz.id);
+    if (index != -1) {
+      _quizzes[index] = newQuiz;
+      notifyListeners();
+    }
+  }
+
+// System Quiz Generator based on learning notes
+  void generateSystemQuizzes() {
+    // Quiz 1: Strategi Penyelesaian Masalah
+    _quizzes.add(Quiz(
+      id: 'system_quiz_1',
+      title: 'Quiz: Strategi Penyelesaian Masalah',
+      topic: '1.1 Strategi Penyelesaian Masalah',
+      createdAt: DateTime.now(),
+      isPublished: true,
+      publishedAt: DateTime.now(),
+      questions: [
+        Question(
+          id: 'q1_1',
+          questionText: 'Apakah maksud masalah?',
+          type: QuestionType.mcq,
+          options: [
+            'Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang',
+            'Hanya cabaran sahaja',
+            'Situasi yang diingini',
+            'Tiada jawapan yang betul',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang',
+        ),
+        Question(
+          id: 'q1_2',
+          questionText: 'Berapakah bilangan teknik pemikiran komputasional?',
+          type: QuestionType.shortAnswer,
+          correctAnswer: '4',
+        ),
+        Question(
+          id: 'q1_3',
+          questionText: 'Antara berikut, yang manakah BUKAN teknik pemikiran komputasional?',
+          type: QuestionType.mcq,
+          options: [
+            'Leraian',
+            'Pengecaman corak',
+            'Peniskalaan',
+            'Pengulangan',
+          ],
+          correctAnswer: '3',
+          correctAnswerText: 'Pengulangan',
+        ),
+        Question(
+          id: 'q1_4',
+          questionText: 'Apakah maksud Leraian dalam pemikiran komputasional?',
+          type: QuestionType.mcq,
+          options: [
+            'Memecahkan masalah kepada bahagian yang lebih kecil & terkawal',
+            'Mencari persamaan antara masalah',
+            'Menjana penyelesaian yang tepat',
+            'Membangunkan penyelesaian langkah demi langkah',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Memecahkan masalah kepada bahagian yang lebih kecil & terkawal',
+        ),
+        Question(
+          id: 'q1_5',
+          questionText: 'Nyatakan 3 ciri penyelesaian masalah berkesan.',
+          type: QuestionType.shortAnswer,
+          correctAnswer: 'Kos, Masa, Sumber',
+        ),
+      ],
+    ));
+      
+ // Quiz 2: Algoritma
+    _quizzes.add(Quiz(
+      id: 'system_quiz_2',
+      title: 'Quiz: Algoritma',
+      topic: '1.2 Algoritma',
+      createdAt: DateTime.now(),
+      isPublished: true,
+      publishedAt: DateTime.now(),
+      questions: [
+        Question(
+          id: 'q2_1',
+          questionText: 'Apakah definisi algoritma?',
+          type: QuestionType.mcq,
+          options: [
+            'Satu set arahan untuk menyelesaikan masalah',
+            'Satu bahasa pengaturcaraan',
+            'Satu jenis pemboleh ubah',
+            'Satu struktur kawalan',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Satu set arahan untuk menyelesaikan masalah',
+        ),
+        Question(
+          id: 'q2_2',
+          questionText: 'Berapakah bilangan ciri algoritma?',
+          type: QuestionType.shortAnswer,
+          correctAnswer: '3',
+        ),
+        Question(
+          id: 'q2_3',
+          questionText: 'Apakah yang dimaksudkan dengan PSEUDOKOD?',
+          type: QuestionType.mcq,
+          options: [
+            'Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan',
+            'Simbol grafik untuk mewakili arahan-arahan penyelesaian',
+            'Bahasa pengaturcaraan tingkat tinggi',
+            'Struktur data linear',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan',
+        ),
+        Question(
+          id: 'q2_4',
+          questionText: 'Nyatakan 3 jenis ralat dalam pengaturcaraan.',
+          type: QuestionType.shortAnswer,
+          correctAnswer: 'Ralat Sintaks, Ralat Logik, Ralat Masa Larian',
+        ),
+        Question(
+          id: 'q2_5',
+          questionText: 'Apakah struktur kawalan dalam pengaturcaraan?',
+          type: QuestionType.mcq,
+          options: [
+            'Struktur Kawalan Urutan, Struktur Kawalan Pilihan, Struktur Kawalan Pengulangan',
+            'If, Else, While',
+            'Integer, Float, String',
+            'Input, Proses, Output',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Struktur Kawalan Urutan, Struktur Kawalan Pilihan, Struktur Kawalan Pengulangan',
+        ),
+      ],
+    ));
+    
+    // Quiz 3: Pemboleh Ubah, Pemalar dan Jenis Data
+    _quizzes.add(Quiz(
+      id: 'system_quiz_3',
+      title: 'Quiz: Pemboleh Ubah, Pemalar dan Jenis Data',
+      topic: '1.3 Pemboleh Ubah, Pemalar dan Jenis Data',
+      createdAt: DateTime.now(),
+      isPublished: true,
+      publishedAt: DateTime.now(),
+      questions: [
+        Question(
+          id: 'q3_1',
+          questionText: 'Apakah definisi PEMBOLEH UBAH?',
+          type: QuestionType.mcq,
+          options: [
+            'Ruang simpanan sementara untuk nombor, teks & objek',
+            'Nilai yang tetap dan tidak akan berubah',
+            'Struktur kawalan',
+            'Jenis data',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Ruang simpanan sementara untuk nombor, teks & objek',
+        ),
+        Question(
+          id: 'q3_2',
+          questionText: 'Berapakah bilangan jenis data asas?',
+          type: QuestionType.shortAnswer,
+          correctAnswer: '6',
+        ),
+        Question(
+          id: 'q3_3',
+          questionText: 'Antara berikut, yang manakah BUKAN jenis data?',
+          type: QuestionType.mcq,
+          options: [
+            'Integer',
+            'Double',
+            'Array',
+            'Boolean',
+          ],
+          correctAnswer: '2',
+          correctAnswerText: 'Array',
+        ),
+        Question(
+          id: 'q3_4',
+          questionText: 'Apakah perbezaan antara PEMBOLEH UBAH SEJAGAT dan PEMBOLEH UBAH SETEMPAT?',
+          type: QuestionType.mcq,
+          options: [
+            'Pemboleh ubah sejagat berfungsi dalam atur cara sahaja, manakala setempat hanya dalam subatur cara yang diisytiharkan',
+            'Tiada perbezaan',
+            'Pemboleh ubah setempat lebih besar',
+            'Pemboleh ubah sejagat lebih kecil',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Pemboleh ubah sejagat berfungsi dalam atur cara sahaja, manakala setempat hanya dalam subatur cara yang diisytiharkan',
+        ),
+      ],
+    ));
+
+ // Quiz 4: Struktur Kawalan
+    _quizzes.add(Quiz(
+      id: 'system_quiz_4',
+      title: 'Quiz: Struktur Kawalan',
+      topic: '1.4 Struktur Kawalan',
+      createdAt: DateTime.now(),
+      isPublished: true,
+      publishedAt: DateTime.now(),
+      questions: [
+        Question(
+          id: 'q4_1',
+          questionText: 'Berapakah bilangan struktur kawalan?',
+          type: QuestionType.shortAnswer,
+          correctAnswer: '3',
+        ),
+        Question(
+          id: 'q4_2',
+          questionText: 'Antara berikut, yang manakah operator hubungan?',
+          type: QuestionType.mcq,
+          options: [
+            'Sama dengan (==)',
+            'AND',
+            'OR',
+            'NOT',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Sama dengan (==)',
+        ),
+        Question(
+          id: 'q4_3',
+          questionText: 'Nyatakan 3 struktur kawalan pengulangan.',
+          type: QuestionType.shortAnswer,
+          correctAnswer: 'For, While, Do-while',
+        ),
+        Question(
+          id: 'q4_4',
+          questionText: 'Apakah operator logik?',
+          type: QuestionType.mcq,
+          options: [
+            'AND, OR, NOT',
+            '==, !=, >, <',
+            '+, -, *, /',
+            'If, Else, Switch',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'AND, OR, NOT',
+        ),
+      ],
+    ));
+    
+    // Quiz 5: Amalan Terbaik Pengaturcaraan
+    _quizzes.add(Quiz(
+      id: 'system_quiz_5',
+      title: 'Quiz: Amalan Terbaik Pengaturcaraan',
+      topic: '1.5 Amalan Terbaik Pengaturcaraan',
+      createdAt: DateTime.now(),
+      isPublished: true,
+      publishedAt: DateTime.now(),
+      questions: [
+        Question(
+          id: 'q5_1',
+          questionText: 'Berapakah bilangan faktor mempengaruhi kebolehbacaan kod?',
+          type: QuestionType.shortAnswer,
+          correctAnswer: '4',
+        ),
+        Question(
+          id: 'q5_2',
+          questionText: 'Antara berikut, yang manakah faktor mempengaruhi kebolehbacaan kod?',
+          type: QuestionType.mcq,
+          options: [
+            'Inden yang konsisten',
+            'Warna skrin',
+            'Saiz fon',
+            'Jenis komputer',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Inden yang konsisten',
+        ),
+        Question(
+          id: 'q5_3',
+          questionText: 'Apakah yang dimaksudkan dengan RALAT SINTAKS?',
+          type: QuestionType.mcq,
+          options: [
+            'Kesalahan tatabahasa, penggunaan objek/aksara yang tidak dikenali',
+            'Atur cara tidak berfungsi seperti yang diingini',
+            'Pengiraan data bukan berangka',
+            'Tiada jawapan yang betul',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Kesalahan tatabahasa, penggunaan objek/aksara yang tidak dikenali',
+        ),
+      ],
+    ));
+
+ // Quiz 6: Struktur Data dan Modular
+    _quizzes.add(Quiz(
+      id: 'system_quiz_6',
+      title: 'Quiz: Struktur Data dan Modular',
+      topic: '1.6 Struktur Data dan Modular',
+      createdAt: DateTime.now(),
+      isPublished: true,
+      publishedAt: DateTime.now(),
+      questions: [
+        Question(
+          id: 'q6_1',
+          questionText: 'Apakah definisi TATASUSUNAN?',
+          type: QuestionType.mcq,
+          options: [
+            'Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks',
+            'Satu jenis pemboleh ubah',
+            'Satu struktur kawalan',
+            'Satu jenis data',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks',
+        ),
+        Question(
+          id: 'q6_2',
+          questionText: 'Berapakah bilangan kelebihan menggunakan struktur modul?',
+          type: QuestionType.shortAnswer,
+          correctAnswer: '5',
+        ),
+        Question(
+          id: 'q6_3',
+          questionText: 'Antara berikut, yang manakah kelebihan menggunakan struktur modul?',
+          type: QuestionType.mcq,
+          options: [
+            'Lebih mudah untuk digunakan semula',
+            'Lebih sukar untuk diuji',
+            'Projek menjadi lebih kompleks',
+            'Tidak boleh dibahagikan kepada ahli kumpulan',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Lebih mudah untuk digunakan semula',
+        ),
+      ],
+    ));
+    
+    // Quiz 7: Pembangunan Aplikasi
+    _quizzes.add(Quiz(
+      id: 'system_quiz_7',
+      title: 'Quiz: Pembangunan Aplikasi',
+      topic: '1.7 Pembangunan Aplikasi',
+      createdAt: DateTime.now(),
+      isPublished: true,
+      publishedAt: DateTime.now(),
+      questions: [
+        Question(
+          id: 'q7_1',
+          questionText: 'Apakah singkatan SDLC?',
+          type: QuestionType.mcq,
+          options: [
+            'Kitaran Hayat Pembangunan Sistem',
+            'Sistem Data Lokal',
+            'Struktur Data Linear',
+            'Sistem Dokumentasi Lengkap',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Kitaran Hayat Pembangunan Sistem',
+        ),
+        Question(
+          id: 'q7_2',
+          questionText: 'Berapakah bilangan fasa dalam SDLC?',
+          type: QuestionType.shortAnswer,
+          correctAnswer: '5',
+        ),
+        Question(
+          id: 'q7_3',
+          questionText: 'Antara berikut, yang manakah fasa dalam SDLC?',
+          type: QuestionType.mcq,
+          options: [
+            'Analisis masalah',
+            'Pengujian sahaja',
+            'Dokumentasi sahaja',
+            'Pelaksanaan sahaja',
+          ],
+          correctAnswer: '0',
+          correctAnswerText: 'Analisis masalah',
+        ),
+      ],
+    ));
+    
+    notifyListeners();
+  }
+}
+
+// ---------- Quiz Page ----------
+
+class QuizPage extends StatelessWidget {
+  const QuizPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    var appState = context.watch<QuizAppState>();
+    
+    // Initialize system quizzes if empty
+    if (appState.allQuizzes.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        appState.generateSystemQuizzes();
+      });
+    }
+    
+    var quizzes = appState.allQuizzes;
+    var theme = Theme.of(context);
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('📝 Quizzes'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CreateQuizPage()),
+        ),
+        tooltip: 'Create Quiz',
+        child: const Icon(Icons.add),
+      ),
+      body: quizzes.isEmpty
+          ? const Center(
+              child: Text(
+                'No quizzes available yet.\nClick "+" to create a new quiz.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: ListView.builder(
+                itemCount: quizzes.length,
+                itemBuilder: (context, index) {
+                  final quiz = quizzes[index];
+                  return Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    color: quiz.isPublished ? Colors.green[50] : Colors.orange[50],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: quiz.isPublished ? Colors.green : Colors.orange,
+                        width: 2,
+                      ),
+                    ),
+                    child: ListTile(
+                      leading: Icon(
+                        quiz.isPublished ? Icons.published_with_changes : Icons.drafts,
+                        color: quiz.isPublished ? Colors.green : Colors.orange,
+                        size: 32,
+                      ),
+                      title: Text(
+                        quiz.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text('Topic: ${quiz.topic}'),
+                          Text('Questions: ${quiz.questions.length}'),
+                          Text(
+                            quiz.isPublished
+                                ? 'Status: Published'
+                                : 'Status: Draft',
+                            style: TextStyle(
+                              color: quiz.isPublished ? Colors.green[700] : Colors.orange[700],
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.visibility),
+                            color: theme.colorScheme.primary,
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => QuizDetailPage(quiz: quiz),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            color: Colors.redAccent,
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Confirmation'),
+                                  content: Text(
+                                      'Are you sure you want to delete "${quiz.title}"?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Delete'),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true && context.mounted) {
+                                appState.removeQuiz(quiz);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Quiz deleted successfully!'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => QuizDetailPage(quiz: quiz),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+    );
+  }
+}
+
+// ---------- Create Quiz Page ----------
+
+class CreateQuizPage extends StatefulWidget {
+  const CreateQuizPage({super.key});
+
+  @override
+  State<CreateQuizPage> createState() => _CreateQuizPageState();
+}
+
+class _CreateQuizPageState extends State<CreateQuizPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _topicController = TextEditingController();
+  final List<Question> _questions = [];
+  bool _isPublished = false;
+
+  void _addMCQQuestion() {
+    showDialog(
+      context: context,
+      builder: (context) => _AddMCQDialog(
+        onAdd: (question) {
+          setState(() {
+            _questions.add(question);
+          });
+        },
+      ),
+    );
+  }
+
+  void _addShortAnswerQuestion() {
+    showDialog(
+      context: context,
+      builder: (context) => _AddShortAnswerDialog(
+        onAdd: (question) {
+          setState(() {
+            _questions.add(question);
+          });
+        },
+      ),
+    );
+  }
+
+  void _removeQuestion(int index) {
+    setState(() {
+      _questions.removeAt(index);
+    });
+  }
+
+  void _submitQuiz() {
+    if (!_formKey.currentState!.validate()) return;
+    
+    if (_questions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add at least one question.')),
+      );
+      return;
+    }
+
+    final newQuiz = Quiz(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: _titleController.text,
+      topic: _topicController.text,
+      questions: List.from(_questions),
+      isPublished: _isPublished,
+      createdAt: DateTime.now(),
+      publishedAt: _isPublished ? DateTime.now() : null,
+    );
+
+    context.read<QuizAppState>().addQuiz(newQuiz);
+    
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isPublished
+                ? 'Quiz published successfully!'
+                : 'Quiz saved as draft successfully!',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _topicController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create Quiz'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Quiz Title',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.title),
+                ),
+                validator: (v) => (v == null || v.isEmpty) ? 'Enter a title' : null,
+              ),
+              const SizedBox(height: 15),
+              TextFormField(
+                controller: _topicController,
+                decoration: const InputDecoration(
+                  labelText: 'Topic',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.topic),
+                ),
+                validator: (v) => (v == null || v.isEmpty) ? 'Enter a topic' : null,
+              ),
+              const SizedBox(height: 20),
+              
+              // Publish/Draft Toggle
+              Card(
+                color: Colors.blue[50],
+                child: SwitchListTile(
+                  title: const Text('Publish Quiz'),
+                  subtitle: Text(
+                    _isPublished
+                        ? 'Quiz will be visible to students'
+                        : 'Quiz will be saved as draft (private)',
+                  ),
+                  value: _isPublished,
+                  onChanged: (value) {
+                    setState(() {
+                      _isPublished = value;
+                    });
+                  },
+                  secondary: Icon(
+                    _isPublished ? Icons.published_with_changes : Icons.drafts,
+                    color: _isPublished ? Colors.green : Colors.orange,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _addMCQQuestion,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Add MCQ'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _addShortAnswerQuestion,
+                    icon: const Icon(Icons.short_text),
+                    label: const Text('Add Short Answer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 20),
+              Text(
+                'Questions (${_questions.length})',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              
+              if (_questions.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Text(
+                      'No questions added yet.\nClick "Add MCQ" or "Add Short Answer" to add questions.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                ..._questions.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final question = entry.value;
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: question.type == QuestionType.mcq
+                            ? Colors.blue
+                            : Colors.green,
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      title: Text(
+                        question.questionText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        question.type == QuestionType.mcq
+                            ? 'MCQ (${question.options?.length ?? 0} options)'
+                            : 'Short Answer',
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _removeQuestion(index),
+                      ),
+                    ),
+                  );
+                }),
+              
+              const SizedBox(height: 30),
+              ElevatedButton.icon(
+                onPressed: _submitQuiz,
+                icon: Icon(_isPublished ? Icons.publish : Icons.save),
+                label: Text(_isPublished ? 'Publish Quiz' : 'Save as Draft'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isPublished ? Colors.green : Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------- Add MCQ Dialog ----------
+
+class _AddMCQDialog extends StatefulWidge StatefulWidge{
+  finalestion) onAdd;
+
+  const _AddMCQDialog({required this.oQDialog({required this.ooverride
+  State<_AddMCQteState() => _AddMCQDialogState();
+}
+
+class _AddMCQDialogState extends State<_AddMCQDialog> {
+  final _questionController = TextEditingController();
+  final List<TextEditingController> _optionControllers = [
+    TextEal _questionController = TextEditingController();
+  final List<TextEditingController> _optionControllers = [
+    TextEet me reevaluate and take a different approach.
+
+_(It may take a moment for the assistant to continue)_
+ller(),
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController(),
+  ];
+...
+
+Let me reevaluate and take a different approach.
+
+_(It may take a moment for the assistant to continue)_
+er.dispose();
+  }
+
+  void _submit() {
+    if (_questionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a question')),
+      );
+      return;
+    }
+
+    final options = _optionControllers.map((c) => c.text).toList();
+    if (options.any((o) => o.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all options')),
+      );
+      return;
+    }
+
+    if (_correctAnswerIndex == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select the correct answer')),
+      );
+      return;
+    }
+
+    final question = Question(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      questionText: _questionController.text,
+      type: QuestionType.mcq,
+      options: options,
+      correctAnswer: _correctAnswerIndex.toString(),
+      correctAnswerText: options[_correctAnswerIndex!],
+    );
+
+    widget.onAdd(question);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add MCQ Question'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _questionController,
+              decoration: const InputDecoration(
+                labelText: 'Question',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 15),
+            ...List.generate(4, (index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(
+                  children: [
+                    Radio<int>(
+                      value: index,
+                      groupValue: _correctAnswerIndex,
+                      onChanged: (value) {
+                        setState(() {
+                          _correctAnswerIndex = value;
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _optionControllers[index],
+                        decoration: InputDecoration(
+                          labelText: 'Option ${index + 1}',
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 10),
+            const Text(
+              'Select the correct answer by clicking the radio button',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Add'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------- Add Short Answer Dialog ----------
+
+class _AddShortAnswerDialog extends StatefulWidget {
+  final Function(Question) onAdd;
+
+  const _AddShortAnswerDialog({required this.onAdd});
+
+  @override
+  State<_AddShortAnswerDialog> createState() => _AddShortAnswerDialogState();
+}
+
+class _AddShortAnswerDialogState extends State<_AddShortAnswerDialog> {
+  final _questionController = TextEditingController();
+  final _answerController = TextEditingController();
+
+  @override
+  void dispose() {
+    _questionController.dispose();
+    _answerController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_questionController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a question')),
+      );
+      return;
+    }
+
+    if (_answerController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the correct answer')),
+      );
+      return;
+    }
+
+    final question = Question(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      questionText: _questionController.text,
+      type: QuestionType.shortAnswer,
+      correctAnswer: _answerController.text,
+    );
+
+    widget.onAdd(question);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Short Answer Question'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _questionController,
+            decoration: const InputDecoration(
+              labelText: 'Question',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 15),
+          TextField(
+            controller: _answerController,
+            decoration: const InputDecoration(
+              labelText: 'Correct Answer',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _submit,
+          child: const Text('Add'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------- Quiz Detail Page ----------
+
+class QuizDetailPage extends StatelessWidget {
+  final Quiz quiz;
+
+  const QuizDetailPage({super.key, required this.quiz});
+
+  @override
+  Widget build(BuildContext context) {
+    var appState = context.watch<QuizAppState>();
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Quiz Details'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(quiz.isPublished ? Icons.unpublished : Icons.publish),
+            tooltip: quiz.isPublished ? 'Unpublish' : 'Publish',
+            onPressed: () {
+              if (quiz.isPublished) {
+                appState.unpublishQuiz(quiz);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Quiz unpublished successfully!'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              } else {
+                appState.publishQuiz(quiz);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Quiz published successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Quiz Info Card
+            Card(
+              color: quiz.isPublished ? Colors.green[50] : Colors.orange[50],
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          quiz.isPublished
+                              ? Icons.published_with_changes
+                              : Icons.drafts,
+                          color: quiz.isPublished ? Colors.green : Colors.orange,
+                          size: 30,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            quiz.title,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 20),
+                    Text(
+                      'Topic: ${quiz.topic}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Total Questions: ${quiz.questions.length}',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Status: ${quiz.isPublished ? "Published" : "Draft"}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: quiz.isPublished ? Colors.green[700] : Colors.orange[700],
+                      ),
+                    ),
+                    if (quiz.isPublished && quiz.publishedAt != null) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        'Published: ${quiz.publishedAt}',
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                    if (!quiz.isPublished) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        '⚠️ This quiz is in draft mode and not visible to students.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.orange,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            const Text(
+              'Questions:',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            
+            // Questions List
+            ...quiz.questions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final question = entry.value;
+              
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: question.type == QuestionType.mcq
+                                ? Colors.blue
+                                : Colors.green,
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  question.questionText,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: question.type == QuestionType.mcq
+                                        ? Colors.blue[100]
+                                        : Colors.green[100],
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    question.type == QuestionType.mcq
+                                        ? 'Multiple Choice'
+                                        : 'Short Answer',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: question.type == QuestionType.mcq
+                                          ? Colors.blue[800]
+                                          : Colors.green[800],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      if (question.type == QuestionType.mcq && question.options != null) ...[
+                        const SizedBox(height: 12),
+                        const Divider(),
+                        const Text(
+                          'Options:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...question.options!.asMap().entries.map((optEntry) {
+                          final optIndex = optEntry.key;
+                          final option = optEntry.value;
+                          final isCorrect = question.correctAnswer == optIndex.toString();
+                          
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isCorrect ? Colors.green[100] : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isCorrect ? Colors.green : Colors.grey[300]!,
+                                width: isCorrect ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${String.fromCharCode(65 + optIndex)}.',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isCorrect ? Colors.green[800] : Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    option,
+                                    style: TextStyle(
+                                      color: isCorrect ? Colors.green[900] : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                if (isCorrect)
+                                  Icon(Icons.check_circle, color: Colors.green[700], size: 20),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                      
+                      if (question.type == QuestionType.shortAnswer) ...[
+                        const SizedBox(height: 12),
+                        const Divider(),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.green, width: 2),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.green[700]),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Correct Answer:',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green[800],
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      question.correctAnswer ?? '',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        color: Colors.green[900],
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+            
+            const SizedBox(height: 30),
+            
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (quiz.isPublished) {
+                        appState.unpublishQuiz(quiz);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Quiz moved to drafts!'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      } else {
+                        appState.publishQuiz(quiz);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Quiz published successfully!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    },
+                    icon: Icon(quiz.isPublished ? Icons.unpublished : Icons.publish),
+                    label: Text(quiz.isPublished ? 'Unpublish' : 'Publish'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: quiz.isPublished ? Colors.orange : Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+      
 // ---------- AI Chatbot ----------
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
