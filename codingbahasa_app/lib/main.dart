@@ -8,6 +8,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
+import 'forum_page.dart';
+
 
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
@@ -827,6 +829,9 @@ class _HomePageState extends State<HomePage> {
         page = const ProfilePage();
       case 8:
         page = const UserSearchPage();
+      case 9:
+        page = const ForumPage();
+
       default:
         page = const Center(child: Text('Page not found'));
     }
@@ -871,6 +876,8 @@ class _HomePageState extends State<HomePage> {
                   _buildMenuButton('Progress', 5),
                   _buildMenuButton('Achievements', 6),
                   _buildMenuButton('Users', 8),
+                  _buildMenuButton('Forum', 9),
+
                 ],
               ),
             ),
@@ -1502,6 +1509,7 @@ class _ChatBody extends StatefulWidget {
 }
 
 class _ChatBodyState extends State<_ChatBody> {
+  int lastRating = 0;
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -1657,59 +1665,111 @@ class _ChatBodyState extends State<_ChatBody> {
     }
   }
 
-  Widget _buildMessageInput() {
-    final controller = TextEditingController();
-    
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey[300]!)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'Ask about Math, Science, Programming...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24.0),
+Widget _buildMessageInput() {
+  final controller = TextEditingController();
+  
+  return Column(
+    children: [
+      // ---- Text Input Row ----
+      Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey[300]!)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: 'Ask about Java Programming...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24.0),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                onSubmitted: (value) => _sendMessage(controller),
               ),
-              onSubmitted: (value) => _sendMessage(controller),
             ),
-          ),
-          const SizedBox(width: 8),
-          BlocBuilder<ChatBloc, ChatState>(
-            builder: (context, state) {
-              final isLoading = state is ChatLoading;
-              return Container(
-                decoration: BoxDecoration(
-                  color: isLoading ? Colors.grey : Colors.lightBlue,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Icon(Icons.send, color: Colors.white),
-                  onPressed: isLoading ? null : () => _sendMessage(controller),
-                ),
-              );
-            },
-          ),
-        ],
+            const SizedBox(width: 8),
+            BlocBuilder<ChatBloc, ChatState>(
+              builder: (context, state) {
+                final isLoading = state is ChatLoading;
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isLoading ? Colors.grey : Colors.lightBlue,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.send, color: Colors.white),
+                    onPressed: isLoading ? null : () => _sendMessage(controller),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
-    );
-  }
+
+      // ---- Rating + End Conversation Row ----
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // --- Rating Section ---
+            Row(
+              children: [
+                const Text('Rate chatbot:'),
+                const SizedBox(width: 8),
+                for (int s = 1; s <= 5; s++)
+                  IconButton(
+                    icon: Icon(
+                      s <= lastRating ? Icons.star : Icons.star_border,
+                      color: Colors.orange,
+                    ),
+                    onPressed: () {
+                      // store rating (you can adapt this to your appState if needed)
+                      setState(() => lastRating = s);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Thanks! You rated the bot $s star(s).'),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+              ],
+            ),
+
+            // --- Stop Conversation Button ---
+            IconButton(
+              icon: const Icon(Icons.stop_circle, color: Colors.red),
+              tooltip: 'End Conversation',
+              onPressed: () {
+                context.read<ChatBloc>().add(ClearChatEvent());
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Conversation ended. Starting fresh.')),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
 
   void _sendMessage(TextEditingController controller) {
     final text = controller.text.trim();
@@ -1832,34 +1892,70 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ),
   ];
 
-  // Predefined FAQs for Sprint 1
-  final Map<String, Map<String, dynamic>> _faqs = {
-    'photosynthesis': {
-      'answer': 'Photosynthesis is the process plants use to convert sunlight, water, and carbon dioxide into glucose and oxygen. The chemical equation is: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂',
-      'keywords': ['photosynthesis', 'plants', 'energy', 'sunlight', 'oxygen'],
-      'category': 'biology'
-    },
-    'quadratic equation': {
-      'answer': 'A quadratic equation is in the form ax² + bx + c = 0. Solve using the quadratic formula: x = [-b ± √(b² - 4ac)] / 2a. The discriminant (b² - 4ac) determines the nature of roots.',
-      'keywords': ['quadratic', 'equation', 'formula', 'algebra', 'solve'],
-      'category': 'math'
-    },
-    'java programming': {
-      'answer': 'Java is an object-oriented programming language known for its "write once, run anywhere" capability using the Java Virtual Machine (JVM). It\'s strongly typed and platform-independent.',
-      'keywords': ['java', 'programming', 'language', 'oop', 'jvm'],
-      'category': 'computer science'
-    },
-    'gravity': {
-      'answer': 'Gravity is the force that attracts two bodies toward each other. Newton\'s law: F = G(m₁m₂)/r². On Earth, acceleration due to gravity is approximately 9.8 m/s².',
-      'keywords': ['gravity', 'force', 'newton', 'earth', 'attraction'],
-      'category': 'physics'
-    },
-    'mitochondria': {
-      'answer': 'Mitochondria are the powerhouse of the cell! They generate most of the cell\'s supply of adenosine triphosphate (ATP), used as a source of chemical energy.',
-      'keywords': ['mitochondria', 'powerhouse', 'cell', 'energy', 'atp'],
-      'category': 'biology'
-    },
-  };
+  // Predefined FAQs for Java (Bloc version)
+final Map<String, Map<String, dynamic>> _faqs = {
+  'variable': {
+    'answer': 'In Java, a variable is a container that holds data of a specific type. Example: int age = 20;',
+    'keywords': ['variable', 'data', 'int', 'container'],
+    'category': 'Java Basics'
+  },
+  'datatype': {
+    'answer': 'Java has primitive data types such as int, double, char, boolean, and non-primitive types like String and arrays.',
+    'keywords': ['datatype', 'primitive', 'string', 'array'],
+    'category': 'Java Basics'
+  },
+  'loop': {
+    'answer': 'Java supports for, while, and do-while loops. Example: for(int i=0; i<5; i++) { System.out.println(i); }',
+    'keywords': ['loop', 'for', 'while', 'iteration'],
+    'category': 'Control Structure'
+  },
+  'if': {
+    'answer': 'An if statement in Java checks a condition: if(x > 0) { System.out.println("Positive"); } else { System.out.println("Negative"); }',
+    'keywords': ['if', 'else', 'condition', 'decision'],
+    'category': 'Control Structure'
+  },
+  'class': {
+    'answer': 'A class in Java defines the blueprint for objects. Example: class Car { String model; void drive() { System.out.println("Driving"); } }',
+    'keywords': ['class', 'blueprint', 'object'],
+    'category': 'OOP'
+  },
+  'object': {
+    'answer': 'Objects are instances of classes. Example: Car myCar = new Car(); myCar.drive();',
+    'keywords': ['object', 'instance', 'class'],
+    'category': 'OOP'
+  },
+  'constructor': {
+    'answer': 'A constructor initializes an object when it is created. It has the same name as the class and no return type.',
+    'keywords': ['constructor', 'initialize', 'object', 'class'],
+    'category': 'OOP'
+  },
+  'inheritance': {
+    'answer': 'Inheritance allows a class to use fields and methods of another class. Use the extends keyword: class Dog extends Animal { }',
+    'keywords': ['inheritance', 'extends', 'parent', 'child', 'class'],
+    'category': 'OOP'
+  },
+  'polymorphism': {
+    'answer': 'Polymorphism means the same method can behave differently based on the object calling it (method overriding).',
+    'keywords': ['polymorphism', 'method overriding', 'oop'],
+    'category': 'OOP'
+  },
+  'encapsulation': {
+    'answer': 'Encapsulation hides internal data using private fields and public getters/setters to control access.',
+    'keywords': ['encapsulation', 'getter', 'setter', 'private', 'oop'],
+    'category': 'OOP'
+  },
+  'abstraction': {
+    'answer': 'Abstraction hides complex implementation details; use abstract classes or interfaces to define contracts.',
+    'keywords': ['abstraction', 'abstract', 'interface', 'oop'],
+    'category': 'OOP'
+  },
+  'oop': {
+    'answer': 'Java OOP concepts include Class, Object, Inheritance, Polymorphism, Abstraction, and Encapsulation.',
+    'keywords': ['oop', 'object oriented', 'java'],
+    'category': 'OOP'
+  },
+};
+
 
   ChatBloc() : super(ChatInitial()) {
     on<SendMessageEvent>(_onSendMessage);
