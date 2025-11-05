@@ -2086,7 +2086,6 @@ final Map<String, Map<String, dynamic>> _faqs = {
   }
 }
 
-// ---------- Progress ----------
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
 
@@ -2095,12 +2094,14 @@ class ProgressPage extends StatefulWidget {
 }
 
 class ProgressRecord {
+  final String student;
   final String activity;
   final double score;
   final String grade;
   final String comments;
 
   ProgressRecord({
+    required this.student,
     required this.activity,
     required this.score,
     required this.grade,
@@ -2116,11 +2117,17 @@ class _ProgressPageState extends State<ProgressPage> {
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
+  String? _selectedStudent;
+
+  // Mock students (no Firebase)
+  final List<String> students = ['Ali Ahmad', 'Siti Nur', 'John Tan'];
+
   void _addProgress() {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate() && _selectedStudent != null) {
       setState(() {
         progressList.add(
           ProgressRecord(
+            student: _selectedStudent!,
             activity: _activityController.text,
             score: double.parse(_scoreController.text),
             grade: _gradeController.text,
@@ -2128,45 +2135,41 @@ class _ProgressPageState extends State<ProgressPage> {
           ),
         );
       });
+
       _activityController.clear();
       _scoreController.clear();
       _gradeController.clear();
       _commentsController.clear();
+      _selectedStudent = null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Learning Progress')),
+      appBar: AppBar(title: const Text('Student Progress Records')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: progressList.length,
-                itemBuilder: (context, index) {
-                  final record = progressList[index];
-                  return Card(
-                    child: ListTile(
-                      title: Text('${record.activity} - ${record.grade}'),
-                      subtitle: Text(
-                          'Score: ${record.score}\nComments: ${record.comments}'),
-                    ),
-                  );
-                },
-              ),
-            ),
-            Divider(),
+            // ---------------- Add Progress Form ----------------
             Form(
               key: _formKey,
               child: Column(
                 children: [
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Select Student'),
+                    value: _selectedStudent,
+                    items: students.map((student) {
+                      return DropdownMenuItem(value: student, child: Text(student));
+                    }).toList(),
+                    onChanged: (value) => setState(() => _selectedStudent = value),
+                    validator: (value) => value == null ? 'Please select a student' : null,
+                  ),
                   TextFormField(
                     controller: _activityController,
-                    decoration:
-                        const InputDecoration(labelText: 'Activity Type'),
+                    decoration: const InputDecoration(labelText: 'Activity Type'),
                     validator: (value) =>
                         value!.isEmpty ? 'Please enter an activity' : null,
                   ),
@@ -2193,6 +2196,39 @@ class _ProgressPageState extends State<ProgressPage> {
                     child: const Text('Add Progress'),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+
+            // ---------------- Table of Progress ----------------
+            const Text(
+              'Progress Records',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text('Student')),
+                    DataColumn(label: Text('Activity')),
+                    DataColumn(label: Text('Score')),
+                    DataColumn(label: Text('Grade')),
+                    DataColumn(label: Text('Comments')),
+                  ],
+                  rows: progressList.map((record) {
+                    return DataRow(cells: [
+                      DataCell(Text(record.student)),
+                      DataCell(Text(record.activity)),
+                      DataCell(Text(record.score.toString())),
+                      DataCell(Text(record.grade)),
+                      DataCell(Text(record.comments)),
+                    ]);
+                  }).toList(),
+                ),
               ),
             ),
           ],
