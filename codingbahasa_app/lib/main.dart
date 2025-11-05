@@ -408,14 +408,19 @@ class CodingBahasa extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-      home: Consumer<FirebaseUserState>(
+       home: Consumer<FirebaseUserState>(
         builder: (context, userState, _) {
           if (userState.isLoading) {
             return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
             );
           }
-          return userState.isLoggedIn ? HomePage() : const LoginPage();
+          
+           return userState.isLoggedIn 
+            ? const HomePage()  
+            : const LoginPage();
         },
       ),
       debugShowCheckedModeBanner: false,
@@ -769,7 +774,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
 // ========== HOME PAGE ==========
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});  
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -783,7 +788,12 @@ class _HomePageState extends State<HomePage> {
     Widget page;
     switch (selectedIndex) {
       case 0:
-        page = const Center(child: Text('Welcome to CodingBahasa!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)));
+        page = const Center(
+          child: Text(
+            'Welcome to CodingBahasa!',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        );
       case 1:
         page = const CoursePage();
       case 2:
@@ -810,7 +820,10 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('CodingBahasa', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('Connect, Code and Challenge', style: TextStyle(fontSize: 15, color: Colors.white70)),
+            Text(
+              'Connect, Code and Challenge',
+              style: TextStyle(fontSize: 15, color: Colors.white70),
+            ),
           ],
         ),
         actions: [
@@ -824,7 +837,6 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
-          // ---------- MENU ----------
           Container(
             color: Colors.grey[200],
             height: 50,
@@ -846,7 +858,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          // ---------- MAIN CONTENT ----------
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
@@ -874,13 +885,12 @@ class _HomePageState extends State<HomePage> {
           backgroundColor: isSelected ? Colors.blue[100] : Colors.transparent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
+        
         child: Text(label, style: const TextStyle(fontSize: 16)),
       ),
     );
   }
 }
-
-
 
 // ========== USER SEARCH PAGE ==========
 class UserSearchPage extends StatefulWidget {
@@ -1398,7 +1408,6 @@ class QuizPage extends StatelessWidget {
 }
 
 // ---------- AI Chatbot ----------
-// ---------- AI Chatbot ----------
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
 
@@ -1436,13 +1445,11 @@ class _ChatBody extends StatefulWidget {
 class _ChatBodyState extends State<_ChatBody> {
   @override
   Widget build(BuildContext context) {
-    print('Building _ChatBodyState'); 
     return Column(
       children: [
         Expanded(
           child: BlocBuilder<ChatBloc, ChatState>(
             builder: (context, state) {
-              print('Current state: $state');
               if (state is ChatLoaded) {
                 return _buildChatList(state.messages);
               } else if (state is ChatError) {
@@ -1479,7 +1486,7 @@ class _ChatBodyState extends State<_ChatBody> {
             ),
             SizedBox(height: 8),
             Text(
-              'Try asking about: Java, etc.',
+              'Try asking about: photosynthesis, quadratic equations, Java, etc.',
               style: TextStyle(fontSize: 14, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
@@ -1768,7 +1775,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   // Predefined FAQs for Sprint 1
   final Map<String, Map<String, dynamic>> _faqs = {
-    
+    'photosynthesis': {
+      'answer': 'Photosynthesis is the process plants use to convert sunlight, water, and carbon dioxide into glucose and oxygen. The chemical equation is: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂',
+      'keywords': ['photosynthesis', 'plants', 'energy', 'sunlight', 'oxygen'],
+      'category': 'biology'
+    },
     'quadratic equation': {
       'answer': 'A quadratic equation is in the form ax² + bx + c = 0. Solve using the quadratic formula: x = [-b ± √(b² - 4ac)] / 2a. The discriminant (b² - 4ac) determines the nature of roots.',
       'keywords': ['quadratic', 'equation', 'formula', 'algebra', 'solve'],
@@ -1779,7 +1790,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       'keywords': ['java', 'programming', 'language', 'oop', 'jvm'],
       'category': 'computer science'
     },
-    
+    'gravity': {
+      'answer': 'Gravity is the force that attracts two bodies toward each other. Newton\'s law: F = G(m₁m₂)/r². On Earth, acceleration due to gravity is approximately 9.8 m/s².',
+      'keywords': ['gravity', 'force', 'newton', 'earth', 'attraction'],
+      'category': 'physics'
+    },
+    'mitochondria': {
+      'answer': 'Mitochondria are the powerhouse of the cell! They generate most of the cell\'s supply of adenosine triphosphate (ATP), used as a source of chemical energy.',
+      'keywords': ['mitochondria', 'powerhouse', 'cell', 'energy', 'atp'],
+      'category': 'biology'
+    },
   };
 
   ChatBloc() : super(ChatInitial()) {
@@ -2028,14 +2048,156 @@ class _ProgressPageState extends State<ProgressPage> {
 }
 
 // ---------- Achievements ----------
-// ---------- Achievements ----------
+class AddAchievementPage extends StatefulWidget {
+  const AddAchievementPage({super.key});
+
+  @override
+  State<AddAchievementPage> createState() => _AddAchievementPageState();
+}
+
+class _AddAchievementPageState extends State<AddAchievementPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleCtrl = TextEditingController();
+  final _typeCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
+  bool _isSubmitting = false;
+  String? _message; // FIX: Added missing variable
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _typeCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleAddAchievement() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final userState = context.read<FirebaseUserState>();
+    final currentUser = userState.currentUser;
+    if (currentUser == null) return;
+
+    setState(() {
+      _isSubmitting = true;
+      _message = null;
+    });
+
+    try {
+      await FirebaseFirestore.instance.collection('achievements').add({
+        'studentId': currentUser.id,
+        'studentName': currentUser.username,
+        'title': _titleCtrl.text.trim(),
+        'type': _typeCtrl.text.trim(),
+        'description': _descCtrl.text.trim(),
+        'dateEarned': FieldValue.serverTimestamp(),
+      });
+
+      setState(() {
+        _message = '✅ Achievement added successfully!';
+      });
+
+      _titleCtrl.clear();
+      _typeCtrl.clear();
+      _descCtrl.clear();
+    } catch (e) {
+      setState(() {
+        _message = 'Error adding achievement: $e';
+      });
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Add Achievement'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _titleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Enter title' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _typeCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Type (Badge/Certificate)',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Enter type' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? 'Enter description' : null,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSubmitting ? null : _handleAddAchievement,
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Add Achievement'),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (_message != null)
+                  Text(
+                    _message!,
+                    style: TextStyle(
+                      color: _message!.startsWith('✅')
+                          ? Colors.green
+                          : Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ========== ACHIEVEMENTS PAGE - PLACEHOLDER ==========
 class AchievementsPage extends StatelessWidget {
   const AchievementsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<FirebaseUserState>().currentUser;
-    
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -2043,118 +2205,37 @@ class AchievementsPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      body: user == null 
-          ? const Center(child: Text('Not logged in'))
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Points Summary
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                user.points.toString(),
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber,
-                                ),
-                              ),
-                              const Text('Total Points'),
-                            ],
-                          ),
-                          Column(
-                            children: [
-                              Text(
-                                user.badges.length.toString(),
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                              const Text('Badges Earned'),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Badges Section
-                  const Text(
-                    'Your Badges',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  
-                  if (user.badges.isEmpty)
-                    const Expanded(
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text(
-                              'No badges earned yet!',
-                              style: TextStyle(fontSize: 16, color: Colors.grey),
-                            ),
-                            Text(
-                              'Complete courses and quizzes to earn badges!',
-                              style: TextStyle(fontSize: 14, color: Colors.grey),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    Expanded(
-                      child: GridView.builder(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 1.2,
-                        ),
-                        itemCount: user.badges.length,
-                        itemBuilder: (context, index) {
-                          return Card(
-                            elevation: 3,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.emoji_events, size: 40, color: Colors.amber),
-                                const SizedBox(height: 8),
-                                Text(
-                                  user.badges[index],
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.emoji_events, size: 80, color: Colors.amber),
+            const SizedBox(height: 16),
+            const Text(
+              'Your Achievements',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddAchievementPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Achievement'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-// ---------- Profile ----------// ---------- Profile ----------
+// ---------- Profile ----------
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
@@ -2163,7 +2244,9 @@ class ProfilePage extends StatelessWidget {
     final userState = context.watch<FirebaseUserState>();
     final user = userState.currentUser;
 
-    if (user == null) return const Center(child: Text('Not logged in'));
+    if (user == null) {
+      return const Center(child: Text('Not logged in'));
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -2174,14 +2257,53 @@ class ProfilePage extends StatelessWidget {
         actions: [
           PopupMenuButton(
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit Profile')])),
-              const PopupMenuItem(value: 'password', child: Row(children: [Icon(Icons.lock, size: 20), SizedBox(width: 8), Text('Change Password')])),
-              const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 8), Text('Delete Account', style: TextStyle(color: Colors.red))])),
-              const PopupMenuItem(value: 'logout', child: Row(children: [Icon(Icons.logout, size: 20), SizedBox(width: 8), Text('Logout')])),
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 20),
+                    SizedBox(width: 8),
+                    Text('Edit Profile'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'password',
+                child: Row(
+                  children: [
+                    Icon(Icons.lock, size: 20),
+                    SizedBox(width: 8),
+                    Text('Change Password'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 20, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Delete Account', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 20),
+                    SizedBox(width: 8),
+                    Text('Logout'),
+                  ],
+                ),
+              ),
             ],
             onSelected: (value) {
               if (value == 'edit') {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfilePage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                );
               } else if (value == 'password') {
                 _showChangePasswordDialog(context);
               } else if (value == 'delete') {
@@ -2199,21 +2321,38 @@ class ProfilePage extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.blue[700]!, Colors.blue[300]!])),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue[700]!, Colors.blue[300]!],
+                ),
+              ),
               child: Column(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.white,
-                    child: const Icon(Icons.person, size: 50, color: Colors.blue),
+                    child: Icon(Icons.person, size: 50, color: Colors.blue),
                   ),
                   const SizedBox(height: 16),
-                  Text(user.username, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(
+                    user.username,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), borderRadius: BorderRadius.circular(20)),
-                    child: Text(user.userType == UserType.student ? 'Student' : 'Teacher', style: const TextStyle(color: Colors.white)),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      user.userType == UserType.student ? 'Student' : 'Teacher',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -2222,14 +2361,38 @@ class ProfilePage extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildInfoCard(icon: Icons.email, title: 'Email', value: user.email),
+                  _buildInfoCard(
+                    icon: Icons.email,
+                    title: 'Email',
+                    value: user.email,
+                  ),
                   if (user.userType == UserType.student) ...[
-                    _buildInfoCard(icon: Icons.school, title: 'Form Level', value: user.formLevel ?? 'Not set'),
-                    _buildInfoCard(icon: Icons.class_, title: 'Class', value: user.className ?? 'Not set'),
+                    _buildInfoCard(
+                      icon: Icons.school,
+                      title: 'Form Level',
+                      value: user.formLevel ?? 'Not set',
+                    ),
+                    _buildInfoCard(
+                      icon: Icons.class_,
+                      title: 'Class',
+                      value: user.className ?? 'Not set',
+                    ),
                   ],
-                  _buildInfoCard(icon: Icons.stars, title: 'Total Points', value: user.points.toString()),
-                  _buildInfoCard(icon: Icons.emoji_events, title: 'Badges Earned', value: user.badges.length.toString()),
-                  _buildInfoCard(icon: Icons.trending_up, title: 'Completion Level', value: '${(user.completionLevel * 100).toStringAsFixed(1)}%'),
+                  _buildInfoCard(
+                    icon: Icons.stars,
+                    title: 'Total Points',
+                    value: user.points.toString(),
+                  ),
+                  _buildInfoCard(
+                    icon: Icons.emoji_events,
+                    title: 'Badges Earned',
+                    value: user.badges.length.toString(),
+                  ),
+                  _buildInfoCard(
+                    icon: Icons.trending_up,
+                    title: 'Completion Level',
+                    value: '${(user.completionLevel * 100).toStringAsFixed(1)}%',
+                  ),
                   if (user.badges.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Card(
@@ -2238,12 +2401,25 @@ class ProfilePage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Your Badges', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            const Text(
+                              'Your Badges',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const SizedBox(height: 12),
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
-                              children: user.badges.map((badge) => Chip(label: Text(badge), avatar: const Icon(Icons.emoji_events, size: 16))).toList(),
+                              children: user.badges
+                                  .map(
+                                    (badge) => Chip(
+                                      label: Text(badge),
+                                      avatar: const Icon(Icons.emoji_events, size: 16),
+                                    ),
+                                  )
+                                  .toList(),
                             ),
                           ],
                         ),
@@ -2259,13 +2435,20 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard({required IconData icon, required String title, required String value}) {
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: Icon(icon, color: Colors.blue[700]),
         title: Text(title),
-        trailing: Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        trailing: Text(
+          value,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -2288,17 +2471,30 @@ class ProfilePage extends StatelessWidget {
               TextFormField(
                 controller: currentPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current Password', border: OutlineInputBorder()),
-                validator: (value) => value == null || value.isEmpty ? 'Please enter current password' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Current Password',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                    value == null || value.isEmpty
+                        ? 'Please enter current password'
+                        : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: newPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'New Password',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter new password';
-                  if (value.length < 6) return 'Password must be at least 6 characters';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter new password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
                   return null;
                 },
               ),
@@ -2306,24 +2502,40 @@ class ProfilePage extends StatelessWidget {
               TextFormField(
                 controller: confirmPasswordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm New Password', border: OutlineInputBorder()),
-                validator: (value) => value != newPasswordController.text ? 'Passwords do not match' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm New Password',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                    value != newPasswordController.text
+                        ? 'Passwords do not match'
+                        : null,
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (formKey.currentState!.validate()) {
                 final userState = context.read<FirebaseUserState>();
-                final success = await userState.changePassword(currentPasswordController.text, newPasswordController.text);
+                final success = await userState.changePassword(
+                  currentPasswordController.text,
+                  newPasswordController.text,
+                );
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(success ? 'Password changed successfully' : userState.errorMessage ?? 'Failed to change password'),
+                      content: Text(
+                        success
+                            ? 'Password changed successfully'
+                            : userState.errorMessage ?? 'Failed to change password',
+                      ),
                       backgroundColor: success ? Colors.green : Colors.red,
                     ),
                   );
@@ -2347,17 +2559,26 @@ class ProfilePage extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('This action cannot be undone. All your data will be permanently deleted.', style: TextStyle(color: Colors.red)),
+            const Text(
+              'This action cannot be undone. All your data will be permanently deleted.',
+              style: TextStyle(color: Colors.red),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: passwordController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Enter your password to confirm', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Enter your password to confirm',
+                border: OutlineInputBorder(),
+              ),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () async {
               final userState = context.read<FirebaseUserState>();
@@ -2371,7 +2592,12 @@ class ProfilePage extends StatelessWidget {
                 } else {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(userState.errorMessage ?? 'Failed to delete account'), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text(
+                        userState.errorMessage ?? 'Failed to delete account',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               }
@@ -2390,7 +2616,10 @@ class ProfilePage extends StatelessWidget {
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () {
               context.read<FirebaseUserState>().logout();
@@ -2461,7 +2690,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-     
   @override
   Widget build(BuildContext context) {
     final user = context.watch<FirebaseUserState>().currentUser!;
