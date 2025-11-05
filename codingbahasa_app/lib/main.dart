@@ -2968,6 +2968,10 @@ class AchievementsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userState = context.watch<FirebaseUserState>();
+    final user = userState.currentUser;
+    final isLoggedIn = userState.isLoggedIn;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -2975,32 +2979,157 @@ class AchievementsPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.emoji_events, size: 80, color: Colors.amber),
-            const SizedBox(height: 16),
-            const Text(
-              'Your Achievements',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddAchievementPage(),
-                  ),
-                );
+      floatingActionButton: isLoggedIn && user != null
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                await context.read<FirebaseUserState>().awardBadge(
+                      title: 'Quiz Master',
+                      description: 'Scored 80% or above in a quiz',
+                    );
+                if (context.mounted) {
+                  final msg = context.read<FirebaseUserState>().lastUnlockedMessage;
+                  if (msg != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(msg), backgroundColor: Colors.green),
+                    );
+                    context.read<FirebaseUserState>().consumeLastUnlockedMessage();
+                  }
+                }
               },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Achievement'),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Simulate Milestone'),
+            )
+          : null,
+      body: !isLoggedIn || user == null
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'Please log in to view achievements',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                ],
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (userState.lastUnlockedMessage != null)
+                  Builder(
+                    builder: (ctx) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        final msg = userState.lastUnlockedMessage;
+                        if (msg != null) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text(msg), backgroundColor: Colors.green),
+                          );
+                          context.read<FirebaseUserState>().consumeLastUnlockedMessage();
+                        }
+                      });
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.emoji_events, size: 28, color: Colors.amber),
+                      const SizedBox(width: 8),
+                      const Text('Your Achievements',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AddAchievementPage()),
+                          );
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Achievement'),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('achievements')
+                        .where('studentId', isEqualTo: user.id)
+                        .orderBy('dateEarned', descending: true)
+                        .snaps(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text('Error loading achievements: ${snapshot.error}'),
+                        );
+                      }
+                      final docs = snapshot.data?.docs ?? [];
+                      if (docs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No achievements yet. Complete milestones to earn badges!',
+                            style: TextStyle(color: Colors.grey[600]),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final data = docs[index].data() as Map<String, dynamic>;
+                          final title = data['title'] as String? ?? 'Achievement';
+                          final type = data['type'] as String? ?? 'Badge';
+                          final description = data['description'] as String? ?? '';
+                          final ts = data['dateEarned'];
+                          DateTime? when;
+                          if (ts is Timestamp) when = ts.toDate();
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: type == 'Badge' ? Colors.amber[100] : Colors.blue[100],
+                                child: Icon(
+                                  type == 'Badge' ? Icons.emoji_events : Icons.workspace_premium,
+                                  color: type == 'Badge' ? Colors.amber[800] : Colors.blue[800],
+                                ),
+                              ),
+                              title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(description),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Chip(label: Text(type)),
+                                      const SizedBox(width: 8),
+                                      if (when != null)
+                                        Text(
+                                          'Earned: ${when.toLocal()}',
+                                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
     );
   }
 }
