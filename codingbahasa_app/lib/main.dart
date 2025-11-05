@@ -769,6 +769,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
 // ========== HOME PAGE ==========
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});  
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
