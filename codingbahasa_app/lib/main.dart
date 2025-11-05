@@ -2132,7 +2132,7 @@ class _ChatBodyState extends State<_ChatBody> {
             ),
             SizedBox(height: 8),
             Text(
-              'Try asking about: photosynthesis, quadratic equations, Java, etc.',
+              'Try asking about: CS, Java, etc.',
               style: TextStyle(fontSize: 14, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
