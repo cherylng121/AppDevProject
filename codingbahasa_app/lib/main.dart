@@ -129,7 +129,7 @@ class FirebaseUserState extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   FirebaseUserState() {
-    _auth.authStateChanged.listen((firebaseUser) {
+    _auth.authStateChanges().listen((firebaseUser) {
       if (firebaseUser != null) {
         _loadUserData(firebaseUser.uid);
       } else {
