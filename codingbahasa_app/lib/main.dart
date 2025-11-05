@@ -2119,7 +2119,7 @@ class _ProgressPageState extends State<ProgressPage> {
 
   String? _selectedStudent;
 
-  // Mock students (no Firebase)
+ 
   final List<String> students = ['Ali Ahmad', 'Siti Nur', 'John Tan'];
 
   void _addProgress() {
