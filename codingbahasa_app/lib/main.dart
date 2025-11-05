@@ -2028,22 +2028,140 @@ class _ProgressPageState extends State<ProgressPage> {
 }
 
 // ---------- Achievements ----------
-
-// ---------- Profile ----------
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+// ---------- Achievements ----------
+class AchievementsPage extends StatelessWidget {
+  const AchievementsPage({super.key});
 
   @override
-  Widget build(BuildContext context) => const Text(
-        '👤 User Profile Page',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-      );
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('🏆 Achievements'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: user == null 
+          ? const Center(child: Text('Not logged in'))
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Points Summary
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Column(
+                            children: [
+                              Text(
+                                user.points.toString(),
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                              const Text('Total Points'),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                user.badges.length.toString(),
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              const Text('Badges Earned'),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Badges Section
+                  const Text(
+                    'Your Badges',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  
+                  if (user.badges.isEmpty)
+                    const Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey),
+                            SizedBox(height: 16),
+                            Text(
+                              'No badges earned yet!',
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                            Text(
+                              'Complete courses and quizzes to earn badges!',
+                              style: TextStyle(fontSize: 14, color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 1.2,
+                        ),
+                        itemCount: user.badges.length,
+                        itemBuilder: (context, index) {
+                          return Card(
+                            elevation: 3,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.emoji_events, size: 40, color: Colors.amber),
+                                const SizedBox(height: 8),
+                                Text(
+                                  user.badges[index],
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+// ---------- Profile ----------// ---------- Profile ----------
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final userState = context.watch<FirebaseUserState>();
     final user = userState.currentUser;
-    
 
     if (user == null) return const Center(child: Text('Not logged in'));
 
@@ -2343,6 +2461,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+     
   @override
   Widget build(BuildContext context) {
     final user = context.watch<FirebaseUserState>().currentUser!;
