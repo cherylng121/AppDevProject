@@ -799,7 +799,7 @@ class _HomePageState extends State<HomePage> {
       case 2:
         page = MaterialsPage();
       case 3:
-        page = const QuizPage();
+        page = QuizPage();
       case 4:
         page = const AIChatbotPage();
       case 5:
@@ -1481,6 +1481,27 @@ class Quiz {
 }
 
 // ---------- App State ----------
+// ---------- Quiz Page ----------
+class QuizPage extends StatelessWidget {
+  const QuizPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Quiz Page'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: const Center(
+        child: Text(
+          'This is the quiz page!',
+          style: TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+}
 
 class QuizAppState extends ChangeNotifier {
   final List<Quiz> _quizzes = [];
