@@ -122,11 +122,13 @@ class FirebaseUserState extends ChangeNotifier {
   AppUser? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _lastUnlockedMessage;
 
   AppUser? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get lastUnlockedMessage => _lastUnlockedMessage;
 
   FirebaseUserState() {
     _auth.authStateChanges().listen((firebaseUser) {
@@ -376,6 +378,43 @@ class FirebaseUserState extends ChangeNotifier {
     await _firestore.collection('users').doc(_currentUser!.id).update({'badges': newBadges});
     _currentUser = _currentUser!.copyWith(badges: newBadges);
     notifyListeners();
+  }
+
+  Future<void> awardBadge({
+    required String title,
+    required String description,
+  }) async {
+    if (_currentUser == null) return;
+    try {
+      await _firestore.collection('achievements').add({
+        'studentId': _currentUser!.id,
+        'studentName': _currentUser!.username,
+        'title': title,
+        'type': 'Badge',
+        'description': description,
+        'dateEarned': FieldValue.serverTimestamp(),
+      });
+
+      final updatedBadges = List<String>.from(_currentUser!.badges);
+      if (!updatedBadges.contains(title)) {
+        updatedBadges.add(title);
+        await _firestore
+            .collection('users')
+            .doc(_currentUser!.id)
+            .update({'badges': updatedBadges});
+        _currentUser = _currentUser!.copyWith(badges: updatedBadges);
+      }
+
+      _lastUnlockedMessage = 'Achievement unlocked: $title';
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Error awarding achievement: $e';
+      notifyListeners();
+    }
+  }
+
+  void consumeLastUnlockedMessage() {
+    _lastUnlockedMessage = null;
   }
 
   String _getAuthErrorMessage(String code) {
@@ -2704,6 +2743,9 @@ class AchievementsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userState = context.watch<FirebaseUserState>();
+    final user = userState.currentUser;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -2711,32 +2753,145 @@ class AchievementsPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.emoji_events, size: 80, color: Colors.amber),
-            const SizedBox(height: 16),
-            const Text(
-              'Your Achievements',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddAchievementPage(),
-                  ),
-                );
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: user == null
+            ? null
+            : () async {
+                await context.read<FirebaseUserState>().awardBadge(
+                      title: 'Quiz Master',
+                      description: 'Scored 80% or above in a quiz',
+                    );
+                if (context.mounted) {
+                  final msg = context.read<FirebaseUserState>().lastUnlockedMessage;
+                  if (msg != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(msg), backgroundColor: Colors.green),
+                    );
+                    context.read<FirebaseUserState>().consumeLastUnlockedMessage();
+                  }
+                }
               },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Achievement'),
-            ),
-          ],
-        ),
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('Simulate Milestone'),
       ),
+      body: user == null
+          ? const Center(child: Text('Not logged in'))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (userState.lastUnlockedMessage != null)
+                  Builder(
+                    builder: (ctx) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        final msg = userState.lastUnlockedMessage;
+                        if (msg != null) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text(msg), backgroundColor: Colors.green),
+                          );
+                          context.read<FirebaseUserState>().consumeLastUnlockedMessage();
+                        }
+                      });
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.emoji_events, size: 28, color: Colors.amber),
+                      const SizedBox(width: 8),
+                      const Text('Your Achievements',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AddAchievementPage()),
+                          );
+                        },
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Achievement'),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('achievements')
+                        .where('studentId', isEqualTo: user.id)
+                        .orderBy('dateEarned', descending: true)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text('Error loading achievements: ${snapshot.error}'),
+                        );
+                      }
+                      final docs = snapshot.data?.docs ?? [];
+                      if (docs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No achievements yet. Complete milestones to earn badges!',
+                            style: TextStyle(color: Colors.grey[600]),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final data = docs[index].data() as Map<String, dynamic>;
+                          final title = data['title'] as String? ?? 'Achievement';
+                          final type = data['type'] as String? ?? 'Badge';
+                          final description = data['description'] as String? ?? '';
+                          final ts = data['dateEarned'];
+                          DateTime? when;
+                          if (ts is Timestamp) when = ts.toDate();
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: type == 'Badge' ? Colors.amber[100] : Colors.blue[100],
+                                child: Icon(
+                                  type == 'Badge' ? Icons.emoji_events : Icons.workspace_premium,
+                                  color: type == 'Badge' ? Colors.amber[800] : Colors.blue[800],
+                                ),
+                              ),
+                              title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(description),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Chip(label: Text(type)),
+                                      const SizedBox(width: 8),
+                                      if (when != null)
+                                        Text(
+                                          'Earned: ${when.toLocal()}',
+                                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
