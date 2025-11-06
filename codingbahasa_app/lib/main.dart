@@ -2482,7 +2482,7 @@ class ChatError extends ChatState {
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text: "Hello! I'm your AI study buddy. Ask me about: photosynthesis, quadratic equations, Java programming, gravity, or mitochondria!",
+      text: "Hello! I'm your AI study buddy. Ask me about: Java programming!",
       isUser: false,
       timestamp: DateTime.now(),
     ),
