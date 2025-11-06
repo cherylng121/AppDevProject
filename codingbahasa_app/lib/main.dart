@@ -391,6 +391,26 @@ class FirebaseUserState extends ChangeNotifier {
       default: return 'Authentication error';
     }
   }
+
+    Future<void> awardBadge({required String title, required String description}) async {
+  if (_currentUser == null) return;
+  
+  try {
+    await _firestore.collection('achievements').add({
+      'studentId': _currentUser!.id,
+      'studentName': _currentUser!.username,
+      'title': title,
+      'type': 'Badge',
+      'description': description,
+      'dateEarned': FieldValue.serverTimestamp(),
+    });
+    
+    _lastUnlockedMessage = '🎉 New badge unlocked: $title!';
+    notifyListeners();
+  } catch (e) {
+    _errorMessage = 'Failed to award badge: $e';
+    notifyListeners();
+  }
 }
 
 // ========== ROOT APP ==========
@@ -3060,7 +3080,7 @@ class AchievementsPage extends StatelessWidget {
                         .collection('achievements')
                         .where('studentId', isEqualTo: user.id)
                         .orderBy('dateEarned', descending: true)
-                        .snaps(),
+                        .snapshot(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
