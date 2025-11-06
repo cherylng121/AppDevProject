@@ -125,6 +125,9 @@ class FirebaseUserState extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
+  String? _lastUnlockedMessage;
+  String? get lastUnlockedMessage => _lastUnlockedMessage;
+
   AppUser? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
@@ -372,11 +375,25 @@ class FirebaseUserState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addBadge(String badge) async {
+  Future<void> awardBadge({required String name, required String description}) async {
     if (_currentUser == null) return;
-    final newBadges = List<String>.from(_currentUser!.badges)..add(badge);
+
+    if (_currentUser!.badges.contains(name)) {
+        return; 
+    }
+
+    final newBadges = List<String>.from(_currentUser!.badges)..add(name);
+    
     await _firestore.collection('users').doc(_currentUser!.id).update({'badges': newBadges});
+    
     _currentUser = _currentUser!.copyWith(badges: newBadges);
+    _lastUnlockedMessage = 'Congratulations! You unlocked the $name badge.'; 
+    
+    notifyListeners();
+  }
+
+  void consumeLastUnlockedMessage() {
+    _lastUnlockedMessage = null;
     notifyListeners();
   }
 
@@ -391,7 +408,6 @@ class FirebaseUserState extends ChangeNotifier {
       default: return 'Authentication error';
     }
   }
-  
 }
 
 // ========== ROOT APP ==========
@@ -3038,7 +3054,7 @@ class AchievementsPage extends StatelessWidget {
           ? FloatingActionButton.extended(
               onPressed: () async {
                 await context.read<FirebaseUserState>().awardBadge(
-                      title: 'Quiz Master',
+                      name: 'Quiz Master',
                       description: 'Scored 80% or above in a quiz',
                     );
                 if (context.mounted) {
@@ -3115,7 +3131,7 @@ class AchievementsPage extends StatelessWidget {
                         .collection('achievements')
                         .where('studentId', isEqualTo: user.id)
                         .orderBy('dateEarned', descending: true)
-                        .snaps(),
+                        .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
