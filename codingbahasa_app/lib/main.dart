@@ -2079,19 +2079,13 @@ class AIChatbotPage extends StatelessWidget {
       create: (context) => ChatBloc(),
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: Column(
-          children: [
-            AppBar(
-              title: const Text('🤖 AI Study Buddy'),
-              backgroundColor: Colors.lightBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            const Expanded(
-              child: _ChatBody(),
-            ),
-          ],
+        appBar: AppBar(
+          title: const Text('🤖 AI Study Buddy'),
+          backgroundColor: Colors.lightBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
         ),
+        body: const _ChatBody(),
       ),
     );
   }
@@ -2106,10 +2100,12 @@ class _ChatBody extends StatefulWidget {
 
 class _ChatBodyState extends State<_ChatBody> {
   int lastRating = 0;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // Chat content
         Expanded(
           child: BlocBuilder<ChatBloc, ChatState>(
             builder: (context, state) {
@@ -2130,6 +2126,8 @@ class _ChatBodyState extends State<_ChatBody> {
             },
           ),
         ),
+
+        // Input, rating, stop button
         _buildMessageInput(),
       ],
     );
@@ -2171,19 +2169,21 @@ class _ChatBodyState extends State<_ChatBody> {
 
   Widget _buildChatBubble(ChatMessage message) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0), // ← FIX 2: properties first
-      child: Row( // ← FIX 2: child last
-        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment:
+            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!message.isUser) ...[
             CircleAvatar(
               backgroundColor: Colors.lightBlue,
-              radius: 16, // ← Also fix this CircleAvatar
-              child: Text(
-                'AI',
-                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
+              radius: 16,
+              child: const Text('AI',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
             ),
             const SizedBox(width: 8),
           ],
@@ -2191,9 +2191,8 @@ class _ChatBodyState extends State<_ChatBody> {
             child: Container(
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: message.isUser 
-                    ? Colors.lightBlue[50] 
-                    : Colors.grey[100],
+                color:
+                    message.isUser ? Colors.lightBlue[50] : Colors.grey[100],
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(color: Colors.grey[300]!),
               ),
@@ -2208,27 +2207,29 @@ class _ChatBodyState extends State<_ChatBody> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.schedule, size: 12, color: Colors.grey),
+                        const Icon(Icons.schedule, size: 12, color: Colors.grey),
                         const SizedBox(width: 4),
                         Text(
                           '${message.responseTime}ms',
-                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                          style:
+                              const TextStyle(fontSize: 10, color: Colors.grey),
                         ),
                         if (message.confidence != null) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _getConfidenceColor(message.confidence!),
+                              color:
+                                  _getConfidenceColor(message.confidence!),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               message.confidence!.toUpperCase(),
                               style: const TextStyle(
-                                fontSize: 8, 
-                                color: Colors.white, 
-                                fontWeight: FontWeight.bold
-                              ),
+                                  fontSize: 8,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
@@ -2241,10 +2242,10 @@ class _ChatBodyState extends State<_ChatBody> {
           ),
           if (message.isUser) ...[
             const SizedBox(width: 8),
-            CircleAvatar(
+            const CircleAvatar(
               backgroundColor: Colors.green,
-              radius: 16, // ← Fix child order here too
-              child: const Icon(Icons.person, color: Colors.white, size: 16),
+              radius: 16,
+              child: Icon(Icons.person, color: Colors.white, size: 16),
             ),
           ],
         ],
@@ -2252,132 +2253,139 @@ class _ChatBodyState extends State<_ChatBody> {
     );
   }
 
-  Color _getConfidenceColor(String confidence) {
+  static Color _getConfidenceColor(String confidence) {
     switch (confidence) {
-      case 'high': return Colors.green;
-      case 'medium': return Colors.orange;
-      case 'low': return Colors.red;
-      default: return Colors.grey;
+      case 'high':
+        return Colors.green;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
-Widget _buildMessageInput() {
-  final controller = TextEditingController();
-  
-  return Column(
-    children: [
-      // ---- Text Input Row ----
-      Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Colors.grey[300]!)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                decoration: InputDecoration(
-                  hintText: 'Ask about Java Programming...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24.0),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                ),
-                onSubmitted: (value) => _sendMessage(controller),
-              ),
-            ),
-            const SizedBox(width: 8),
-            BlocBuilder<ChatBloc, ChatState>(
-              builder: (context, state) {
-                final isLoading = state is ChatLoading;
-                return Container(
-                  decoration: BoxDecoration(
-                    color: isLoading ? Colors.grey : Colors.lightBlue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.send, color: Colors.white),
-                    onPressed: isLoading ? null : () => _sendMessage(controller),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+  Widget _buildMessageInput() {
+    final controller = TextEditingController();
 
-      // ---- Rating + End Conversation Row ----
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // --- Rating Section ---
-            Row(
-              children: [
-                const Text('Rate chatbot:'),
-                const SizedBox(width: 8),
-                for (int s = 1; s <= 5; s++)
-                  IconButton(
-                    icon: Icon(
-                      s <= lastRating ? Icons.star : Icons.star_border,
-                      color: Colors.orange,
+    return Column(
+      children: [
+        // ---- Text Input Row ----
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Colors.grey[300]!)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: 'Ask about Java Programming...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24.0),
                     ),
-                    onPressed: () {
-                      // store rating (you can adapt this to your appState if needed)
-                      setState(() => lastRating = s);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Thanks! You rated the bot $s star(s).'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 12.0),
                   ),
-              ],
-            ),
-
-            // --- Stop Conversation Button ---
-            IconButton(
-              icon: const Icon(Icons.stop_circle, color: Colors.red),
-              tooltip: 'End Conversation',
-              onPressed: () {
-                context.read<ChatBloc>().add(ClearChatEvent());
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Conversation ended. Starting fresh.')),
-                );
-              },
-            ),
-          ],
+                  onSubmitted: (value) => _sendMessage(controller),
+                ),
+              ),
+              const SizedBox(width: 8),
+              BlocBuilder<ChatBloc, ChatState>(
+                builder: (context, state) {
+                  final isLoading = state is ChatLoading;
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: isLoading ? Colors.grey : Colors.lightBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.send, color: Colors.white),
+                      onPressed:
+                          isLoading ? null : () => _sendMessage(controller),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
-      ),
-    ],
-  );
-}
 
+        // ---- Rating + End Conversation Row ----
+        Container(
+          color: Colors.grey[100],
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // --- Rating Section ---
+              Row(
+                children: [
+                  const Text('Rate chatbot:'),
+                  const SizedBox(width: 8),
+                  for (int s = 1; s <= 5; s++)
+                    IconButton(
+                      icon: Icon(
+                        s <= lastRating ? Icons.star : Icons.star_border,
+                        color: Colors.orange,
+                      ),
+                      onPressed: () {
+                        setState(() => lastRating = s);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('Thanks! You rated the bot $s star(s).'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+
+              // --- Stop Conversation Button ---
+              IconButton(
+                icon: const Icon(Icons.stop_circle, color: Colors.red, size: 32),
+                tooltip: 'End Conversation',
+                onPressed: () {
+                  context.read<ChatBloc>().add(ClearChatEvent());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Conversation ended. Starting fresh.')),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   void _sendMessage(TextEditingController controller) {
     final text = controller.text.trim();
-    if (text.isNotEmpty) {
-      // FIX 3: Now we can use mounted safely
-      if (mounted) {
-        context.read<ChatBloc>().add(SendMessageEvent(text));
-      }
+    if (text.isNotEmpty && mounted) {
+      context.read<ChatBloc>().add(SendMessageEvent(text));
       controller.clear();
     }
   }
 }
+
 
 // ========== AI CHATBOT SUPPORTING CLASSES ==========
 
