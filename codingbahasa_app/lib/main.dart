@@ -2706,127 +2706,133 @@ class ProgressRecord {
 }
 
 class _ProgressPageState extends State<ProgressPage> {
-  final List<ProgressRecord> progressList = [];
   final _formKey = GlobalKey<FormState>();
+  final List<ProgressRecord> _progressList = [];
+
+  // Sample students
+  final List<String> _students = ['Ali Ahmad', 'Siti Nur', 'John Tan'];
+
+  // Form controllers
+  String? _selectedStudent;
   final TextEditingController _activityController = TextEditingController();
   final TextEditingController _scoreController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
-  String? _selectedStudent;
-
- 
-  final List<String> students = ['Ali Ahmad', 'Siti Nur', 'John Tan'];
-
   void _addProgress() {
-    if (_formKey.currentState!.validate() && _selectedStudent != null) {
+    if (_formKey.currentState!.validate()) {
       setState(() {
-        progressList.add(
+        _progressList.add(
           ProgressRecord(
-            student: _selectedStudent!,
+            student: _selectedStudent ?? '',
             activity: _activityController.text,
-            score: double.parse(_scoreController.text),
+            score: double.tryParse(_scoreController.text) ?? 0,
             grade: _gradeController.text,
             comments: _commentsController.text,
           ),
         );
       });
-
-      _activityController.clear();
-      _scoreController.clear();
-      _gradeController.clear();
-      _commentsController.clear();
-      _selectedStudent = null;
+      _clearForm();
     }
+  }
+
+  void _clearForm() {
+    _selectedStudent = null;
+    _activityController.clear();
+    _scoreController.clear();
+    _gradeController.clear();
+    _commentsController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Student Progress Records')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(title: const Text('Add Student Progress')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ---------------- Add Progress Form ----------------
+            // ---------- Add Progress Form ----------
             Form(
               key: _formKey,
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Select Student'),
                     value: _selectedStudent,
-                    items: students.map((student) {
-                      return DropdownMenuItem(value: student, child: Text(student));
-                    }).toList(),
+                    items: _students
+                        .map((student) =>
+                            DropdownMenuItem(value: student, child: Text(student)))
+                        .toList(),
                     onChanged: (value) => setState(() => _selectedStudent = value),
-                    validator: (value) => value == null ? 'Please select a student' : null,
+                    decoration:
+                        const InputDecoration(labelText: 'Select Student'),
+                    validator: (value) =>
+                        value == null ? 'Please select a student' : null,
                   ),
                   TextFormField(
                     controller: _activityController,
-                    decoration: const InputDecoration(labelText: 'Activity Type'),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Please enter an activity' : null,
+                    decoration:
+                        const InputDecoration(labelText: 'Activity Name'),
+                    validator: (v) =>
+                        v!.isEmpty ? 'Please enter an activity' : null,
                   ),
                   TextFormField(
                     controller: _scoreController,
                     decoration: const InputDecoration(labelText: 'Score'),
                     keyboardType: TextInputType.number,
-                    validator: (value) =>
-                        value!.isEmpty ? 'Please enter a score' : null,
+                    validator: (v) =>
+                        v!.isEmpty ? 'Please enter a score' : null,
                   ),
                   TextFormField(
                     controller: _gradeController,
                     decoration: const InputDecoration(labelText: 'Grade'),
-                    validator: (value) =>
-                        value!.isEmpty ? 'Please enter a grade' : null,
+                    validator: (v) =>
+                        v!.isEmpty ? 'Please enter a grade' : null,
                   ),
                   TextFormField(
                     controller: _commentsController,
                     decoration: const InputDecoration(labelText: 'Comments'),
                   ),
                   const SizedBox(height: 10),
-                  ElevatedButton(
+                  ElevatedButton.icon(
                     onPressed: _addProgress,
-                    child: const Text('Add Progress'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Progress'),
                   ),
+                  const Divider(height: 30, thickness: 1),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            const Divider(),
 
-            // ---------------- Table of Progress ----------------
-            const Text(
-              'Progress Records',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('Student')),
-                    DataColumn(label: Text('Activity')),
-                    DataColumn(label: Text('Score')),
-                    DataColumn(label: Text('Grade')),
-                    DataColumn(label: Text('Comments')),
-                  ],
-                  rows: progressList.map((record) {
-                    return DataRow(cells: [
-                      DataCell(Text(record.student)),
-                      DataCell(Text(record.activity)),
-                      DataCell(Text(record.score.toString())),
-                      DataCell(Text(record.grade)),
-                      DataCell(Text(record.comments)),
-                    ]);
-                  }).toList(),
-                ),
-              ),
-            ),
+            // ---------- List of Progress Records ----------
+            _progressList.isEmpty
+                ? const Text(
+                    'No progress records yet.',
+                    style: TextStyle(color: Colors.grey),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _progressList.length,
+                    itemBuilder: (context, index) {
+                      final record = _progressList[index];
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          title:
+                              Text('${record.student} — ${record.activity}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Score: ${record.score}, Grade: ${record.grade}'),
+                              Text('Comments: ${record.comments}'),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ],
         ),
       ),
