@@ -2690,38 +2690,68 @@ class ProgressRecord {
 }
 
 class _ProgressPageState extends State<ProgressPage> {
-  final List<ProgressRecord> progressList = [];
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _activityController = TextEditingController();
-  final TextEditingController _scoreController = TextEditingController();
-  final TextEditingController _gradeController = TextEditingController();
-  final TextEditingController _commentsController = TextEditingController();
-
-  String? _selectedStudent;
-
- 
   final List<String> students = ['Ali Ahmad', 'Siti Nur', 'John Tan'];
+  String? selectedStudent;
 
-  void _addProgress() {
-    if (_formKey.currentState!.validate() && _selectedStudent != null) {
+  final List<ProgressRecord> progressList = [];
+
+  final _formKey = GlobalKey<FormState>();
+  final _activityController = TextEditingController();
+  final _scoreController = TextEditingController();
+  final _gradeController = TextEditingController();
+  final _commentsController = TextEditingController();
+
+  int? editingIndex; // Track which row is being edited
+
+  void _addOrUpdateProgress() {
+    if (_formKey.currentState!.validate() && selectedStudent != null) {
       setState(() {
-        progressList.add(
-          ProgressRecord(
-            student: _selectedStudent!,
-            activity: _activityController.text,
-            score: double.parse(_scoreController.text),
-            grade: _gradeController.text,
-            comments: _commentsController.text,
-          ),
+        final record = ProgressRecord(
+          student: selectedStudent!,
+          activity: _activityController.text,
+          score: double.parse(_scoreController.text),
+          grade: _gradeController.text,
+          comments: _commentsController.text,
         );
+
+        if (editingIndex != null) {
+          // Update existing record
+          progressList[editingIndex!] = record;
+          editingIndex = null;
+        } else {
+          // Add new record
+          progressList.add(record);
+        }
       });
 
-      _activityController.clear();
-      _scoreController.clear();
-      _gradeController.clear();
-      _commentsController.clear();
-      _selectedStudent = null;
+      _clearForm();
     }
+  }
+
+  void _editProgress(int index) {
+    final record = progressList[index];
+    setState(() {
+      selectedStudent = record.student;
+      _activityController.text = record.activity;
+      _scoreController.text = record.score.toString();
+      _gradeController.text = record.grade;
+      _commentsController.text = record.comments;
+      editingIndex = index;
+    });
+  }
+
+  void _deleteProgress(int index) {
+    setState(() {
+      progressList.removeAt(index);
+    });
+  }
+
+  void _clearForm() {
+    _activityController.clear();
+    _scoreController.clear();
+    _gradeController.clear();
+    _commentsController.clear();
+    selectedStudent = null;
   }
 
   @override
@@ -2731,81 +2761,105 @@ class _ProgressPageState extends State<ProgressPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ---------------- Add Progress Form ----------------
+            // ---------- Form Section ----------
             Form(
               key: _formKey,
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Select Student'),
-                    value: _selectedStudent,
-                    items: students.map((student) {
-                      return DropdownMenuItem(value: student, child: Text(student));
-                    }).toList(),
-                    onChanged: (value) => setState(() => _selectedStudent = value),
-                    validator: (value) => value == null ? 'Please select a student' : null,
+                    value: selectedStudent,
+                    decoration:
+                        const InputDecoration(labelText: 'Select Student'),
+                    items: students
+                        .map((student) => DropdownMenuItem(
+                              value: student,
+                              child: Text(student),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedStudent = value;
+                      });
+                    },
+                    validator: (value) =>
+                        value == null ? 'Please select a student' : null,
                   ),
                   TextFormField(
                     controller: _activityController,
-                    decoration: const InputDecoration(labelText: 'Activity Type'),
+                    decoration:
+                        const InputDecoration(labelText: 'Activity Type'),
                     validator: (value) =>
-                        value!.isEmpty ? 'Please enter an activity' : null,
+                        value!.isEmpty ? 'Please enter activity type' : null,
                   ),
                   TextFormField(
                     controller: _scoreController,
                     decoration: const InputDecoration(labelText: 'Score'),
                     keyboardType: TextInputType.number,
                     validator: (value) =>
-                        value!.isEmpty ? 'Please enter a score' : null,
+                        value!.isEmpty ? 'Please enter score' : null,
                   ),
                   TextFormField(
                     controller: _gradeController,
                     decoration: const InputDecoration(labelText: 'Grade'),
                     validator: (value) =>
-                        value!.isEmpty ? 'Please enter a grade' : null,
+                        value!.isEmpty ? 'Please enter grade' : null,
                   ),
                   TextFormField(
                     controller: _commentsController,
                     decoration: const InputDecoration(labelText: 'Comments'),
                   ),
                   const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: _addProgress,
-                    child: const Text('Add Progress'),
+                  ElevatedButton.icon(
+                    onPressed: _addOrUpdateProgress,
+                    icon: Icon(editingIndex == null ? Icons.add : Icons.save),
+                    label: Text(editingIndex == null
+                        ? 'Add Progress'
+                        : 'Update Progress'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            const Divider(),
 
-            // ---------------- Table of Progress ----------------
-            const Text(
-              'Progress Records',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const SizedBox(height: 16),
+            const Divider(),
             const SizedBox(height: 8),
 
+            // ---------- Table Section ----------
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
+                  border: TableBorder.all(color: Colors.grey.shade300),
                   columns: const [
                     DataColumn(label: Text('Student')),
                     DataColumn(label: Text('Activity')),
                     DataColumn(label: Text('Score')),
                     DataColumn(label: Text('Grade')),
                     DataColumn(label: Text('Comments')),
+                    DataColumn(label: Text('Actions')),
                   ],
-                  rows: progressList.map((record) {
+                  rows: progressList.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final record = entry.value;
                     return DataRow(cells: [
                       DataCell(Text(record.student)),
                       DataCell(Text(record.activity)),
                       DataCell(Text(record.score.toString())),
                       DataCell(Text(record.grade)),
                       DataCell(Text(record.comments)),
+                      DataCell(Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _editProgress(index),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteProgress(index),
+                          ),
+                        ],
+                      )),
                     ]);
                   }).toList(),
                 ),
