@@ -3880,38 +3880,116 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 }
 
-// ---------- Learning Material ----------
+// ---------- LEARNING MATERIAL ----------
 class LearningMaterial {
-  String name, description, file;
-  DateTime time;
+  final String id;
+  final String name;
+  final String description;
+  final String file;
+  final DateTime time;
+
   LearningMaterial({
+    this.id = '',
     required this.name,
     required this.description,
     required this.file,
     required this.time,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'description': description,
+      'file': file,
+      'time': time.toIso8601String(),
+    };
+  }
+
+  factory LearningMaterial.fromMap(String id, Map<String, dynamic> data) {
+    return LearningMaterial(
+      id: id,
+      name: data['name'] ?? '',
+      description: data['description'] ?? '',
+      file: data['file'] ?? '',
+      time: DateTime.tryParse(data['time'] ?? '') ?? DateTime.now(),
+    );
+  }
 }
 
-// ---------- App State ----------
+// ===== FIREBASE STATE =====
 class MaterialAppState extends ChangeNotifier {
-  final List<LearningMaterial> lm = [];
-  void addMaterial(LearningMaterial material) {
-    lm.add(material);
-    notifyListeners();
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  Future<void> createMaterialsCollection() async {
+    final collectionRef = _db.collection('materials');
+    final snapshot = await collectionRef.limit(1).get();
+
+    if (snapshot.docs.isEmpty) {
+      await collectionRef.add({
+        'name': '___placeholder___', 
+        'description': '',
+        'file': '',
+        'time': Timestamp.now(),
+      });
+    }
   }
 
-  void removeMaterial(LearningMaterial material) {
-    lm.remove(material);
-    notifyListeners();
+  Stream<List<LearningMaterial>> getMaterialsStream() {
+    return _db.collection('materials')
+        .orderBy('time', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .where((doc) => doc.data()['name'] != '___placeholder___')
+          .map((doc) {
+        final data = doc.data();
+        if (!data.containsKey('time') || data['time'] == null) {
+          data['time'] = Timestamp.now();
+        }
+        return LearningMaterial.fromMap(doc.id, data);
+      }).toList();
+    });
+  }
+
+  // Add a new material
+  Future<void> addMaterial(LearningMaterial material) async {
+    final map = material.toMap();
+    map['time'] ??= Timestamp.now();
+    await _db.collection('materials').add(map);
+  }
+
+  // Edit existing material
+  Future<void> editMaterial(LearningMaterial material) async {
+    final map = material.toMap();
+    map['time'] ??= Timestamp.now();
+    await _db.collection('materials').doc(material.id).update(map);
+  }
+
+  // Delete material
+  Future<void> deleteMaterial(String id) async {
+    await _db.collection('materials').doc(id).delete();
   }
 }
 
-// ---------- Materials Page ----------
-class MaterialsPage extends StatelessWidget {
+// ===== MATERIALS PAGE =====
+class MaterialsPage extends StatefulWidget {
+  @override
+  State<MaterialsPage> createState() => _MaterialsPageState();
+}
+
+class _MaterialsPageState extends State<MaterialsPage> {
+  String searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = context.read<MaterialAppState>();
+    appState.createMaterialsCollection(); 
+  }
+
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MaterialAppState>();
-    var materials = appState.lm;
     var theme = Theme.of(context);
 
     return Scaffold(
@@ -3919,88 +3997,162 @@ class MaterialsPage extends StatelessWidget {
         title: const Text('Learning Materials'),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => UploadPage()),
-        ),
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => UploadPage()),
+          );
+
+          if (result != null && result['success'] == true && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message']),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
         tooltip: 'Add',
         child: const Icon(Icons.add),
       ),
-      body: materials.isEmpty
-          ? const Center(
-              child: Text(
-                'No learning materials uploaded yet.\nClick "+" to add learning materials.',
-                style: TextStyle(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'Search materials...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
               ),
-            )
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: ListView.builder(
-                itemCount: materials.length,
-                itemBuilder: (context, index) {
-                  final material = materials[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    child: ListTile(
-                      leading: Icon(Icons.file_present,
-                          color: theme.colorScheme.primary),
-                      title: Text(material.name),
-                      subtitle: Text(
-                        '${material.description}\nUploaded At: ${material.time}',
-                      ),
-                      onTap: () => OpenFile.open(material.file),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            color: Colors.redAccent),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Delete Confirmation'),
-                              content: const Text(
-                                  'Are you sure you want to delete this learning material?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, true),
-                                  child: const Text('Delete'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            appState.removeMaterial(material);
-                             if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'Learning Material deleted successfully!'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          }
-                          
-                        }
+              onChanged: (value) =>
+                  setState(() => searchQuery = value.toLowerCase()),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: StreamBuilder<List<LearningMaterial>>(
+                stream: appState.getMaterialsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                        },
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No learning materials uploaded yet.\nClick "+" to add learning materials.',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
+                    );
+                  }
+
+                  final materials = snapshot.data!
+                      .where((m) =>
+                          m.name.toLowerCase().contains(searchQuery) ||
+                          m.description.toLowerCase().contains(searchQuery))
+                      .toList();
+
+                  if (materials.isEmpty) {
+                    return const Center(
+                        child: Text('No materials match your search.'));
+                  }
+
+                  return ListView.builder(
+                    itemCount: materials.length,
+                    itemBuilder: (context, index) {
+                      final material = materials[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        child: ListTile(
+                          leading: Icon(Icons.file_present,
+                              color: theme.colorScheme.primary),
+                          title: Text(material.name),
+                          subtitle: Text(
+                            '${material.description}\nUploaded At: ${material.time}',
+                          ),
+                          onTap: () => OpenFile.open(material.file),
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (value) async {
+                              if (value == 'edit') {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => UploadPage(
+                                        existingMaterial: material),
+                                  ),
+                                );
+                                if (result != null &&
+                                    result['success'] == true &&
+                                    context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(result['message']),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              } else if (value == 'delete') {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Delete Confirmation'),
+                                    content: const Text(
+                                        'Are you sure you want to delete this material?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm == true) {
+                                  await appState.deleteMaterial(material.id);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Material deleted successfully!'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                  value: 'edit', child: Text('Edit')),
+                              const PopupMenuItem(
+                                  value: 'delete', child: Text('Delete')),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
             ),
+          ],
+        ),
+      ),
     );
   }
 }
 
-// ---------- Upload Page ----------
+// ===== UPLOAD PAGE =====
 class UploadPage extends StatefulWidget {
+  final LearningMaterial? existingMaterial;
+
+  const UploadPage({super.key, this.existingMaterial});
+
   @override
   State<UploadPage> createState() => _UploadPageState();
 }
@@ -4011,6 +4163,16 @@ class _UploadPageState extends State<UploadPage> {
   String description = '';
   String? filePath;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingMaterial != null) {
+      name = widget.existingMaterial!.name;
+      description = widget.existingMaterial!.description;
+      filePath = widget.existingMaterial!.file;
+    }
+  }
+
   void pickFile() async {
     final result = await FilePicker.platform.pickFiles();
     if (result != null && result.files.single.path != null) {
@@ -4018,7 +4180,9 @@ class _UploadPageState extends State<UploadPage> {
     }
   }
 
-  void submit(BuildContext context) {
+  Future<void> submit(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+
     if (!_formKey.currentState!.validate()) return;
     if (filePath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -4028,21 +4192,71 @@ class _UploadPageState extends State<UploadPage> {
     }
 
     _formKey.currentState!.save();
+
+    final appState = context.read<MaterialAppState>();
+    final isEditing = widget.existingMaterial != null;
+
     final newMaterial = LearningMaterial(
+      id: widget.existingMaterial?.id ?? '',
       name: name,
       description: description,
       file: filePath!,
       time: DateTime.now(),
     );
 
-    context.read<MaterialAppState>().addMaterial(newMaterial);
-    Navigator.pop(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEditing ? 'Edit Confirmation' : 'Upload Confirmation'),
+        content: Text(isEditing
+            ? 'Are you sure you want to update this material?'
+            : 'Are you sure you want to upload this new material?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        if (isEditing) {
+          await appState.editMaterial(newMaterial);
+        } else {
+          await appState.addMaterial(newMaterial);
+        }
+
+        if (context.mounted) {
+          Navigator.pop(context, {
+            'success': true,
+            'message': isEditing
+                ? 'Material updated successfully!'
+                : 'Material uploaded successfully!',
+          });
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.existingMaterial != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload Learning Material')),
+      appBar: AppBar(
+          title: Text(isEditing
+              ? 'Edit Learning Material'
+              : 'Upload Learning Material')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -4050,6 +4264,7 @@ class _UploadPageState extends State<UploadPage> {
           child: ListView(
             children: [
               TextFormField(
+                initialValue: name,
                 decoration: const InputDecoration(
                     labelText: 'Name', border: OutlineInputBorder()),
                 onSaved: (v) => name = v ?? '',
@@ -4058,6 +4273,7 @@ class _UploadPageState extends State<UploadPage> {
               ),
               const SizedBox(height: 15),
               TextFormField(
+                initialValue: description,
                 decoration: const InputDecoration(
                     labelText: 'Description', border: OutlineInputBorder()),
                 maxLines: 3,
@@ -4085,10 +4301,12 @@ class _UploadPageState extends State<UploadPage> {
                 ],
               ),
               const SizedBox(height: 25),
-              ElevatedButton.icon(
-                onPressed: () => submit(context),
-                icon: const Icon(Icons.cloud_upload),
-                label: const Text('Upload'),
+              Builder(
+                builder: (context) => ElevatedButton.icon(
+                  onPressed: () => submit(context),
+                  icon: const Icon(Icons.cloud_upload),
+                  label: Text(isEditing ? 'Update' : 'Upload'),
+                ),
               ),
             ],
           ),

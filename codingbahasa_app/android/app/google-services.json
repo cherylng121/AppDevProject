@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "551649646330",
+    "project_id": "codingbahasa-app",
+    "storage_bucket": "codingbahasa-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:551649646330:android:ac01a5f7230d3faf435b43",
+        "android_client_info": {
+          "package_name": "com.example.codingbahasa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1r3M1qQRYRSxAP5bEITdW75OtzZptV1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
