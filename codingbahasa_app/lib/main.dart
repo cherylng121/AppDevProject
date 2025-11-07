@@ -168,7 +168,9 @@ class FirebaseUserState extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
+    
+    print('Start registering user');
+    
     try {
       final usernameQuery = await _firestore
           .collection('users')
@@ -186,6 +188,8 @@ class FirebaseUserState extends ChangeNotifier {
         email: email,
         password: password,
       );
+
+      print('Firebase Auth user created: ${userCredential.user!.uid}');
 
       final newUser = AppUser(
         id: userCredential.user!.uid,
@@ -208,6 +212,7 @@ class FirebaseUserState extends ChangeNotifier {
 
     } on firebase_auth.FirebaseAuthException catch (e) {
       _errorMessage = _getAuthErrorMessage(e.code);
+      print('Error during registration: $_errorMessage');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -427,7 +432,7 @@ class CodingBahasa extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-       /*home: Consumer<FirebaseUserState>(
+       home: Consumer<FirebaseUserState>(
         builder: (context, userState, _) {
           if (userState.isLoading) {
             return const Scaffold(
@@ -443,12 +448,8 @@ class CodingBahasa extends StatelessWidget {
         },
       ),
       debugShowCheckedModeBanner: false,
-    );*/
-    
-    // TEMP: bypass auth to test features
-      home: const LoginPage(),
-      debugShowCheckedModeBanner: false,
     );
+    
   }
 }
 
@@ -639,6 +640,8 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final userState = context.read<FirebaseUserState>();
+
+    //Probably Error Here
     final success = await userState.registerUser(
       username: _usernameController.text.trim(),
       email: _emailController.text.trim(),
@@ -2490,7 +2493,7 @@ class ChatError extends ChatState {
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang: Pengaturcaraan Java!",
+      text: "Hello! I'm your AI study buddy. Ask me about: Java programming!",
       isUser: false,
       timestamp: DateTime.now(),
     ),
@@ -2498,64 +2501,64 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   // Predefined FAQs for Java (Bloc version)
 final Map<String, Map<String, dynamic>> _faqs = {
-  'pembolehubah': {
-    'answer': 'Dalam Java, pembolehubah ialah bekas yang menyimpan data dengan jenis tertentu. Contoh: int umur = 20;',
-    'keywords': ['pembolehubah', 'data', 'int', 'bekas'],
-    'category': 'Asas Java'
+  'variable': {
+    'answer': 'In Java, a variable is a container that holds data of a specific type. Example: int age = 20;',
+    'keywords': ['variable', 'data', 'int', 'container'],
+    'category': 'Java Basics'
   },
-  'jenis data': {
-    'answer': 'Java mempunyai jenis data primitif seperti int, double, char, boolean, dan jenis bukan primitif seperti String dan tatasusunan (array).',
-    'keywords': ['jenis data', 'primitif', 'string', 'array'],
-    'category': 'Asas Java'
+  'datatype': {
+    'answer': 'Java has primitive data types such as int, double, char, boolean, and non-primitive types like String and arrays.',
+    'keywords': ['datatype', 'primitive', 'string', 'array'],
+    'category': 'Java Basics'
   },
-  'gelung': {
-    'answer': 'Java menyokong gelung for, while, dan do-while. Contoh: for(int i=0; i<5; i++) { System.out.println(i); }',
-    'keywords': ['gelung', 'for', 'while', 'ulangan'],
-    'category': 'Struktur Kawalan'
+  'loop': {
+    'answer': 'Java supports for, while, and do-while loops. Example: for(int i=0; i<5; i++) { System.out.println(i); }',
+    'keywords': ['loop', 'for', 'while', 'iteration'],
+    'category': 'Control Structure'
   },
   'if': {
-    'answer': 'Pernyataan if dalam Java digunakan untuk menyemak sesuatu syarat: if(x > 0) { System.out.println("Positif"); } else { System.out.println("Negatif"); }',
-    'keywords': ['if', 'else', 'syarat', 'keputusan'],
-    'category': 'Struktur Kawalan'
+    'answer': 'An if statement in Java checks a condition: if(x > 0) { System.out.println("Positive"); } else { System.out.println("Negative"); }',
+    'keywords': ['if', 'else', 'condition', 'decision'],
+    'category': 'Control Structure'
   },
-  'kelas': {
-    'answer': 'Kelas dalam Java menentukan pelan (blueprint) bagi objek. Contoh: class Kereta { String model; void pandu() { System.out.println("Memandu"); } }',
-    'keywords': ['kelas', 'blueprint', 'objek'],
+  'class': {
+    'answer': 'A class in Java defines the blueprint for objects. Example: class Car { String model; void drive() { System.out.println("Driving"); } }',
+    'keywords': ['class', 'blueprint', 'object'],
     'category': 'OOP'
   },
-  'objek': {
-    'answer': 'Objek ialah contoh (instance) bagi kelas. Contoh: Kereta myCar = new Kereta(); myCar.pandu();',
-    'keywords': ['objek', 'instance', 'kelas'],
+  'object': {
+    'answer': 'Objects are instances of classes. Example: Car myCar = new Car(); myCar.drive();',
+    'keywords': ['object', 'instance', 'class'],
     'category': 'OOP'
   },
-  'pembina': {
-    'answer': 'Pembina (constructor) digunakan untuk memulakan objek semasa ia dicipta. Namanya sama seperti kelas dan tiada jenis pulangan (return type).',
-    'keywords': ['pembina', 'constructor', 'objek', 'kelas'],
+  'constructor': {
+    'answer': 'A constructor initializes an object when it is created. It has the same name as the class and no return type.',
+    'keywords': ['constructor', 'initialize', 'object', 'class'],
     'category': 'OOP'
   },
-  'pewarisan': {
-    'answer': 'Pewarisan membolehkan satu kelas menggunakan medan dan kaedah daripada kelas lain. Gunakan kata kunci extends: class Anjing extends Haiwan { }',
-    'keywords': ['pewarisan', 'extends', 'induk', 'anak', 'kelas'],
+  'inheritance': {
+    'answer': 'Inheritance allows a class to use fields and methods of another class. Use the extends keyword: class Dog extends Animal { }',
+    'keywords': ['inheritance', 'extends', 'parent', 'child', 'class'],
     'category': 'OOP'
   },
-  'polimorfisme': {
-    'answer': 'Polimorfisme bermaksud kaedah yang sama boleh berkelakuan berbeza bergantung pada objek yang memanggilnya (kaedah menindih / overriding).',
-    'keywords': ['polimorfisme', 'menindih', 'oop'],
+  'polymorphism': {
+    'answer': 'Polymorphism means the same method can behave differently based on the object calling it (method overriding).',
+    'keywords': ['polymorphism', 'method overriding', 'oop'],
     'category': 'OOP'
   },
-  'enkapsulasi': {
-    'answer': 'Enkapsulasi menyembunyikan data dalaman menggunakan medan peribadi (private) dan kaedah awam (getter/setter) untuk mengawal capaian.',
-    'keywords': ['enkapsulasi', 'getter', 'setter', 'private', 'oop'],
+  'encapsulation': {
+    'answer': 'Encapsulation hides internal data using private fields and public getters/setters to control access.',
+    'keywords': ['encapsulation', 'getter', 'setter', 'private', 'oop'],
     'category': 'OOP'
   },
-  'abstraksi': {
-    'answer': 'Abstraksi menyembunyikan butiran pelaksanaan yang kompleks. Gunakan kelas abstrak atau antara muka (interface) untuk menentukan kontrak.',
-    'keywords': ['abstraksi', 'abstrak', 'interface', 'oop'],
+  'abstraction': {
+    'answer': 'Abstraction hides complex implementation details; use abstract classes or interfaces to define contracts.',
+    'keywords': ['abstraction', 'abstract', 'interface', 'oop'],
     'category': 'OOP'
   },
   'oop': {
-    'answer': 'Konsep OOP dalam Java termasuk Kelas, Objek, Pewarisan, Polimorfisme, Abstraksi, dan Enkapsulasi.',
-    'keywords': ['oop', 'berorientasikan objek', 'java'],
+    'answer': 'Java OOP concepts include Class, Object, Inheritance, Polymorphism, Abstraction, and Encapsulation.',
+    'keywords': ['oop', 'object oriented', 'java'],
     'category': 'OOP'
   },
 };
@@ -2613,7 +2616,7 @@ final Map<String, Map<String, dynamic>> _faqs = {
     } catch (e) {
       // Add error message
       _messages.add(ChatMessage(
-        text: "Maaf, saya menghadapi ralat. Sila cuba lagi.",
+        text: "Sorry, I encountered an error. Please try again.",
         isUser: false,
         timestamp: DateTime.now(),
       ));
@@ -2630,7 +2633,7 @@ final Map<String, Map<String, dynamic>> _faqs = {
     _messages.clear();
     // Add welcome message back
     _messages.add(ChatMessage(
-      text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja!",
+      text: "Hello! I'm your AI study buddy. Ask me anything!",
       isUser: false,
       timestamp: DateTime.now(),
     ));
@@ -2661,7 +2664,7 @@ final Map<String, Map<String, dynamic>> _faqs = {
       return bestMatch;
     } else {
       return {
-        'answer': "Saya masih dalam proses pembelajaran! Saya belum ada jawapan untuk itu. Cuba tanya tentang: ${_faqs.keys.join(', ')}",
+        'answer': "I'm still learning! I don't have an answer for that yet. Try asking about: ${_faqs.keys.join(', ')}",
         'matchedQuestion': null,
         'confidence': 'low',
         'category': 'general',
