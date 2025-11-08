@@ -561,21 +561,11 @@ class _LoginPageState extends State<LoginPage> {
                           validator: (value) => value == null || value.isEmpty ? 'Please enter password' : null,
                         ),
                         const SizedBox(height: 24),
-                        // -------------------
                         SizedBox(
                           width: double.infinity,
                           height: 48,
                           child: ElevatedButton(
-                            onPressed: userState.isLoading
-                                ? null
-                                : () {
-                                    if (_formKey.currentState!.validate()) {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const HomePage()),
-                                      );
-                                    }
-                                  },
+                            onPressed: userState.isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue[700],
                               foregroundColor: Colors.white,
@@ -586,8 +576,6 @@ class _LoginPageState extends State<LoginPage> {
                                 : const Text('Login', style: TextStyle(fontSize: 16)),
                           ),
                         ),
-
-                          // ------------------------
                         const SizedBox(height: 16),
                         TextButton(
                           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterPage())),
