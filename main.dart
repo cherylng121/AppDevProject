@@ -2681,6 +2681,7 @@ final Map<String, Map<String, dynamic>> _faqs = {
   }
 }
 
+
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
 
@@ -2689,64 +2690,209 @@ class ProgressPage extends StatefulWidget {
 }
 
 class ProgressRecord {
-  final String student;
+  final String id;
+  final String name;
   final String activity;
   final double score;
   final String grade;
   final String comments;
 
   ProgressRecord({
-    required this.student,
+    required this.id,
+    required this.name,
     required this.activity,
     required this.score,
     required this.grade,
     required this.comments,
   });
+
+  factory ProgressRecord.fromDoc(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return ProgressRecord(
+      id: doc.id,
+      name: data['name'] ?? '',
+      activity: data['activity'] ?? '',
+      score: (data['score'] ?? 0).toDouble(),
+      grade: data['grade'] ?? '',
+      comments: data['comments'] ?? '',
+    );
+  }
 }
 
 class _ProgressPageState extends State<ProgressPage> {
   final _formKey = GlobalKey<FormState>();
-  final List<ProgressRecord> _progressList = [];
+  final _firestore = FirebaseFirestore.instance;
 
-  // Sample students
-  final List<String> _students = ['Ali Ahmad', 'Siti Nur', 'John Tan'];
-
-  // Form controllers
-  String? _selectedStudent;
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _activityController = TextEditingController();
   final TextEditingController _scoreController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
-  void _addProgress() {
+  // Add new progress
+  Future<void> _addProgress() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _progressList.add(
-          ProgressRecord(
-            student: _selectedStudent ?? '',
-            activity: _activityController.text,
-            score: double.tryParse(_scoreController.text) ?? 0,
-            grade: _gradeController.text,
-            comments: _commentsController.text,
+      try {
+        final record = {
+          'name': _nameController.text,
+          'activity': _activityController.text,
+          'score': double.tryParse(_scoreController.text) ?? 0,
+          'grade': _gradeController.text,
+          'comments': _commentsController.text,
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        await _firestore.collection('progress_records').add(record);
+        _clearForm();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progress added successfully!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
           ),
         );
-      });
-      _clearForm();
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add progress: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
+  // Delete progress record
+  Future<void> _deleteProgress(String id) async {
+    try {
+      await _firestore.collection('progress_records').doc(id).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Progress deleted!'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete progress: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Clear form controllers
   void _clearForm() {
-    _selectedStudent = null;
+    _nameController.clear();
     _activityController.clear();
     _scoreController.clear();
     _gradeController.clear();
     _commentsController.clear();
   }
 
+  // Edit progress using a popup dialog
+  void _editProgress(ProgressRecord record) {
+    _nameController.text = record.name;
+    _activityController.text = record.activity;
+    _scoreController.text = record.score.toString();
+    _gradeController.text = record.grade;
+    _commentsController.text = record.comments;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Progress'),
+        content: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Student Name'),
+                  validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
+                ),
+                TextFormField(
+                  controller: _activityController,
+                  decoration: const InputDecoration(labelText: 'Activity Name'),
+                  validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
+                ),
+                TextFormField(
+                  controller: _scoreController,
+                  decoration: const InputDecoration(labelText: 'Score'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
+                ),
+                TextFormField(
+                  controller: _gradeController,
+                  decoration: const InputDecoration(labelText: 'Grade'),
+                  validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
+                ),
+                TextFormField(
+                  controller: _commentsController,
+                  decoration: const InputDecoration(labelText: 'Comments'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _clearForm();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (_formKey.currentState!.validate()) {
+                try {
+                  await _firestore.collection('progress_records').doc(record.id).update({
+                    'name': _nameController.text,
+                    'activity': _activityController.text,
+                    'score': double.tryParse(_scoreController.text) ?? 0,
+                    'grade': _gradeController.text,
+                    'comments': _commentsController.text,
+                  });
+
+                  _clearForm();
+                  Navigator.of(context).pop();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Progress updated successfully!'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update progress: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Student Progress')),
+      appBar: AppBar(title: const Text('Student Progress')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -2755,42 +2901,51 @@ class _ProgressPageState extends State<ProgressPage> {
             Form(
               key: _formKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedStudent,
-                    items: _students
-                        .map((student) =>
-                            DropdownMenuItem(value: student, child: Text(student)))
-                        .toList(),
-                    onChanged: (value) => setState(() => _selectedStudent = value),
-                    decoration:
-                        const InputDecoration(labelText: 'Select Student'),
-                    validator: (value) =>
-                        value == null ? 'Please select a student' : null,
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Student Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
                   ),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _activityController,
-                    decoration:
-                        const InputDecoration(labelText: 'Activity Name'),
-                    validator: (v) =>
-                        v!.isEmpty ? 'Please enter an activity' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Activity Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
                   ),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _scoreController,
-                    decoration: const InputDecoration(labelText: 'Score'),
+                    decoration: const InputDecoration(
+                      labelText: 'Score',
+                      border: OutlineInputBorder(),
+                    ),
                     keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        v!.isEmpty ? 'Please enter a score' : null,
+                    validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
                   ),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _gradeController,
-                    decoration: const InputDecoration(labelText: 'Grade'),
-                    validator: (v) =>
-                        v!.isEmpty ? 'Please enter a grade' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Grade',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
                   ),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _commentsController,
-                    decoration: const InputDecoration(labelText: 'Comments'),
+                    decoration: const InputDecoration(
+                      labelText: 'Comments',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
@@ -2803,41 +2958,71 @@ class _ProgressPageState extends State<ProgressPage> {
               ),
             ),
 
-            // ---------- List of Progress Records ----------
-            _progressList.isEmpty
-                ? const Text(
+            // ---------- Display Progress Records ----------
+            StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('progress_records')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Text(
                     'No progress records yet.',
                     style: TextStyle(color: Colors.grey),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _progressList.length,
-                    itemBuilder: (context, index) {
-                      final record = _progressList[index];
-                      return Card(
-                        elevation: 2,
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        child: ListTile(
-                          title:
-                              Text('${record.student} — ${record.activity}'),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Score: ${record.score}, Grade: ${record.grade}'),
-                              Text('Comments: ${record.comments}'),
-                            ],
-                          ),
+                  );
+                }
+
+                final records = snapshot.data!.docs
+                    .map((doc) => ProgressRecord.fromDoc(doc))
+                    .toList();
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: records.length,
+                  itemBuilder: (context, index) {
+                    final record = records[index];
+                    return Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      child: ListTile(
+                        title: Text('${record.name} — ${record.activity}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Score: ${record.score}, Grade: ${record.grade}'),
+                            Text('Comments: ${record.comments}'),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _editProgress(record),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _deleteProgress(record.id),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
     );
   }
 }
+
 
 // ---------- Achievements ----------
 const bool isDemoMode = true;
@@ -4340,4 +4525,3 @@ class _UploadPageState extends State<UploadPage> {
     );
   }
 }
-
