@@ -2353,12 +2353,14 @@ class _ChatBodyState extends State<_ChatBody> {
                 icon: const Icon(Icons.stop_circle, color: Colors.red, size: 32),
                 tooltip: 'End Conversation',
                 onPressed: () {
+                  
                   context.read<ChatBloc>().add(ClearChatEvent());
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                         content:
                             Text('Perbualan telah tamat. Memulakan semula')),
                   );
+                  
                 },
               ),
             ],
@@ -2481,7 +2483,7 @@ class ChatError extends ChatState {
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final List<ChatMessage> _messages = [
     ChatMessage(
-      text: "Hello! I'm your AI study buddy. Ask me about: Java programming!",
+      text: "Hello! Saya pembantu pembelajaran AI anda.",
       isUser: false,
       timestamp: DateTime.now(),
     ),
