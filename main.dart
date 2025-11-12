@@ -10,9 +10,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'forum_page.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:collection/collection.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 
 
-
+late final GenerativeModel aiModel;
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
@@ -22,7 +24,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -1475,253 +1477,839 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
 enum QuestionType { mcq, shortAnswer }
 enum QuizStatus { draft, published }
 
+/// Model for a single question
 class Question {
+  final String id; // Unique ID for each question
   final String questionText;
   final QuestionType type;
   final List<String> options; // For MCQ
-  final String answer; // For short answer and correct answer for MCQ
+  final String answer; // Correct answer
+  final String? explanation; // For detailed feedback (US006-03)
 
   Question({
+    required this.id,
     required this.questionText,
     required this.type,
     this.options = const [],
     required this.answer,
+    this.explanation,
   });
+
+   // NEW: Convert Question object to a Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'questionText': questionText,
+      'type': type.name, // Store enum as string
+      'options': options,
+      'answer': answer,
+      'explanation': explanation,
+    };
+  }
+
+  // NEW: Create a Question object from a Map (e.g., from Firestore)
+  factory Question.fromMap(Map<String, dynamic> map) {
+    return Question(
+      id: map['id'] as String,
+      questionText: map['questionText'] as String,
+      type: QuestionType.values.firstWhere(
+        (e) => e.name == map['type'],
+        orElse: () => QuestionType.mcq, // Default to MCQ if type is missing/invalid
+      ),
+      options: List<String>.from(map['options'] ?? []),
+      answer: map['answer'] as String,
+      explanation: map['explanation'] as String?,
+    );
+  }
 }
 
+/// Model for a Quiz (created by a teacher)
 class Quiz {
-  final String title;
-  final String topic;
-  final List<Question> questions;
+  final String id; // Unique ID for the quiz
+  String title;
+  String topic;
+  List<Question> questions;
   QuizStatus status;
+  String createdBy;
 
   Quiz({
+    required this.id,
     required this.title,
     required this.topic,
     required this.questions,
     this.status = QuizStatus.draft,
+    required this.createdBy,
+  });
+
+   // Convert Quiz object to a Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'topic': topic,
+      'questions': questions.map((q) => q.toMap()).toList(), // Convert list of Questions
+      'status': status.name, // Store enum as string
+      'createdBy': createdBy,
+      'createdAt': FieldValue.serverTimestamp(), // Good practice
+    };
+  }
+
+  // Create a Quiz object from a Firestore document
+  factory Quiz.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Quiz(
+      id: doc.id,
+      title: data['title'] ?? '',
+      topic: data['topic'] ?? '',
+      questions: (data['questions'] as List<dynamic>?)
+              ?.map((qMap) => Question.fromMap(qMap as Map<String, dynamic>))
+              .toList() ??
+          [],
+      status: QuizStatus.values.firstWhere(
+        (e) => e.name == data['status'],
+        orElse: () => QuizStatus.draft,
+      ),
+      createdBy: data['createdBy'] ?? '',
+    );
+  }
+}
+
+/// Model to store a student's quiz attempt and results (US006-02)
+class QuizAttempt {
+  final String quizTitle;
+  final List<Question> questions;
+  final Map<String, String> userAnswers; // Map<QuestionID, UserAnswer>
+  final int score;
+  final int total;
+  final DateTime timestamp;
+
+  QuizAttempt({
+    required this.quizTitle,
+    required this.questions,
+    required this.userAnswers,
+    required this.score,
+    required this.total,
+    required this.timestamp,
   });
 }
-List<Quiz> dummyQuizzes = [];
+
 // ----------System Quiz ----------
+///Dummy list for storing student quiz history (US006-02)
+List<QuizAttempt> userQuizAttempts = [];
+
+/// System-Generated Quiz Data (US-System)
 final Map<String, List<Question>> systemQuizData = {
   "1.1 Strategi Penyelesaian Masalah": [
     Question(
-      questionText: 'State the four (4) reasons why strategy is needed in problem-solving.',
+      id: 's1-1',
+      questionText: 'Senaraikan empat teknik pemikiran komputasional.',
       type: QuestionType.shortAnswer,
-      answer: 'Meningkatkan kemahiran berfikir, Membantu pengembangan sesuatu konsep, Mewujudkan komunikasi dua hala, Menggalakkan pembelajaran kendiri',
+      answer: 'Leraian, Pengecaman corak, Peniskalaan, Algoritma',
+      explanation: 'Keempat-empat teknik ini adalah asas kepada pemikiran komputasional.'
     ),
     Question(
-      questionText: 'Which of the following is NOT one of the four (4) techniques of Computational Thinking?',
+      id: 's1-2',
+      questionText: 'Manakah antara berikut BUKAN ciri penyelesaian masalah berkesan?',
       type: QuestionType.mcq,
-      options: const ['Leraian', 'Pengecaman corak', 'Peniskalaan', 'Perhubungan'],
-      answer: 'Perhubungan',
+      options: const ['Kos', 'Masa', 'Sumber', 'Populariti'],
+      answer: 'Populariti',
+      explanation: 'Penyelesaian berkesan dinilai berdasarkan kos, masa, dan sumber yang digunakan.'
     ),
     Question(
-      questionText: 'List the three (3) characteristics of effective problem-solving.',
+      id: 's1-3',
+      questionText: 'Proses memecahkan masalah kepada bahagian yang lebih kecil & terkawal dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Leraian', 'Pengecaman corak', 'Peniskalaan', 'Algoritma'],
+      answer: 'Leraian',
+      explanation: 'Leraian (Decomposition) adalah langkah pertama dalam mempermudahkan masalah yang kompleks.'
+    ),
+    Question(
+      id: 's1-4',
+      questionText: 'Apakah proses penyelesaian masalah yang kelapan (terakhir)?',
       type: QuestionType.shortAnswer,
-      answer: 'Kos, Masa, Sumber',
+      answer: 'Membuat penambahbaikan',
+      explanation: 'Selepas penilaian, langkah terakhir adalah membuat penambahbaikan berdasarkan maklum balas.'
     ),
     Question(
-      questionText: 'Which step immediately follows "Menjana idea" in the eight (8) Problem-Solving Processes?',
+      id: 's1-5',
+      questionText: 'Mencari persamaan antara masalah & dalam masalah ialah teknik...',
       type: QuestionType.mcq,
-      options: const ['Menentukan masalah', 'Menjana penyelesaian', 'Melaksanakan penyelesaian', 'Membuat penilaian'],
-      answer: 'Menjana penyelesaian',
+      options: const ['Leraian', 'Pengecaman corak', 'Peniskalaan', 'Algoritma'],
+      answer: 'Pengecaman corak',
+      explanation: 'Pengecaman corak membantu kita mencari penyelesaian yang boleh diguna semula.'
     ),
   ],
   "1.2 Algoritma": [
     Question(
-      questionText: 'State the three (3) main characteristics of an effective Algorithm.',
+      id: 's2-1',
+      questionText: 'Senaraikan tiga (3) ciri algoritma.',
       type: QuestionType.shortAnswer,
       answer: 'Butiran jelas, Boleh dilaksanakan, Mempunyai batasan',
+      explanation: 'Algoritma mesti jelas, boleh diikuti, dan mempunyai titik permulaan dan penamat yang terhad.'
     ),
     Question(
-      questionText: 'Which component is missing in the fundamental process flow: INPUT → ? → OUTPUT?',
+      id: 's2-2',
+      questionText: 'Apakah perwakilan algoritma yang menggunakan simbol grafik?',
       type: QuestionType.mcq,
-      options: const ['Data', 'Pembolehubah', 'Proses', 'Algoritma'],
-      answer: 'Proses',
+      options: const ['Pseudokod', 'Carta Alir', 'Kod Atur Cara', 'Ralat Sintaks'],
+      answer: 'Carta Alir',
+      explanation: 'Carta Alir (Flowchart) menggunakan simbol-simbol piawai untuk mewakili arahan dan aliran.'
     ),
     Question(
-      questionText: 'What are the three (3) Control Structures found in programming?',
-      type: QuestionType.shortAnswer,
-      answer: 'Struktur Kawalan Urutan, Struktur Kawalan Pilihan, Struktur Kawalan Pengulangan',
-    ),
-    Question(
-      questionText: 'What type of error is one that does not perform the intended functions?',
+      id: 's2-3',
+      questionText: 'Struktur kawalan yang manakah membuat keputusan berasaskan syarat?',
       type: QuestionType.mcq,
-      options: const ['Ralat Sintaks', 'Ralat Masa Larian', 'Ralat Logik', 'Ralat Kawalan'],
+      options: const ['Struktur Kawalan Urutan', 'Struktur Kawalan Pilihan', 'Struktur Kawalan Pengulangan', 'Struktur Kawalan Data'],
+      answer: 'Struktur Kawalan Pilihan',
+      explanation: 'Struktur Kawalan Pilihan (Selection) menggunakan "if-else" atau "switch-case" untuk membuat keputusan.'
+    ),
+    Question(
+      id: 's2-4',
+      questionText: 'Ralat yang timbul apabila atur cara dijalankan, seperti pembahagian dengan sifar, dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Algoritma'],
+      answer: 'Ralat Masa Larian',
+      explanation: 'Ralat Masa Larian (Run-time Error) berlaku semasa program sedang dilaksanakan.'
+    ),
+    Question(
+      id: 's2-5',
+      questionText: 'Ralat yang menyebabkan atur cara tidak berfungsi seperti yang diingini (cth: output salah) dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Pengecaman'],
       answer: 'Ralat Logik',
+      explanation: 'Ralat Logik (Logic Error) bermakna atur cara boleh berjalan, tetapi menghasilkan output yang salah.'
     ),
   ],
   "1.3 Pemboleh Ubah, Pemalar dan Jenis Data": [
     Question(
-      questionText: 'Briefly define a PEMBOLEH UBAH (Variable).',
-      type: QuestionType.shortAnswer,
-      answer: 'Ruang simpanan sementara untuk nombor, teks & objek',
-    ),
-    Question(
-      questionText: 'Which of the following data types would be most suitable for storing the value 17.9?',
+      id: 's3-1',
+      questionText: 'Apakah jenis data yang sesuai untuk menyimpan nilai "hello world"?',
       type: QuestionType.mcq,
-      options: const ['Integer', 'double', 'char', 'Boolean'],
-      answer: 'double',
+      options: const ['int', 'double', 'char', 'String'],
+      answer: 'String',
+      explanation: 'String digunakan untuk menyimpan jujukan aksara (teks).'
     ),
     Question(
-      questionText: 'What is the difference between a Pemboleh Ubah Sejagat (Global) and a Pemboleh Ubah Setempat (Local)?',
+      id: 's3-2',
+      questionText: 'Apakah jenis data yang sesuai untuk menyimpan nilai "z"?',
+      type: QuestionType.mcq,
+      options: const ['int', 'double', 'char', 'String'],
+      answer: 'char',
+      explanation: 'char digunakan untuk menyimpan satu aksara sahaja.'
+    ),
+    Question(
+      id: 's3-3',
+      questionText: 'Apakah jenis data yang sesuai untuk menyimpan nilai "true" atau "false"?',
+      type: QuestionType.mcq,
+      options: const ['int', 'boolean', 'char', 'String'],
+      answer: 'boolean',
+      explanation: 'Boolean hanya boleh memegang nilai benar (true) atau palsu (false).'
+    ),
+    Question(
+      id: 's3-4',
+      questionText: 'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
       type: QuestionType.shortAnswer,
-      answer: 'Global functions in the entire program; Local functions only within the sub-program where it is declared.',
+      answer: 'Pemboleh ubah sejagat',
+      explanation: 'Pemboleh ubah Sejagat (Global Variable) mempunyai skop di seluruh atur cara.'
+    ),
+    Question(
+      id: 's3-5',
+      questionText: 'Pemboleh ubah yang diisytiharkan dalam sebuah fungsi dan tidak boleh diakses di luar fungsi itu dipanggil...',
+      type: QuestionType.shortAnswer,
+      answer: 'Pemboleh ubah setempat',
+      explanation: 'Pemboleh ubah Setempat (Local Variable) hanya wujud di dalam fungsi ia diisytiharkan.'
     ),
   ],
   "1.4 Struktur Kawalan": [
     Question(
-      questionText: 'The control structure that uses If-else-if and Switch-case is known as:',
+      id: 's4-1',
+      questionText: 'Operator logikal yang manakah hanya benar jika SEMUA syarat benar?',
       type: QuestionType.mcq,
-      options: const ['Kawalan Urutan', 'Kawalan Pilihan', 'Kawalan Pengulangan', 'Kawalan Logikal'],
-      answer: 'Kawalan Pilihan',
-    ),
-    Question(
-      questionText: 'State the two (2) primary operators that check for equality and inequality in the Relational Operators.',
-      type: QuestionType.shortAnswer,
-      answer: 'Sama dengan (==), Tidak sama dengan (!=)',
-    ),
-    Question(
-      questionText: 'In Logical Operators, which operator is only TRUE (✅) if ALL conditions are TRUE?',
-      type: QuestionType.mcq,
-      options: const ['OR', 'NOT', 'AND', 'IF'],
+      options: const ['AND', 'OR', 'NOT', 'IF'],
       answer: 'AND',
+      explanation: 'Operator AND (&&) memerlukan semua syarat benar untuk menghasilkan "true".'
+    ),
+    Question(
+      id: 's4-2',
+      questionText: 'Operator logikal yang manakah benar jika SALAH SATU syarat benar?',
+      type: QuestionType.mcq,
+      options: const ['AND', 'OR', 'NOT', 'IF'],
+      answer: 'OR',
+      explanation: 'Operator OR (||) hanya memerlukan satu syarat benar untuk menghasilkan "true".'
+    ),
+    Question(
+      id: 's4-3',
+      questionText: 'Apakah operator hubungan untuk "Tidak sama dengan"?',
+      type: QuestionType.mcq,
+      options: const ['==', '!=', '>=', '<='],
+      answer: '!=',
+      explanation: '`!=` digunakan untuk menyemak jika dua nilai tidak sama.'
+    ),
+    Question(
+      id: 's4-4',
+      questionText: 'Apakah struktur kawalan yang menggunakan "For", "While", dan "Do-while"?',
+      type: QuestionType.shortAnswer,
+      answer: 'Struktur Kawalan Pengulangan',
+      explanation: 'Ini adalah jenis-jenis gelung (loops) yang digunakan untuk pengulangan.'
+    ),
+    Question(
+      id: 's4-5',
+      questionText: 'Struktur kawalan "Switch-case" adalah sejenis struktur kawalan...',
+      type: QuestionType.shortAnswer,
+      answer: 'Pilihan',
+      explanation: 'Switch-case ialah satu cara untuk melaksanakan Struktur Kawalan Pilihan, alternatif kepada "if-else-if".'
     ),
   ],
   "1.5 Amalan Terbaik Pengaturcaraan": [
     Question(
-      questionText: 'List the four (4) factors that influence code readability.',
+      id: 's5-1',
+      questionText: 'Senaraikan tiga (3) faktor yang mempengaruhi kebolehbacaan kod.',
       type: QuestionType.shortAnswer,
-      answer: 'Inden yang konsisten, Jenis data, Pemboleh ubah yang bermakna, Komen',
+      answer: 'Inden yang konsisten, Pemboleh ubah yang bermakna, Komen',
+      explanation: 'Faktor-faktor ini (termasuk juga jenis data) membantu pengatur cara lain memahami kod anda.'
     ),
     Question(
-      questionText: 'Which type of error occurs due to grammar mistakes or the use of unrecognized characters/objects?',
+      id: 's5-2',
+      questionText: 'Apakah jenis ralat yang disebabkan oleh kesalahan tatabahasa dalam kod?',
       type: QuestionType.mcq,
-      options: const ['Ralat Masa Larian', 'Ralat Logik', 'Ralat Sintaks', 'Ralat Struktur'],
+      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Amalan'],
       answer: 'Ralat Sintaks',
+      explanation: 'Ralat Sintaks (Syntax Error) adalah seperti kesalahan ejaan atau tatabahasa yang tidak difahami oleh pengkompil.'
     ),
     Question(
-      questionText: 'Give two (2) examples of common Ralat Masa Larian (Runtime Errors).',
+      id: 's5-3',
+      questionText: 'Penggunaan nama pemboleh ubah seperti "x" dan "y" adalah amalan yang baik. (Benar/Palsu)',
+      type: QuestionType.mcq,
+      options: const ['Benar', 'Palsu'],
+      answer: 'Palsu',
+      explanation: 'Nama pemboleh ubah harus bermakna (cth: "lebar", "tinggi") supaya kod mudah difahami.'
+    ),
+    Question(
+      id: 's5-4',
+      questionText: 'Apakah tujuan utama meletakkan "komen" (comments) dalam atur cara?',
       type: QuestionType.shortAnswer,
-      answer: 'Pembahagian dengan digit 0, Mencari punca kuasa dua bagi nombor negatif',
+      answer: 'Untuk menerangkan fungsi kod',
+      explanation: 'Komen membantu manusia (pengatur cara) memahami apa yang dilakukan oleh sesuatu bahagian kod.'
+    ),
+    Question(
+      id: 's5-5',
+      questionText: 'Pembahagian dengan digit 0 akan menyebabkan ralat jenis apa?',
+      type: QuestionType.mcq,
+      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Komen'],
+      answer: 'Ralat Masa Larian',
+      explanation: 'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya boleh dikesan semasa atur cara dijalankan.'
     ),
   ],
   "1.6 Struktur Data dan Modular": [
     Question(
-      questionText: 'What is the definition of a TATASUSUNAN (Array)?',
+      id: 's6-1',
+      questionText: 'Apakah nama struktur data yang membolehkan koleksi beberapa nilai data dalam satu pemboleh ubah menggunakan indeks?',
       type: QuestionType.shortAnswer,
-      answer: 'Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks',
+      answer: 'Tatasusunan',
+      explanation: 'Tatasusunan (Array) menyimpan elemen dalam ruang memori berindeks.'
     ),
     Question(
-      questionText: 'Which of the following is NOT a benefit of using a Modular Structure?',
+      id: 's6-2',
+      questionText: 'Jika diberi: int[] senaraiUmur = {17, 18, 19}; Apakah nilai bagi senaraiUmur[1]?',
       type: QuestionType.mcq,
-      options: const ['Projek kompleks menjadi lebiringkas', 'Lebih mudah untuk diuji', 'Lebih mudah untuk digunakan semula', 'Memastikan kod hanya ditulis oleh satu orang'],
-      answer: 'Memastikan kod hanya ditulis oleh satu orang',
+      options: const ['17', '18', '19', 'Ralat'],
+      answer: '18',
+      explanation: 'Indeks tatasusunan bermula dari 0. Jadi, indeks 0 ialah 17, dan indeks 1 ialah 18.'
+    ),
+    Question(
+      id: 's6-3',
+      questionText: 'Nyatakan satu kelebihan menggunakan struktur modul (subatur cara).',
+      type: QuestionType.shortAnswer,
+      answer: 'Lebih mudah untuk digunakan semula',
+      explanation: 'Kelebihan lain: lebih mudah diuji, projek kompleks jadi ringkas, mudah dibahagikan tugas. (Mana-mana jawapan ini diterima)'
+    ),
+    Question(
+      id: 's6-4',
+      questionText: 'Subatur cara yang MEMULANGKAN nilai dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Prosedur', 'Fungsi', 'Tatasusunan', 'Modul'],
+      answer: 'Fungsi',
+      explanation: 'Fungsi (Function) memulangkan nilai (cth: "int kiraLuas()"), manakala Prosedur (Procedure) tidak (cth: "void paparNama()").'
+    ),
+    Question(
+      id: 's6-5',
+      questionText: 'Dalam "void paparHarga(String item, double h)", "item" dan "h" dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Parameter', 'Pemboleh ubah', 'Fungsi', 'Jenis Data'],
+      answer: 'Parameter',
+      explanation: 'Ini adalah parameter yang menerima nilai apabila subatur cara itu dipanggil.'
     ),
   ],
   "1.7 Pembagunan Aplikasi": [
     Question(
-      questionText: 'What does the acronym SDLC stand for in software development?',
+      id: 's7-1',
+      questionText: 'Apakah maksud singkatan SDLC?',
       type: QuestionType.shortAnswer,
-      answer: 'Kitaran Hayat Pembangunan Sistem (System Development Life Cycle)',
+      answer: 'Kitaran Hayat Pembangunan Sistem',
+      explanation: 'SDLC bermaksud "System Development Life Cycle".'
     ),
     Question(
-      questionText: 'List the five (5) steps in the System Development Life Cycle (SDLC).',
+      id: 's7-2',
+      questionText: 'Nyatakan fasa pertama dalam SDLC.',
       type: QuestionType.shortAnswer,
-      answer: '1. Analisis masalah, 2. Reka bentuk penyelesaian, 3. Laksana penyelesaian, 4. Uji & nyah ralat, 5. Dokumentasi',
+      answer: 'Analisis masalah',
+      explanation: 'Fasa pertama ialah Analisis Masalah, diikuti Reka Bentuk, Laksana, Uji & Nyah Ralat, dan Dokumentasi.'
+    ),
+    Question(
+      id: 's7-3',
+      questionText: 'Fasa "Uji & Nyah Ralat" datang SELEPAS fasa mana?',
+      type: QuestionType.mcq,
+      options: const ['Analisis masalah', 'Reka bentuk penyelesaian', 'Laksana penyelesaian', 'Dokumentasi'],
+      answer: 'Laksana penyelesaian',
+      explanation: 'Selepas kod ditulis (dilaksana), ia mesti diuji untuk mencari ralat.'
+    ),
+    Question(
+      id: 's7-4',
+      questionText: 'Reka bentuk yang manakah melibatkan reka bentuk antara muka (GUI)?',
+      type: QuestionType.mcq,
+      options: const ['Logikal', 'Fizikal', 'Analisis', 'Laksana'],
+      answer: 'Fizikal',
+      explanation: 'Reka bentuk logikal ialah aliran (carta alir/pseudokod), manakala reka bentuk fizikal ialah rupa (GUI) dan pangkalan data.'
+    ),
+    Question(
+      id: 's7-5',
+      questionText: 'Apakah fasa terakhir dalam SDLC?',
+      type: QuestionType.shortAnswer,
+      answer: 'Dokumentasi',
+      explanation: 'Fasa terakhir ialah Dokumentasi, yang penting untuk rujukan dan penyelenggaraan masa depan.'
     ),
   ],
 };
+
+/// System-Generated Summative Test (US-System)
+final List<Question> summativeTestQuestions = [
+  Question(
+      id: 'sum-1',
+      questionText: 'Yang manakah penyataan yang tidak tepat mengenai mengapa perlunya strategi dalam penyelesaian masalah?',
+      type: QuestionType.mcq,
+      options: const ['Membantu pengembangan sesuatu konsep', 'Menggalakkan pembelajaran kendiri', 'Meningkatkan kemahiran berfikir', 'Mewujudkan komunikasi sehala'],
+      answer: 'Mewujudkan komunikasi sehala',
+      explanation: 'Strategi penyelesaian masalah menggalakkan komunikasi DUA hala, bukan sehala.'
+  ),
+  Question(
+      id: 'sum-2',
+      questionText: 'Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian, merujuk kepada konsep...',
+      type: QuestionType.mcq,
+      options: const ['Analisis Masalah', 'Penyelesaian Masalah', 'Reka Bentuk Sistem', 'Algoritma'],
+      answer: 'Penyelesaian Masalah',
+      explanation: 'Ini adalah definisi asas bagi penyelesaian masalah.'
+  ),
+  Question(
+      id: 'sum-3',
+      questionText: 'Teknik Leraian, Pengecaman Corak, Peniskalaan, dan Algoritma adalah teknik dalam...',
+      type: QuestionType.mcq,
+      options: const ['SDLC', 'Amalan Terbaik', 'Pemikiran Komputasional', 'Struktur Kawalan'],
+      answer: 'Pemikiran Komputasional',
+      explanation: 'Ini adalah empat tonggak utama dalam Pemikiran Komputasional.'
+  ),
+  Question(
+      id: 'sum-4',
+      questionText: 'Apakah fungsi bagi struktur kawalan pilihan?',
+      type: QuestionType.mcq,
+      options: const [
+        'Memberikan perisian komputer keupayaan untuk membuat keputusan berasaskan syarat',
+        'Mengulang satu set arahan sehingga syarat dipenuhi',
+        'Melaksanakan arahan satu per satu mengikut urutan',
+        'Menyimpan data dalam memori'
+      ],
+      answer: 'Memberikan perisian komputer keupayaan untuk membuat keputusan berasaskan syarat',
+      explanation: 'Struktur kawalan pilihan (cth: "if", "switch") membenarkan atur cara membuat keputusan.'
+  ),
+  Question(
+      id: 'sum-5',
+      questionText: 'Apakah yang dimaksudkan dengan amalan terbaik dalam pengaturcaraan?',
+      type: QuestionType.mcq,
+      options: const [
+        'Menjalankan atur cara tanpa sebarang ralat',
+        'Mempraktikkan amalan-amalan untuk menghasilkan atur cara yang baik dan mudah difahami',
+        'Menulis kod atur cara dengan paling pantas',
+        'Menggunakan pemboleh ubah yang paling sedikit'
+      ],
+      answer: 'Mempraktikkan amalan-amalan untuk menghasilkan atur cara yang baik dan mudah difahami',
+      explanation: 'Amalan terbaik mementingkan kebolehbacaan, kecekapan, dan penyelenggaraan kod.'
+  ),
+  Question(
+      id: 'sum-6',
+      questionText: 'Kata kunci "int" dalam Java digunakan untuk mengisytiharkan pemboleh ubah jenis...',
+      type: QuestionType.shortAnswer,
+      answer: 'Integer',
+      explanation: '`int` adalah singkatan untuk "Integer", yang merupakan nombor bulat.'
+  ),
+  Question(
+      id: 'sum-7',
+      questionText: 'Jenis data "float" atau "double" digunakan untuk menyimpan nombor yang mempunyai...',
+      type: QuestionType.shortAnswer,
+      answer: 'Titik perpuluhan',
+      explanation: 'Nombor perpuluhan (cth: 10.5) disimpan sebagai "float" atau "double".'
+  ),
+  Question(
+      id: 'sum-8',
+      questionText: 'Data dalam bentuk pilihan "Benar" (True) atau "Palsu" (False) ialah jenis data...',
+      type: QuestionType.shortAnswer,
+      answer: 'Boolean',
+      explanation: 'Jenis data "boolean" hanya boleh menyimpan nilai "true" atau "false".'
+  ),
+  Question(
+      id: 'sum-9',
+      questionText: 'Perwakilan algoritma yang menggunakan senarai arahan dalam bahasa pertuturan manusia dipanggil...',
+      type: QuestionType.shortAnswer,
+      answer: 'Pseudokod',
+      explanation: 'Pseudokod ialah cara menulis logik atur cara menggunakan bahasa biasa, bukan kod sebenar.'
+  ),
+  Question(
+      id: 'sum-10',
+      questionText: 'Perwakilan algoritma yang menggunakan simbol grafik dipanggil...',
+      type: QuestionType.shortAnswer,
+      answer: 'Carta alir',
+      explanation: 'Carta alir (flowchart) menggunakan simbol untuk mewakili proses, keputusan, dan aliran.'
+  ),
+  Question(
+      id: 'sum-11',
+      questionText: 'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Pemboleh ubah setempat', 'Pemboleh ubah sejagat', 'Pemalar', 'Jenis Data'],
+      answer: 'Pemboleh ubah sejagat',
+      explanation: 'Pemboleh ubah sejagat (global) boleh diakses dari mana-mana bahagian atur cara.'
+  ),
+  Question(
+      id: 'sum-12',
+      questionText: 'Fasa pertama dalam Kitaran Hayat Pembangunan Sistem (SDLC) ialah...',
+      type: QuestionType.mcq,
+      options: const ['Reka bentuk penyelesaian', 'Laksana penyelesaian', 'Analisis Masalah', 'Dokumentasi'],
+      answer: 'Analisis Masalah',
+      explanation: 'Proses SDLC sentiasa bermula dengan menganalisis masalah yang perlu diselesaikan.'
+  ),
+  Question(
+      id: 'sum-13',
+      questionText: 'Ralat yang berlaku disebabkan pembahagian dengan digit 0 ialah...',
+      type: QuestionType.mcq,
+      options: const ['Ralat logik', 'Ralat masa larian', 'Ralat sintaks', 'Ralat pengguna'],
+      answer: 'Ralat masa larian',
+      explanation: 'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya dikesan semasa atur cara cuba melakukan pembahagian itu.'
+  ),
+  Question(
+      id: 'sum-14',
+      questionText: 'Fasa "Menguji dan Menyahralat" dalam SDLC datang selepas fasa...',
+      type: QuestionType.mcq,
+      options: const ['Analisis Masalah', 'Reka Bentuk Penyelesaian', 'Laksana Penyelesaian', 'Dokumentasi'],
+      answer: 'Laksana Penyelesaian',
+      explanation: 'Selepas atur cara ditulis (dilaksanakan), ia mesti diuji untuk mencari ralat.'
+  ),
+  Question(
+      id: 'sum-15',
+      questionText: 'Diberi: String[] senaraiWarna = {"Ungu", "Biru", "Merah"}; Apakah indeks bagi "Biru"?',
+      type: QuestionType.mcq,
+      options: const ['0', '1', '2', '3'],
+      answer: '1',
+      explanation: 'Indeks tatasusunan (array) bermula dari 0. "Ungu" ialah [0], "Biru" ialah [1], dan "Merah" ialah [2].'
+  ),
+];
+
 // ---------- Quiz Page ----------
-class QuizPage extends StatelessWidget {
+class QuizPage extends StatefulWidget {
   const QuizPage({super.key});
 
   @override
+  State<QuizPage> createState() => _QuizPageState();
+}
+
+class _QuizPageState extends State<QuizPage> {
+  // Helper function to navigate to the quiz-taking page
+  void _startQuiz(BuildContext context, String title, List<Question> questions) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TakeQuizPage(
+          quizTitle: title,
+          questions: questions,
+        ),
+      ),
+    ).then((_) {
+      // When returning from a quiz, refresh the state to show new quiz history
+      setState(() {});
+    });
+  }
+
+ // Helper function to delete a quiz from Firestore
+  void _deleteQuiz(Quiz quiz) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Quiz'),
+        content: Text('Are you sure you want to delete "${quiz.title}"? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance.collection('quizzes').doc(quiz.id).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Quiz deleted'), backgroundColor: Colors.red),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete quiz: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  // Helper function to edit a quiz (US005-02)
+  void _editQuiz(Quiz quiz) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreateQuizPage(quizToEdit: quiz),
+      ),
+    ).then((_) {
+      // Refresh the list in case changes were made
+      setState(() {});
+    });
+  }
+
+// Helper function to review a quiz
+  void _reviewQuiz(Quiz quiz) {
+     Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReviewQuizPage(
+          quizTitle: quiz.title,
+          questions: quiz.questions,
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Get user type to show/hide teacher buttons
+    final user = context.watch<FirebaseUserState>().currentUser;
+    final isTeacher = user?.userType == UserType.teacher;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quiz Management'),
+        title: const Text('🎯 Quizzes'),
         backgroundColor: Colors.blueGrey,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // --- 1. System Quiz Button ---
-            ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to a page showing system-generated quizzes
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SystemQuizListPage(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.auto_stories),
-              label: const Text('Generate System Quizzes (From Notes)'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // --- 2. Teacher Create Quiz Button ---
-            ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to the quiz creation form
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreateQuizPage(),
-                  ),
-                );
-              },
+        foregroundColor: Colors.white,
+        actions: [
+          if (isTeacher)
+            IconButton(
               icon: const Icon(Icons.add_box),
-              label: const Text('Create New Quiz (Teacher)'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                backgroundColor: Colors.green, // Differentiate teacher function
-              ),
+              tooltip: 'Create New Quiz',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CreateQuizPage()),
+                ).then((_) {
+                  // Refresh list when returning from create page
+                  setState(() {});
+                });
+              },
             ),
-            const SizedBox(height: 40),
-            
-            // Placeholder for displaying saved/published quizzes (Note: This relies on a ListView which needs a StateFul Widget or Provider/Bloc listener to update in real-time. For simplicity, we use a ListView here, but a proper solution would use a state management solution to update `dummyQuizzes`.)
-            const Text(
-              'My Quizzes (Drafts & Published)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Expanded(
-              child: ValueListenableBuilder<int>(
-                valueListenable: ValueNotifier(dummyQuizzes.length),
-                builder: (context, _, child) {
-                  return ListView.builder(
-                    itemCount: dummyQuizzes.length,
-                    itemBuilder: (context, index) {
-                      final quiz = dummyQuizzes[index];
-                      return ListTile(
-                        title: Text(quiz.title),
-                        subtitle: Text('${quiz.topic} - Status: ${quiz.status.name.toUpperCase()}'),
-                        trailing: Icon(quiz.status == QuizStatus.published ? Icons.check_circle : Icons.edit),
-                      );
-                    },
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // --- 1. System Quizzes ---
+            _buildSectionTitle('System Quizzes'),
+            Card(
+              elevation: 2,
+              child: ListTile(
+                leading: const Icon(Icons.auto_stories, color: Colors.blue),
+                title: const Text('Sub-Topic Quizzes'),
+                subtitle: const Text('Practice questions for each topic'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SystemQuizListPage()),
                   );
                 },
               ),
             ),
+            const SizedBox(height: 10),
+            Card(
+              elevation: 2,
+              color: Colors.blue[50],
+              child: ListTile(
+                leading: const Icon(Icons.quiz, color: Colors.blue),
+                title: const Text('Summative Test (Bab 1)'),
+                subtitle: const Text('Test your knowledge on the whole chapter'),
+                trailing: const Icon(Icons.play_arrow),
+                onTap: () => _startQuiz(context, 'Summative Test (Bab 1)', summativeTestQuestions),
+              ),
+            ),
+            const Divider(height: 30, thickness: 1),
+
+            // --- 2. Teacher-Created Quizzes ---
+             _buildSectionTitle('Teacher Quizzes'),
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('quizzes')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No quizzes published by your teacher yet.'),
+                    ),
+                  );
+                }
+
+                final quizzes = snapshot.data!.docs
+                    .map((doc) => Quiz.fromFirestore(doc))
+                    .toList();
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: quizzes.length,
+                  itemBuilder: (context, index) {
+                    final quiz = quizzes[index];
+                    
+                    // Show drafts only to teachers
+                    if (quiz.status == QuizStatus.draft && !isTeacher) {
+                      return const SizedBox.shrink();
+                    }
+                    
+                    return Card(
+                      elevation: 2,
+                      child: ListTile(
+                        leading: Icon(
+                          quiz.status == QuizStatus.published ? Icons.check_circle : Icons.edit,
+                          color: quiz.status == QuizStatus.published ? Colors.green : Colors.orange,
+                        ),
+                        title: Text(quiz.title),
+                        subtitle: Text(
+                            '${quiz.topic} - ${quiz.questions.length} questions'),
+                        trailing: isTeacher
+                            ? PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  if (value == 'edit') _editQuiz(quiz);
+                                  if (value == 'delete') _deleteQuiz(quiz);
+                                  if (value == 'review') _reviewQuiz(quiz); // NEW: Handle review
+                                },
+                                itemBuilder: (context) => [
+                                  // NEW: Only show 'Edit' if quiz is a draft
+                                  if (quiz.status == QuizStatus.draft)
+                                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                                  
+                                  // NEW: Show 'Review' for all
+                                  const PopupMenuItem(value: 'review', child: Text('Review Answers')),
+
+                                  // 'Delete' is always available for teachers
+                                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                ],
+                              )
+                            : const Icon(Icons.play_arrow),
+                        onTap: () {
+                          if (isTeacher) {
+                            // NEW: Default tap action for teacher is 'review'
+                            _reviewQuiz(quiz);
+                          } else if (quiz.status == QuizStatus.published) {
+                            // Student tap action is 'start quiz'
+                            _startQuiz(context, quiz.title, quiz.questions);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+
+            const Divider(height: 30, thickness: 1),
+
+            // --- 3. Student Quiz History (US006-02) ---
+            if (!isTeacher) ...[
+              _buildSectionTitle('My Quiz History'),
+              userQuizAttempts.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text('You have not completed any quizzes yet.'),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: userQuizAttempts.length,
+                      itemBuilder: (context, index) {
+                        final attempt = userQuizAttempts.reversed.toList()[index]; // Show newest first
+                        return Card(
+                          elevation: 2,
+                          child: ListTile(
+                            leading: const Icon(Icons.history, color: Colors.purple),
+                            title: Text(attempt.quizTitle),
+                            subtitle: Text('Score: ${attempt.score}/${attempt.total} - Completed on ${attempt.timestamp.toLocal().toString().split(' ')[0]}'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              // Navigate to the results page to review
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => QuizResultsPage(attempt: attempt),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ],
           ],
         ),
       ),
     );
   }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+      ),
+    );
+  }
 }
+
 // ---------- System Quiz List Page ----------
 class SystemQuizListPage extends StatelessWidget {
   const SystemQuizListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    final isTeacher = user?.userType == UserType.teacher;
+    
     return Scaffold(
       appBar: AppBar(title: const Text('System-Generated Quizzes')),
       body: ListView.builder(
@@ -1729,24 +2317,38 @@ class SystemQuizListPage extends StatelessWidget {
         itemBuilder: (context, index) {
           final topicTitle = systemQuizData.keys.elementAt(index);
           final generatedQuestions = systemQuizData[topicTitle]!;
-          
+
           return Card(
             margin: const EdgeInsets.all(8.0),
             child: ListTile(
-              title: Text('Quiz for topicTitle'),
-              subtitle: Text('${generatedQuestions.length} Questions (System Generated)'),
+              title: Text(topicTitle),
+              subtitle: Text('${generatedQuestions.length} Questions'),
               trailing: const Icon(Icons.play_arrow),
               onTap: () {
-                // Navigate to the detailed quiz view or start the quiz.
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DetailedQuizView(
-                      quizTitle: 'System Quiz: $topicTitle',
-                      questions: generatedQuestions,
+                // Navigate to the quiz-taking page (US006-01)
+                if (isTeacher) {
+                  // NEW: Teacher reviews the quiz
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReviewQuizPage(
+                        quizTitle: topicTitle,
+                        questions: generatedQuestions,
+                      ),
                     ),
-                  ),
-                );
+                  );
+                } else {
+                  // Student starts the quiz
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TakeQuizPage(
+                        quizTitle: topicTitle,
+                        questions: generatedQuestions,
+                      ),
+                    ),
+                  );
+                }
               },
             ),
           );
@@ -1755,64 +2357,121 @@ class SystemQuizListPage extends StatelessWidget {
     );
   }
 }
-class DetailedQuizView extends StatelessWidget {
+
+
+// ---------- REVIEW QUIZ PAGE (FOR TEACHERS) ----------
+class ReviewQuizPage extends StatelessWidget {
   final String quizTitle;
   final List<Question> questions;
 
-  const DetailedQuizView({super.key, required this.quizTitle, required this.questions});
+  const ReviewQuizPage({
+    super.key, 
+    required this.quizTitle, 
+    required this.questions
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(quizTitle)),
-      body: ListView.builder(
+      appBar: AppBar(
+        title: Text('Review: $quizTitle'),
+        backgroundColor: Colors.orange[700],
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        itemCount: questions.length,
-        itemBuilder: (context, index) {
-          final q = questions[index];
-          return Card(
-            elevation: 2,
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Q${index + 1}: ${q.questionText}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Type: ${q.type.name.toUpperCase()}'),
-                  if (q.type == QuestionType.mcq)
-                    ...q.options.asMap().entries.map((e) => Text('  - ${e.value}')),
-                  const SizedBox(height: 4),
-                  Text('Correct Answer: ${q.answer}', style: const TextStyle(color: Colors.green)),
-                ],
-              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Reviewing Answers (${questions.length} questions)',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          );
-        },
+            const Divider(thickness: 1),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: questions.length,
+              itemBuilder: (context, index) {
+                final q = questions[index];
+                
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Q${index + 1}: ${q.questionText}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        
+                        if (q.type == QuestionType.mcq)
+                          ...q.options.map((opt) => Text(
+                            '- $opt',
+                            style: TextStyle(
+                              color: opt == q.answer ? Colors.green[800] : Colors.black87,
+                              fontWeight: opt == q.answer ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          )),
+                        
+                        const SizedBox(height: 8),
+                        Text(
+                          'Correct Answer: ${q.answer}',
+                          style: TextStyle(
+                            color: Colors.green[800],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (q.explanation != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8.0),
+                            width: double.infinity,
+                            color: Colors.grey[200],
+                            child: Text(
+                              'Explanation: ${q.explanation}',
+                              style: TextStyle(color: Colors.grey[800], fontStyle: FontStyle.italic),
+                            ),
+                          )
+                        ]
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 }
-// ---------- Quiz Creation ----------
+
+// ---------- Quiz Creation / EDIT Page (US005-01 & US005-02) ----------
 class CreateQuizPage extends StatefulWidget {
-  const CreateQuizPage({super.key});
+  final Quiz? quizToEdit; // If not null, we are in "Edit" mode
+  const CreateQuizPage({super.key, this.quizToEdit});
 
   @override
   State<CreateQuizPage> createState() => _CreateQuizPageState();
 }
 
 class _CreateQuizPageState extends State<CreateQuizPage> {
-  final _titleController = TextEditingController();
-  final _topicController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _titleController;
+  late TextEditingController _topicController;
   List<Question> _questions = [];
+  bool _isEditing = false;
+  bool _isLoading = false; 
 
-  // Used for adding a new question
+  // Controllers for adding a new question
   final _newQuestionTextController = TextEditingController();
   final _newAnswerController = TextEditingController();
+  final _newExplanationController = TextEditingController(); // For feedback
   QuestionType _newQuestionType = QuestionType.mcq;
   final List<TextEditingController> _mcqOptionControllers = [
     TextEditingController(),
@@ -1823,244 +2482,1168 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   int _correctMcqOptionIndex = 0; // Index of the correct option
 
   @override
+  void initState() {
+    super.initState();
+    _isEditing = widget.quizToEdit != null;
+
+    if (_isEditing) {
+      // Populate fields from existing quiz
+      final quiz = widget.quizToEdit!;
+      _titleController = TextEditingController(text: quiz.title);
+      _topicController = TextEditingController(text: quiz.topic);
+      _questions = List.from(quiz.questions);
+    } else {
+      // Start fresh
+      _titleController = TextEditingController();
+      _topicController = TextEditingController();
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _topicController.dispose();
     _newQuestionTextController.dispose();
     _newAnswerController.dispose();
+    _newExplanationController.dispose();
     for (var controller in _mcqOptionControllers) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  // Helper to add a question to the list
+  // Helper to add a question to the local list
   void _addQuestion() {
-    if (_newQuestionTextController.text.isEmpty || (_newQuestionType == QuestionType.shortAnswer && _newAnswerController.text.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in the question text and answer/options.')),
-      );
+    if (_newQuestionTextController.text.isEmpty) {
+      _showError('Please enter the question text.');
       return;
     }
+
+    String answer;
+    List<String> options = [];
 
     if (_newQuestionType == QuestionType.mcq) {
-      final options = _mcqOptionControllers.map((c) => c.text).toList();
+      options = _mcqOptionControllers.map((c) => c.text).toList();
       if (options.any((opt) => opt.isEmpty)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill all 4 MCQ options.')),
-        );
+        _showError('Please fill all 4 MCQ options.');
         return;
       }
-      final correctAnswer = options[_correctMcqOptionIndex];
-
-      setState(() {
-        _questions.add(
-          Question(
-            questionText: _newQuestionTextController.text,
-            type: QuestionType.mcq,
-            options: options,
-            answer: correctAnswer,
-          ),
-        );
-      });
+      answer = options[_correctMcqOptionIndex];
     } else { // Short Answer
-      setState(() {
-        _questions.add(
-          Question(
-            questionText: _newQuestionTextController.text,
-            type: QuestionType.shortAnswer,
-            answer: _newAnswerController.text,
-          ),
-        );
-      });
+      if (_newAnswerController.text.isEmpty) {
+        _showError('Please enter the correct answer.');
+        return;
+      }
+      answer = _newAnswerController.text;
     }
 
-    // Reset controllers for next question
+    setState(() {
+      _questions.add(
+        Question(
+          id: UniqueKey().toString(), // Simple unique ID
+          questionText: _newQuestionTextController.text,
+          type: _newQuestionType,
+          options: options,
+          answer: answer,
+          explanation: _newExplanationController.text.isEmpty ? null : _newExplanationController.text,
+        ),
+      );
+    });
+
+    // Reset controllers
     _newQuestionTextController.clear();
     _newAnswerController.clear();
-    for (var c in _mcqOptionControllers) {
-      c.clear();
-    }
-    setState(() {
-      _newQuestionType = QuestionType.mcq; 
-      _correctMcqOptionIndex = 0;
-    });
+    _newExplanationController.clear();
+    for (var c in _mcqOptionControllers) c.clear();
+    setState(() => _correctMcqOptionIndex = 0);
   }
 
-  // Save the quiz as draft or publish it
-  void _saveQuiz(QuizStatus status) {
-    if (_titleController.text.isEmpty || _questions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a title and add at least one question.')),
-      );
+  // Save or Update the quiz (US005-01, US005-02)
+  Future<void> _saveQuiz(QuizStatus status) async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_questions.isEmpty) {
+      _showError('Please add at least one question.');
       return;
     }
-
-    final newQuiz = Quiz(
-      title: _titleController.text,
-      topic: _topicController.text.isEmpty ? 'General' : _topicController.text,
-      questions: _questions,
-      status: status,
-    );
-
-    // Add to dummy storage
-    dummyQuizzes.add(newQuiz);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${newQuiz.title} saved as ${status.name.toUpperCase()}!')),
-    );
     
-    // Go back to the QuizPage
-    Navigator.pop(context);
+    _formKey.currentState!.save();
+    
+    final user = context.read<FirebaseUserState>().currentUser;
+    if (user == null) {
+      _showError('You must be logged in to create a quiz.');
+      return;
+    }
+    
+    setState(() => _isLoading = true);
+
+    try {
+      if (_isEditing) {
+        // Find and update the existing quiz in the global list
+        final quiz = widget.quizToEdit!;
+        quiz.title = _titleController.text;
+        quiz.topic = _topicController.text;
+        quiz.questions = _questions;
+        quiz.status = status;
+        
+        // Update in Firestore
+        await FirebaseFirestore.instance
+            .collection('quizzes')
+            .doc(quiz.id)
+            .update(quiz.toMap());
+
+      } else {
+        // Add a new quiz to the global list
+        final newQuiz = Quiz(
+          id: '', // ID will be auto-generated by Firestore
+          title: _titleController.text,
+          topic: _topicController.text.isEmpty ? 'General' : _topicController.text,
+          questions: _questions,
+          status: status,
+          createdBy: user.id, // Link quiz to the teacher
+        );
+        
+        // Add to Firestore
+        await FirebaseFirestore.instance.collection('quizzes').add(newQuiz.toMap());
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Quiz saved as ${status.name.toUpperCase()}!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context); // Go back to the QuizPage
+      }
+
+    } catch (e) {
+      _showError('Failed to save quiz: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+  
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create New Quiz (Teacher)'),
+        title: Text(_isEditing ? 'Edit Quiz' : 'Create New Quiz'),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading 
+      ? const Center(child: CircularProgressIndicator()) 
+      : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // Quiz Title and Topic
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Quiz Title'),
-            ),
-            TextFormField(
-              controller: _topicController,
-              decoration: const InputDecoration(labelText: 'Topic (e.g., 1.1 Strategi Penyelesaian Masalah)'),
-            ),
-            const SizedBox(height: 20),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Quiz Title', border: OutlineInputBorder()),
+                validator: (v) => v!.isEmpty ? 'Please enter a title' : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _topicController,
+                decoration: const InputDecoration(labelText: 'Topic (e.g., 1.1)', border: OutlineInputBorder()),
+                validator: (v) => v!.isEmpty ? 'Please enter a topic' : null,
+              ),
+              const Divider(height: 30, thickness: 2),
 
-            const Text('Add New Question:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            
-            // Question Type
-            Row(
-              children: [
-                const Text('Type:'),
-                Radio<QuestionType>(
-                  value: QuestionType.mcq,
-                  groupValue: _newQuestionType,
-                  onChanged: (QuestionType? value) {
-                    setState(() {
-                      _newQuestionType = value!;
-                    });
-                  },
-                ),
-                const Text('MCQ'),
-                Radio<QuestionType>(
-                  value: QuestionType.shortAnswer,
-                  groupValue: _newQuestionType,
-                  onChanged: (QuestionType? value) {
-                    setState(() {
-                      _newQuestionType = value!;
-                    });
-                  },
-                ),
-                const Text('Short Answer'),
-              ],
-            ),
-            
-            // Question Text
-            TextFormField(
-              controller: _newQuestionTextController,
-              decoration: const InputDecoration(labelText: 'Question Text'),
-            ),
-            const SizedBox(height: 10),
+              // --- Add New Question Form ---
+              const Text('Add New Question:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              DropdownButtonFormField<QuestionType>(
+                value: _newQuestionType,
+                items: const [
+                  DropdownMenuItem(value: QuestionType.mcq, child: Text('Multiple Choice (MCQ)')),
+                  DropdownMenuItem(value: QuestionType.shortAnswer, child: Text('Short Answer')),
+                ],
+                onChanged: (QuestionType? value) => setState(() => _newQuestionType = value!),
+                decoration: const InputDecoration(labelText: 'Question Type'),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _newQuestionTextController,
+                decoration: const InputDecoration(labelText: 'Question Text', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 10),
 
-            // MCQ Options / Short Answer Field
-            if (_newQuestionType == QuestionType.mcq) ...[
-              const Text('MCQ Options (Select the correct one):', style: TextStyle(fontWeight: FontWeight.w500)),
-              ...List.generate(_mcqOptionControllers.length, (index) {
-                return Row(
-                  children: [
-                    Radio<int>(
-                      value: index,
-                      groupValue: _correctMcqOptionIndex,
-                      onChanged: (int? value) {
-                        setState(() {
-                          _correctMcqOptionIndex = value!;
-                        });
-                      },
-                    ),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _mcqOptionControllers[index],
-                        decoration: InputDecoration(labelText: 'Option ${index + 1}'),
+              if (_newQuestionType == QuestionType.mcq) ...[
+                const Text('MCQ Options (Select the correct one):', style: TextStyle(fontWeight: FontWeight.w500)),
+                ...List.generate(_mcqOptionControllers.length, (index) {
+                  return Row(
+                    children: [
+                      Radio<int>(
+                        value: index,
+                        groupValue: _correctMcqOptionIndex,
+                        onChanged: (int? value) => setState(() => _correctMcqOptionIndex = value!),
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: TextFormField(
+                          controller: _mcqOptionControllers[index],
+                          decoration: InputDecoration(labelText: 'Option ${index + 1}'),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ] else ...[
+                TextFormField(
+                  controller: _newAnswerController,
+                  decoration: const InputDecoration(labelText: 'Correct Short Answer', border: OutlineInputBorder()),
+                ),
+              ],
+              
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _newExplanationController,
+                decoration: const InputDecoration(labelText: 'Explanation (Optional)', border: OutlineInputBorder()),
+              ),
+
+              const SizedBox(height: 10),
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: _addQuestion,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Question to Quiz'),
+                ),
+              ),
+              const Divider(height: 30, thickness: 2),
+
+              // --- Added Questions List ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Quiz Questions:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('${_questions.length} Question(s)'),
+                ],
+              ),
+              ..._questions.asMap().entries.map((entry) {
+                int idx = entry.key;
+                Question q = entry.value;
+                return ListTile(
+                  title: Text('Q${idx + 1}: ${q.questionText}'),
+                  subtitle: Text('Answer: ${q.answer}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => setState(() => _questions.removeAt(idx)),
+                  ),
                 );
               }),
-            ] else ...[
-              TextFormField(
-                controller: _newAnswerController,
-                decoration: const InputDecoration(labelText: 'Correct Short Answer'),
+              const SizedBox(height: 30),
+
+              // --- Save/Publish Buttons ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => _saveQuiz(QuizStatus.draft),
+                    icon: const Icon(Icons.drafts),
+                    label: const Text('Save as Draft'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _saveQuiz(QuizStatus.published),
+                    icon: const Icon(Icons.cloud_upload),
+                    label: Text(_isEditing ? 'Update & Publish' : 'Publish Quiz'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  ),
+                ],
               ),
             ],
-            const SizedBox(height: 10),
-
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: _addQuestion,
-                icon: const Icon(Icons.add),
-                label: const Text('Add Question'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
-              ),
-            ),
-            const Divider(height: 30, thickness: 2),
-
-            // Added Questions List
-            const Text('Questions Added:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ..._questions.asMap().entries.map((entry) {
-              int index = entry.key;
-              Question q = entry.value;
-              return ListTile(
-                title: Text('Q${index + 1}: ${q.questionText}'),
-                subtitle: Text('Type: ${q.type.name.toUpperCase()} | Answer: ${q.answer}'),
-                trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                        setState(() {
-                            _questions.removeAt(index);
-                        });
-                    },
-                ),
-              );
-            }),
-            const SizedBox(height: 30),
-
-            // Save and Publish Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => _saveQuiz(QuizStatus.draft),
-                  icon: const Icon(Icons.drafts),
-                  label: const Text('Save as Draft'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _saveQuiz(QuizStatus.published),
-                  icon: const Icon(Icons.cloud_upload),
-                  label: const Text('Publish Quiz'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-                ),
-              ],
-            ),
-            const SizedBox(height: 50),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
+// ---------- TAKE QUIZ PAGE (US006-01) ----------
+class TakeQuizPage extends StatefulWidget {
+  final String quizTitle;
+  final List<Question> questions;
+
+  const TakeQuizPage({
+    super.key,
+    required this.quizTitle,
+    required this.questions,
+  });
+
+  @override
+  State<TakeQuizPage> createState() => _TakeQuizPageState();
+}
+
+class _TakeQuizPageState extends State<TakeQuizPage> {
+  final PageController _pageController = PageController();
+  final Map<String, String> _userAnswers = {}; // Map<QuestionID, UserAnswer>
+  final Map<String, TextEditingController> _shortAnswerControllers = {};
+  int _currentPage = 0;
+  bool _isSubmitting = false; // NEW: Loading state for AI marking
+
+  // NEW: AI Model for marking
+  late final GenerativeModel _markingModel;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers for short answer questions
+    for (var q in widget.questions) {
+      if (q.type == QuestionType.shortAnswer) {
+        _shortAnswerControllers[q.id] = TextEditingController();
+      }
+    }
+
+    // NEW: Initialize AI model for marking
+    final googleAI = FirebaseAI.googleAI();
+    _markingModel = googleAI.generativeModel(
+      model: 'gemini-2.5-flash',
+      systemInstruction: Content.system(
+        'You are an AI quiz marker. You will be given an expected answer and a user answer. '
+        'Compare them for semantic similarity, not just exact text match, including synonyms and variations, and lowercase and uppercase differences. '
+        'Respond with only the word "YES" if the user answer is correct or a close synonym/variation. '
+        'Respond with only the word "NO" if the user answer is incorrect.'
+        'Give an justification for each answer.'
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    for (var controller in _shortAnswerControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+  
+  // NEW: Updated submit quiz with AI Marking
+  Future<void> _submitQuiz() async {
+    setState(() => _isSubmitting = true);
+    
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Marking quiz...'),
+          ],
+        ),
+      ),
+    );
+
+    int score = 0;
+    for (var q in widget.questions) {
+      final userAnswer = _userAnswers[q.id]?.toLowerCase().trim() ?? "";
+      final correctAnswer = q.answer.toLowerCase().trim();
+      
+      if (userAnswer.isEmpty) {
+        continue; // Skip if no answer
+      }
+
+      if (q.type == QuestionType.mcq) {
+        // --- MCQ Marking (Simple Check) ---
+        if (userAnswer == correctAnswer) {
+          score++;
+        }
+      } else if (q.type == QuestionType.shortAnswer) {
+        // --- Short Answer Marking (AI Check) ---
+        if (userAnswer == correctAnswer) {
+          // If it's an exact match, don't waste AI call
+          score++;
+        } else {
+          // If not an exact match, ask AI
+          try {
+            final prompt = 'Is the following user answer similar to or a correct variation of the expected answer?\n\n'
+                'Expected Answer: $correctAnswer\n'
+                'User Answer: $userAnswer\n\n'
+                'Respond with only "YES" or "NO".';
+            
+            final response = await _markingModel.generateContent([Content.text(prompt)]);
+            
+            if (response.text?.trim().toUpperCase() == 'YES') {
+              score++;
+            }
+          } catch (e) {
+            print('AI marking error: $e');
+            // If AI fails, fall back to exact match (which already failed)
+          }
+        }
+      }
+    }
+    
+    // Create attempt record
+    final attempt = QuizAttempt(
+      quizTitle: widget.quizTitle,
+      questions: widget.questions,
+      userAnswers: Map.from(_userAnswers),
+      score: score,
+      total: widget.questions.length,
+      timestamp: DateTime.now(),
+    );
+    
+    // Save to history
+    userQuizAttempts.add(attempt);
+
+    setState(() => _isSubmitting = false);
+    
+    if (!mounted) return;
+    Navigator.pop(context); // Close loading dialog
+
+    // Navigate to results page
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuizResultsPage(attempt: attempt),
+      ),
+    );
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.quizTitle),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4.0),
+          child: LinearProgressIndicator(
+            value: (_currentPage + 1) / widget.questions.length,
+            backgroundColor: Colors.grey[300],
+          ),
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(), // Disable swiping
+        itemCount: widget.questions.length,
+        itemBuilder: (context, index) {
+          final question = widget.questions[index];
+          return _buildQuestionPage(question, index);
+        },
+        onPageChanged: (index) => setState(() => _currentPage = index),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton(
+              onPressed: _currentPage == 0 || _isSubmitting
+                  ? null
+                  : () => _pageController.previousPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeIn,
+                      ),
+              child: const Text('Previous'),
+            ),
+            Text('Question ${_currentPage + 1}/${widget.questions.length}'),
+            ElevatedButton(
+              onPressed: _isSubmitting ? null : () {
+                if (_currentPage < widget.questions.length - 1) {
+                  _pageController.nextPage(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeIn,
+                  );
+                } else {
+                  // Last page, show submit dialog
+                  _showSubmitDialog();
+                }
+              },
+              child: Text(
+                _currentPage == widget.questions.length - 1 ? 'Submit' : 'Next',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _showSubmitDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Submit Quiz'),
+        content: const Text('Are you sure you want to submit your answers?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _submitQuiz();
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionPage(Question question, int index) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Q${index + 1}: ${question.questionText}',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 24),
+          if (question.type == QuestionType.mcq)
+            ...question.options.map((option) {
+              return RadioListTile<String>(
+                title: Text(option),
+                value: option,
+                groupValue: _userAnswers[question.id],
+                onChanged: (value) {
+                  setState(() {
+                    _userAnswers[question.id] = value!;
+                  });
+                },
+              );
+            }),
+          if (question.type == QuestionType.shortAnswer)
+            TextField(
+              controller: _shortAnswerControllers[question.id],
+              decoration: const InputDecoration(
+                labelText: 'Your Answer',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _userAnswers[question.id] = value;
+                });
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+// ---------- QUIZ RESULTS PAGE (US006-02 & US006-03) ----------
+class QuizResultsPage extends StatelessWidget {
+  final QuizAttempt attempt;
+  const QuizResultsPage({super.key, required this.attempt});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Results: ${attempt.quizTitle}'),
+        automaticallyImplyLeading: false, // No back button
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // --- 1. Score Summary ---
+            Text(
+              'Quiz Complete!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue[800]),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Your Score: ${attempt.score} / ${attempt.total}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 24),
+            
+            // --- 2. Detailed Feedback List ---
+            const Text(
+              'Detailed Feedback',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: attempt.questions.length,
+              itemBuilder: (context, index) {
+                final q = attempt.questions[index];
+                final userAnswer = attempt.userAnswers[q.id];
+                final isCorrect = userAnswer?.toLowerCase().trim() == q.answer.toLowerCase().trim();
+                
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  // Simple color coding (won't reflect AI-marked 'YES' answers)
+                  color: isCorrect ? Colors.green[50] : Colors.red[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Q${index + 1}: ${q.questionText}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Your Answer: $userAnswer',
+                          style: TextStyle(
+                            color: isCorrect ? Colors.green[800] : Colors.red[800],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (!isCorrect) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Correct Answer: ${q.answer}',
+                            style: TextStyle(
+                              color: Colors.blue[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        if (q.explanation != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8.0),
+                            width: double.infinity,
+                            color: Colors.grey[200],
+                            child: Text(
+                              'Explanation: ${q.explanation}',
+                              style: TextStyle(color: Colors.grey[800], fontStyle: FontStyle.italic),
+                            ),
+                          )
+                        ]
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: () {
+              // Pop back to the main Quiz Page
+              Navigator.pop(context);
+            },
+            child: const Text('Back to Quiz Home'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 // ---------- AI Chatbot ----------
+class AIChatbotPage extends StatelessWidget {
+  const AIChatbotPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => ChatBloc(),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: const Text('🤖 AI Study Buddy'),
+          backgroundColor: Colors.lightBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        body: const _ChatBody(),
+      ),
+    );
+  }
+}
+
+class _ChatBody extends StatefulWidget {
+  const _ChatBody();
+
+  @override
+  State<_ChatBody> createState() => _ChatBodyState();
+}
+
+class _ChatBodyState extends State<_ChatBody> {
+  int lastRating = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Chat content
+        Expanded(
+          child: BlocBuilder<ChatBloc, ChatState>(
+            builder: (context, state) {
+              if (state is ChatLoaded) {
+                return _buildChatList(state.messages);
+              } else if (state is ChatError) {
+                return Center(
+                  child: Text(
+                    'Error: ${state.error}',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                );
+              } else if (state is ChatLoading) {
+                return _buildChatList(const []);
+              } else {
+                return const Center(child: CircularProgressIndicator());
+              }
+            },
+          ),
+        ),
+
+        // Input, rating, stop button
+        _buildMessageInput(),
+      ],
+    );
+  }
+
+  Widget _buildChatList(List<ChatMessage> messages) {
+    if (messages.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              'Hello! Saya pembantu pembelajaran AI anda.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Tanyalah saya tentang: Pengaturcaraan Java!',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      reverse: false,
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final message = messages[index];
+        return _buildChatBubble(message);
+      },
+    );
+  }
+
+  Widget _buildChatBubble(ChatMessage message) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        mainAxisAlignment:
+            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!message.isUser) ...[
+            CircleAvatar(
+              backgroundColor: Colors.lightBlue,
+              radius: 16,
+              child: const Text('AI',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color:
+                    message.isUser ? Colors.lightBlue[50] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.text,
+                    style: const TextStyle(fontSize: 16, height: 1.4),
+                  ),
+                  if (message.responseTime != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.schedule, size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${message.responseTime}ms',
+                          style:
+                              const TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          if (message.isUser) ...[
+            const SizedBox(width: 8),
+            const CircleAvatar(
+              backgroundColor: Colors.green,
+              radius: 16,
+              child: Icon(Icons.person, color: Colors.white, size: 16),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageInput() {
+    final controller = TextEditingController();
+
+    return Column(
+      children: [
+        // ---- Text Input Row ----
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: Colors.grey[300]!)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: 'Tanyalah saya tentang: Pengaturcaraan Java...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24.0),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 12.0),
+                  ),
+                  onSubmitted: (value) => _sendMessage(controller),
+                ),
+              ),
+              const SizedBox(width: 8),
+              BlocBuilder<ChatBloc, ChatState>(
+                builder: (context, state) {
+                  final isLoading = state is ChatLoading;
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: isLoading ? Colors.grey : Colors.lightBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.send, color: Colors.white),
+                      onPressed:
+                          isLoading ? null : () => _sendMessage(controller),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+
+        // ---- Rating + End Conversation Row ----
+        Container(
+          color: Colors.grey[100],
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // --- Rating Section ---
+              Row(
+                children: [
+                  const Text('Rate chatbot:'),
+                  const SizedBox(width: 8),
+                  for (int s = 1; s <= 5; s++)
+                    IconButton(
+                      icon: Icon(
+                        s <= lastRating ? Icons.star : Icons.star_border,
+                        color: Colors.orange,
+                      ),
+                      onPressed: () {
+                        setState(() => lastRating = s);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('Thanks! You rated the bot $s star(s).'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+
+              // --- Stop Conversation Button ---
+              IconButton(
+                icon: const Icon(Icons.stop_circle, color: Colors.red, size: 32),
+                tooltip: 'End Conversation',
+                onPressed: () {
+                  context.read<ChatBloc>().add(ClearChatEvent());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content:
+                            Text('Perbualan telah tamat. Memulakan semula')),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _sendMessage(TextEditingController controller) {
+    final text = controller.text.trim();
+    if (text.isNotEmpty && mounted) {
+      context.read<ChatBloc>().add(SendMessageEvent(text));
+      controller.clear();
+    }
+  }
+}
+
+
+// ========== AI CHATBOT SUPPORTING CLASSES ==========
+
+// Chat Message Model
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final DateTime timestamp;
+  final int? responseTime;
+
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    required this.timestamp,
+    this.responseTime,
+  });
+
+  @override
+  String toString() {
+    return 'ChatMessage{text: $text, isUser: $isUser, timestamp: $timestamp}';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChatMessage &&
+          runtimeType == other.runtimeType &&
+          text == other.text &&
+          isUser == other.isUser &&
+          timestamp == other.timestamp;
+
+  @override
+  int get hashCode => text.hashCode ^ isUser.hashCode ^ timestamp.hashCode;
+}
+
+// Chat BLoC Events
+abstract class ChatEvent extends Equatable {
+  const ChatEvent();
+
+  @override
+  List<Object> get props => [];
+}
+
+class SendMessageEvent extends ChatEvent {
+  final String message;
+
+  const SendMessageEvent(this.message);
+
+  @override
+  List<Object> get props => [message];
+}
+
+class ClearChatEvent extends ChatEvent {}
+
+class LoadWelcomeEvent extends ChatEvent {
+  const LoadWelcomeEvent();
+
+  @override
+  List<Object> get props => [];
+}
+
+// Chat BLoC States
+abstract class ChatState extends Equatable {
+  const ChatState();
+
+  @override
+  List<Object> get props => [];
+}
+
+class ChatInitial extends ChatState {
+  const ChatInitial();
+}
+
+class ChatLoading extends ChatState {
+  const ChatLoading();
+}
+
+class ChatLoaded extends ChatState {
+  final List<ChatMessage> messages;
+  final int responseTime;
+
+  const ChatLoaded({required this.messages, this.responseTime = 0});
+
+  @override
+  List<Object> get props => [messages, responseTime];
+}
+
+class ChatError extends ChatState {
+  final String error;
+
+  const ChatError({required this.error});
+
+  @override
+  List<Object> get props => [error];
+}
+
+// Chat BLoC Implementation
+class ChatBloc extends Bloc<ChatEvent, ChatState> {
+  final List<ChatMessage> _messages = [];
+  final List<Content> _conversationHistory = [];
+  late final GenerativeModel _model; 
+
+  ChatBloc() : super(ChatInitial()) {
+    // Initialize the Gemini API
+    final googleAI = FirebaseAI.googleAI();
+    
+    // ✅ FIXED: Use _model instead of aiModel
+    _model = googleAI.generativeModel(
+      model: 'gemini-2.5-flash',
+      systemInstruction: Content.system(
+        'You are a helpful AI tutor specializing in Java programming for Malaysian students. '
+        'Answer questions about Java concepts, syntax, OOP principles, and help with coding problems. '
+        'Keep responses clear, educational, and supportive. You can respond in both English and Bahasa Malaysia.'
+      ),
+    );
+    
+    on<SendMessageEvent>(_onSendMessage);
+    on<ClearChatEvent>(_onClearChat);
+    on<LoadWelcomeEvent>(_onLoadWelcome);
+    
+    // Initialize with welcome message
+    add(const LoadWelcomeEvent());
+  }
+
+  void _onLoadWelcome(LoadWelcomeEvent event, Emitter<ChatState> emit) {
+    _messages.add(ChatMessage(
+      text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang Pengaturcaraan Java!",
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+    emit(ChatLoaded(messages: List.from(_messages)));
+  }
+
+  Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
+    if (event.message.trim().isEmpty) return;
+
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      // Add user message immediately
+      _messages.add(ChatMessage(
+        text: event.message,
+        isUser: true,
+        timestamp: DateTime.now(),
+      ));
+
+      // Add user message to conversation history
+      _conversationHistory.add(Content.text(event.message));
+
+      emit(ChatLoading());
+
+      // Use _model for API call
+      final response = await _model.generateContent(_conversationHistory);
+
+      stopwatch.stop();
+
+      // Get response text with fallback
+      final responseText = response.text ?? 
+        "Maaf, saya tidak dapat memahami pertanyaan anda. Cuba tanya dengan cara lain.";
+
+      // Add AI response to conversation history
+      _conversationHistory.add(Content.model([TextPart(responseText)]));
+
+      // Add bot response to messages
+      _messages.add(ChatMessage(
+        text: responseText,
+        isUser: false,
+        timestamp: DateTime.now(),
+        responseTime: stopwatch.elapsedMilliseconds,
+      ));
+
+      emit(ChatLoaded(
+        messages: List.from(_messages),
+        responseTime: stopwatch.elapsedMilliseconds,
+      ));
+
+    } catch (e) {
+      print('Error calling Gemini API: $e');
+      
+      // Add error message
+      _messages.add(ChatMessage(
+        text: "Maaf, saya menghadapi ralat: ${e.toString()}. Sila cuba lagi.",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+
+      emit(ChatError(error: e.toString()));
+      
+      // Re-emit loaded state to show error message
+      await Future.delayed(const Duration(milliseconds: 100));
+      emit(ChatLoaded(messages: List.from(_messages)));
+    }
+  }
+
+  void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) {
+    _messages.clear();
+    _conversationHistory.clear();
+    
+    // Add welcome message back
+    _messages.add(ChatMessage(
+      text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja tentang Pengaturcaraan Java!",
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+    emit(ChatLoaded(messages: List.from(_messages)));
+  }
+}
+
+/*
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
 
@@ -2680,7 +4263,7 @@ final Map<String, Map<String, dynamic>> _faqs = {
     
     return score;
   }
-}
+}*/
 
 
 class ProgressPage extends StatefulWidget {
@@ -3316,14 +4899,14 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 
   final List<String> _achievementTypes = ['Badge', 'Certificate', 'Milestone', 'Other'];
 
-  // 統 MOCK STUDENT DATA: Used instead of fetching from Firestore
+  //MOCK STUDENT DATA: Used instead of fetching from Firestore
   final List<Map<String, String>> _mockStudents = const [
     {'id': 'student_mock_001', 'name': 'John'},
     {'id': 'student_mock_002', 'name': 'Bob Johnson'},
     {'id': 'student_mock_003', 'name': 'Charlie Brown'},
   ];
 
-  // 統 Function to submit the achievement to Firestore / Mock List
+  //Function to submit the achievement to Firestore / Mock List
   Future<void> _submitAchievement() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -3489,7 +5072,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
     );
   }
 
-  // 統 Builds the student selection field using mock data
+  //Builds the student selection field using mock data
   Widget _buildStudentSelectionField() {
     final studentItems = _mockStudents.map((student) {
       return DropdownMenuItem<String>(
