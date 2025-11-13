@@ -5119,6 +5119,7 @@ class ProfilePage extends StatelessWidget {
     if (user == null) {
       return const Center(child: Text('Not logged in'));
     }
+    final isTeacher = user.userType == UserType.teacher;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -5190,6 +5191,7 @@ class ProfilePage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // Header Section with Profile Picture
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -5222,7 +5224,7 @@ class ProfilePage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      user.userType == UserType.student ? 'Student' : 'Teacher',
+                      isTeacher ? 'Teacher' : 'Student',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
@@ -5232,13 +5234,16 @@ class ProfilePage extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                children: [
+                 children: [
+                  // Common Info for Both Teacher and Student
                   _buildInfoCard(
                     icon: Icons.email,
                     title: 'Email',
                     value: user.email,
                   ),
-                  if (user.userType == UserType.student) ...[
+
+                  // STUDENT-SPECIFIC FIELDS
+                  if (!isTeacher) ...[
                     _buildInfoCard(
                       icon: Icons.school,
                       title: 'Form Level',
@@ -5249,22 +5254,30 @@ class ProfilePage extends StatelessWidget {
                       title: 'Class',
                       value: user.className ?? 'Not set',
                     ),
-                  ],
-                  _buildInfoCard(
-                    icon: Icons.stars,
-                    title: 'Total Points',
-                    value: user.points.toString(),
-                  ),
-                  _buildInfoCard(
-                    icon: Icons.emoji_events,
-                    title: 'Badges Earned',
-                    value: user.badges.length.toString(),
-                  ),
-                  _buildInfoCard(
-                    icon: Icons.trending_up,
-                    title: 'Completion Level',
-                    value: '${(user.completionLevel * 100).toStringAsFixed(1)}%',
-                  ),
+                    
+                    // Points Card (Students Only)
+                    _buildInfoCard(
+                      icon: Icons.stars,
+                      title: 'Total Points',
+                      value: user.points.toString(),
+                      color: Colors.amber,
+                    ),
+                    
+                    // Badges Card (Students Only)
+                    _buildInfoCard(
+                      icon: Icons.emoji_events,
+                      title: 'Badges Earned',
+                      value: user.badges.length.toString(),
+                      color: Colors.orange,
+                    ),
+                    
+                    // Completion Level (Students Only)
+                    _buildInfoCard(
+                      icon: Icons.trending_up,
+                      title: 'Completion Level',
+                      value: '${(user.completionLevel * 100).toStringAsFixed(1)}%',
+                      color: Colors.green,
+                    ),
                   if (user.badges.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Card(
@@ -5299,6 +5312,7 @@ class ProfilePage extends StatelessWidget {
                     ),
                   ],
                 ],
+              ]
               ),
             ),
           ],
@@ -5307,19 +5321,28 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard({
+   Widget _buildInfoCard({
     required IconData icon,
     required String title,
     required String value,
+    Color? color,
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
-        leading: Icon(icon, color: Colors.blue[700]),
+        leading: Icon(icon, color: color ?? Colors.blue[700]),
         title: Text(title),
         trailing: Text(
           value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color ?? Colors.black87,
+          ),
         ),
       ),
     );
