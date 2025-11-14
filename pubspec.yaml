@@ -25,6 +25,7 @@ dependencies:
   # File handling
   file_picker: ^10.3.3
   open_file: ^3.3.2
+  image_picker: ^1.0.1
 
   # PDF Viewer
   syncfusion_flutter_pdfviewer: ^31.2.5
