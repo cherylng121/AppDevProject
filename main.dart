@@ -385,16 +385,28 @@ class FirebaseUserState extends ChangeNotifier {
   Future<void> awardBadge({required String name, required String description}) async {
     if (_currentUser == null) return;
 
+    // 1. Check if badge already exists
     if (_currentUser!.badges.contains(name)) {
         return; 
     }
 
+    // 2. Add badge to user profile
     final newBadges = List<String>.from(_currentUser!.badges)..add(name);
     
     await _firestore.collection('users').doc(_currentUser!.id).update({'badges': newBadges});
     
     _currentUser = _currentUser!.copyWith(badges: newBadges);
     _lastUnlockedMessage = 'Congratulations! You unlocked the $name badge.'; 
+    
+    // 3. Create achievement record (optional, but good for detailed history page)
+    await _firestore.collection('achievements').add({
+      'title': name,
+      'type': 'Badge',
+      'description': description,
+      'studentId': _currentUser!.id,
+      'studentName': _currentUser!.username,
+      'dateEarned': FieldValue.serverTimestamp(),
+    });
     
     notifyListeners();
   }
@@ -2902,6 +2914,22 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     if (!mounted) return;
     Navigator.pop(context); // Close loading dialog
 
+    // ⚠️ START: NEW ACHIEVEMENT AWARD LOGIC (US012-01) ⚠️
+    final double percentage = score / widget.questions.length;
+    const double passingThreshold = 0.8; // 80%
+
+    if (percentage >= passingThreshold) {
+        // Call the core function to award the badge
+        final userState = context.read<FirebaseUserState>();
+        if (userState.isLoggedIn) {
+            await userState.awardBadge(
+                name: 'Quiz Master',
+                description: 'Scored 80% or above in a quiz',
+            );
+        }
+    }
+    // ⚠️ END: NEW ACHIEVEMENT AWARD LOGIC ⚠️
+
     // Navigate to results page
     Navigator.pushReplacement(
       context,
@@ -4266,21 +4294,6 @@ final Map<String, Map<String, dynamic>> _faqs = {
 }*/
 
 
-class ProgressPage extends StatefulWidget {
-  const ProgressPage({super.key});
-
-  @override
-  _ProgressPageState createState() => _ProgressPageState();
-}
-
-// Progress Page
-class ProgressPage extends StatefulWidget {
-  const ProgressPage({super.key});
-
-  @override
-  State<ProgressPage> createState() => _ProgressPageState();
-}
-
 class ProgressRecord {
   final String id;
   final String student; 
@@ -4312,6 +4325,13 @@ class ProgressRecord {
       timestamp: data['timestamp'] as Timestamp?,
     );
   }
+}
+
+class ProgressPage extends StatefulWidget {
+  const ProgressPage({super.key});
+
+  @override
+  State<ProgressPage> createState() => _ProgressPageState();
 }
 
 class _ProgressPageState extends State<ProgressPage> {
@@ -4861,7 +4881,6 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
 
 
 // ---------- Achievements ----------
-const bool isDemoMode = true;
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
 
@@ -4870,59 +4889,74 @@ class AchievementsPage extends StatefulWidget {
 }
 
 class _AchievementsPageState extends State<AchievementsPage> {
-  // Mock data for demonstration purposes (moved inside state for mutability)
-  static final AppUser _mockTeacherUser = AppUser(
-    id: 'mock_teacher_id',
-    username: 'Teacher Demo',
-    email: 'teacher@demo.com',
-    userType: UserType.teacher, // Crucial for enabling teacher actions
-    points: 1200,
-    badges: ['Quiz Master', 'Top Contributor', 'File Uploader'],
-    completionLevel: 0.9,
-  );
 
-  // ⚠️ Mock achievements list is now mutable
-  final List<Map<String, dynamic>> _mockAchievements = [
-    {'title': 'Quiz Master', 'type': 'Badge', 'description': 'Scored 80% or above in a quiz', 'dateEarned': DateTime.now().subtract(const Duration(days: 5)), 'studentName': _mockTeacherUser.username},
-    {'title': 'Top Contributor', 'type': 'Milestone', 'description': 'Posted 10 times in the forum', 'dateEarned': DateTime.now().subtract(const Duration(days: 10)), 'studentName': _mockTeacherUser.username},
-    {'title': 'File Uploader', 'type': 'Badge', 'description': 'Uploaded a resource file', 'dateEarned': DateTime.now().subtract(const Duration(days: 20)), 'studentName': _mockTeacherUser.username},
-  ];
-
-  // ⚠️ NEW: Function to add a new achievement to the mock list
-  void _addMockAchievement(Map<String, dynamic> newAchievement) {
-    setState(() {
-      // Add new achievement to the start of the list to show it immediately
-      _mockAchievements.insert(0, newAchievement);
-    });
-  }
-
-  // Helper function to get the correct achievement stream for *real* mode
+  // Helper function to get the correct achievement stream
   Stream<QuerySnapshot> getAchievementStream(AppUser? user) {
     var query = FirebaseFirestore.instance.collection('achievements').orderBy('dateEarned', descending: true);
     
-    // If user is logged in (user != null), filter for their achievements.
+    // Filter to show only the current user's achievements if logged in, otherwise show public feed
     if (user != null) {
       query = query.where('studentId', isEqualTo: user.id);
     } else {
-      // If not logged in, show a public feed of recent achievements.
+      // If not logged in, show a public feed of recent achievements (limited for performance)
       query = query.limit(30); 
     }
     return query.snapshots();
   }
+
+  // ⚠️ Function to delete an achievement (US012-03)
+  Future<void> _deleteAchievement(String achievementId, String achievementTitle) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Achievement'),
+        content: Text('Are you sure you want to delete the achievement: "$achievementTitle"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance.collection('achievements').doc(achievementId).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Achievement "$achievementTitle" deleted.'), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete achievement: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
   
   @override
   Widget build(BuildContext context) {
-    // Conditional setup for state variables: use mock data if in demo mode
-    final userState = isDemoMode ? null : context.watch<FirebaseUserState>();
-    final isLoggedIn = isDemoMode ? true : (userState?.isLoggedIn ?? false);
-    final user = isDemoMode ? _mockTeacherUser : userState?.currentUser;
-    // Force isTeacher to true in demo mode, otherwise use actual user type
-    final bool isTeacher = isDemoMode ? true : (user?.userType == UserType.teacher ?? false);
+    // Rely exclusively on live FirebaseUserState
+    final userState = context.watch<FirebaseUserState>();
+    final isLoggedIn = userState.isLoggedIn;
+    final user = userState.currentUser;
+    final bool isTeacher = user?.userType == UserType.teacher ?? false;
 
-    
-    // Page title (Yellow Section)
+    // Page title
     final String pageTitle = isLoggedIn ? '🏆 Your Achievements' : '🏅 Community Achievements';
     
+    // If not logged in, show a simplified message (re-using old logic for non-logged-in state)
+    if (!isLoggedIn) {
+       return Scaffold(
+        appBar: AppBar(title: Text(pageTitle), backgroundColor: Colors.amber, foregroundColor: Colors.white),
+        body: const Center(child: Text('Please log in to view personalized achievements or community feed.')),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -4933,8 +4967,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logic to show the 'unlocked message' for logged-in users (disabled in demo mode)
-          if (!isDemoMode && userState != null && userState.lastUnlockedMessage != null) Builder(
+          // Logic to show the 'unlocked message'
+          if (userState.lastUnlockedMessage != null) Builder(
             builder: (ctx) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final msg = userState.lastUnlockedMessage;
@@ -4950,84 +4984,41 @@ class _AchievementsPageState extends State<AchievementsPage> {
           ),
           
           Expanded(
-            // Conditional rendering: Mock list for demo, or StreamBuilder for real data
-            child: isDemoMode 
-                ? _buildAchievementListView(_mockAchievements, isLoggedIn) 
-                : StreamBuilder<QuerySnapshot>(
-              stream: getAchievementStream(user), // Pass the user object to the stream
+            // Use live StreamBuilder
+            child: StreamBuilder<QuerySnapshot>(
+              stream: getAchievementStream(user), // Fetch achievements for current user
               builder: (context, snapshot) {
-// ========== ACHIEVEMENTS PAGE - PLACEHOLDER ==========
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(child: Text('Error loading achievements: ${snapshot.error}'));
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Map DocumentSnapshot list to Map list for use in helper function
-                final achievements = snapshot.data!.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+                // Map DocumentSnapshot list to Map list, including the document ID
+                final achievements = snapshot.data!.docs
+                    .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+                    .toList();
 
-                return _buildAchievementListView(achievements, isLoggedIn);
+                return _buildAchievementListView(achievements, isLoggedIn, isTeacher, user!.id);
               },
             ),
           ),
           
-          // NEW POSITION: Two buttons side-by-side at the bottom, visible only to teachers
+          // Teacher Action Buttons (Only 'Add Achievement' remains, full width)
           if (isTeacher) Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                // 1. Simulate Milestone Button
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      // ⚠️ Fake success message for demo mode
-                      if (isDemoMode) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Successfully simulated "Quiz Master" achievement unlocked!'),
-                            backgroundColor: Colors.green, // Show success colour
-                          ),
-                        );
-                        return;
-                      }
-                      
-                      // Actual implementation for non-demo mode
-                      await context.read<FirebaseUserState>().awardBadge(
-                        name: 'Quiz Master',
-                        description: 'Scored 80% or above in a quiz',
-                      );
-                      if (context.mounted) {
-                        final msg = context.read<FirebaseUserState>().lastUnlockedMessage;
-                        if (msg != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(msg), backgroundColor: Colors.green),
-                          );
-                          context.read<FirebaseUserState>().consumeLastUnlockedMessage();
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.auto_awesome),
-                    label: const Text('Simulate Milestone'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(width: 10),
-                
-                // 2. Add Achievement Button
+                // 1. Add Achievement Button (now takes full width)
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // ⚠️ ACTION ENABLED: Pass the callback function
+                      // ACTION ENABLED: Navigate to AddAchievementPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => AddAchievementPage(
-                            onAchievementAwarded: _addMockAchievement,
-                          ),
+                          builder: (context) => const AddAchievementPage(),
                         ),
                       );
                     },
@@ -5046,13 +5037,24 @@ class _AchievementsPageState extends State<AchievementsPage> {
     );
   }
 
-  // Helper method to build the list view for both mock and real data
-  Widget _buildAchievementListView(List<Map<String, dynamic>> achievements, bool isLoggedIn) {
-    // Determine the message based on list size and login status
-    final String emptyMessage = isLoggedIn 
-        ? 'You have no achievements yet. Start learning and completing quizzes!' 
-        : 'No community achievements found. Check back later!';
-        
+  // Helper method to build the list view
+  Widget _buildAchievementListView(
+    List<Map<String, dynamic>> achievements, 
+    bool isLoggedIn, 
+    bool isTeacher,
+    String? currentUserId,
+  ) {
+    
+    // Sort achievements manually for display
+    achievements.sort((a, b) {
+      final dateA = a['dateEarned'];
+      final dateB = b['dateEarned'];
+      if (dateA is Timestamp && dateB is Timestamp) {
+        return dateB.toDate().compareTo(dateA.toDate());
+      }
+      return 0;
+    });
+
     if (achievements.isEmpty) {
       return Center(
         child: Column(
@@ -5063,7 +5065,9 @@ class _AchievementsPageState extends State<AchievementsPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Text(
-                emptyMessage,
+                isLoggedIn 
+                    ? 'You have no achievements yet. Start learning and completing quizzes!' 
+                    : 'No public achievements found.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
@@ -5081,20 +5085,16 @@ class _AchievementsPageState extends State<AchievementsPage> {
         final title = achievement['title'] ?? 'No Title';
         final type = achievement['type'] ?? 'General';
         final description = achievement['description'] ?? 'No Description';
+        final String? achievementId = achievement['id'] as String?; // Retrieved document ID
+        final String studentId = achievement['studentId'] ?? '';
         
-        // Handle both Timestamp (from Firestore) and DateTime (from Mock data)
         final dateEarned = achievement['dateEarned'];
-        final DateTime? when;
-        if (dateEarned is Timestamp) {
-          when = dateEarned.toDate();
-        } else if (dateEarned is DateTime) {
-          when = dateEarned;
-        } else {
-          when = null;
-        }
-        
-        final studentName = achievement['studentName'] ?? 'Unknown User';
+        DateTime? when;
+        if (dateEarned is Timestamp) when = dateEarned.toDate();
 
+        // Teachers can delete ANY achievement. 
+        final bool canDelete = isTeacher; 
+        
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
@@ -5106,10 +5106,9 @@ class _AchievementsPageState extends State<AchievementsPage> {
               children: [
                 Text(description),
                 const SizedBox(height: 4),
-                // Show user name in public feed, but not in personal feed
-                if (!isLoggedIn) Padding(
+                if (!isLoggedIn || studentId != currentUserId) Padding(
                   padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text('Earned by: $studentName', style: TextStyle(color: Colors.blue[700], fontSize: 12, fontWeight: FontWeight.w500)),
+                  child: Text('Earned by: ${achievement['studentName'] ?? 'Unknown User'}', style: TextStyle(color: Colors.blue[700], fontSize: 12, fontWeight: FontWeight.w500)),
                 ),
                 Row(
                   children: [
@@ -5123,6 +5122,13 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 ),
               ],
             ),
+            trailing: canDelete && achievementId != null
+                ? IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteAchievement(achievementId, title),
+                    tooltip: 'Delete Achievement',
+                  )
+                : null,
           ),
         );
       },
@@ -5130,12 +5136,9 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 }
 
-// ========== Add Achievement Page (MOCK STUDENT LIST & FAKE SUBMIT IMPLEMENTATION) ==========
+// ========== Add Achievement Page (LIVE FIREBASE IMPLEMENTATION) ==========
 class AddAchievementPage extends StatefulWidget {
-  // ⚠️ NEW: Define a callback function to update the parent's mock list
-  final void Function(Map<String, dynamic>)? onAchievementAwarded;
-  
-  const AddAchievementPage({super.key, this.onAchievementAwarded});
+  const AddAchievementPage({super.key});
 
   @override
   State<AddAchievementPage> createState() => _AddAchievementPageState();
@@ -5148,17 +5151,31 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
   String _description = '';
   String? _selectedStudentId;
   String? _selectedStudentName;
+  bool _isLoading = false; // Add loading state
 
   final List<String> _achievementTypes = ['Badge', 'Certificate', 'Milestone', 'Other'];
 
-  //MOCK STUDENT DATA: Used instead of fetching from Firestore
-  final List<Map<String, String>> _mockStudents = const [
-    {'id': 'student_mock_001', 'name': 'John'},
-    {'id': 'student_mock_002', 'name': 'Bob Johnson'},
-    {'id': 'student_mock_003', 'name': 'Charlie Brown'},
-  ];
+  // ⚠️ Function to fetch live student list from Firestore
+  Future<List<AppUser>> _getStudentsList() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('userType', isEqualTo: 'UserType.student') 
+          .orderBy('username')
+          .get();
+      
+      return snapshot.docs.map((doc) => AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print("Error fetching student list: $e");
+      // Fallback list when fetching live data fails (e.g., due to rules)
+      return [
+        AppUser(id: 'FALLBACK_1', username: 'LOAD_ERROR: John Doe', email: '', userType: UserType.student),
+        AppUser(id: 'FALLBACK_2', username: 'LOAD_ERROR: Jane Smith', email: '', userType: UserType.student),
+      ];
+    }
+  }
 
-  //Function to submit the achievement to Firestore / Mock List
+  // ⚠️ Function to submit the achievement to Firestore (Live Write)
   Future<void> _submitAchievement() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -5169,45 +5186,25 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
         );
         return;
       }
-
-      // Prepare the achievement data regardless of mode
-      final newAchievement = {
-        'title': _title,
-        'type': _type,
-        'description': _description,
-        'studentId': _selectedStudentId,
-        'studentName': _selectedStudentName,
-        'dateEarned': DateTime.now(), // Use DateTime object for mock list
-        'awardedBy': 'Manual Teacher Award',
-      };
-
-      // ⚠️ NEW LOGIC: FAKE SUBMISSION FOR DEMO MODE
-      if (isDemoMode) {
-        // 1. Add achievement to the parent's mock list
-        widget.onAchievementAwarded?.call(newAchievement);
-        
-        if (context.mounted) {
-          // 2. Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Achievement "${_title}" (${_type}) awarded to ${_selectedStudentName}.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          // 3. Close the form page, which rebuilds AchievementsPage with the new data
-          Navigator.pop(context); 
-        }
-        return;
-      }
-      // ⚠️ END NEW LOGIC
       
+      setState(() => _isLoading = true);
 
       try {
-        // --- ORIGINAL FIREBASE WRITE LOGIC (Only runs if isDemoMode is false) ---
-        // Convert date to FieldValue.serverTimestamp() for real Firestore write
-        newAchievement['dateEarned'] = FieldValue.serverTimestamp(); 
-        
-        await FirebaseFirestore.instance.collection('achievements').add(newAchievement);
+        // Get current logged-in teacher username
+        final teacherUsername = context.read<FirebaseUserState>().currentUser?.username ?? 'System Admin';
+
+        final achievementData = {
+          'title': _title,
+          'type': _type,
+          'description': _description,
+          'studentId': _selectedStudentId,
+          'studentName': _selectedStudentName,
+          'dateEarned': FieldValue.serverTimestamp(),
+          'awardedBy': teacherUsername,
+        };
+
+        // Live write to Firestore
+        await FirebaseFirestore.instance.collection('achievements').add(achievementData);
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -5216,7 +5213,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context);
+          Navigator.pop(context); 
         }
       } catch (e) {
         if (context.mounted) {
@@ -5224,13 +5221,14 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
             SnackBar(content: Text('Failed to award achievement: $e'), backgroundColor: Colors.red),
           );
         }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... (rest of the build method is unchanged)
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manual Achievement Award'),
@@ -5243,7 +5241,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              // 1. Student Selection Field (Uses Mock Data)
+              // 1. Student Selection Field (Uses Live Data)
               _buildStudentSelectionField(),
               const SizedBox(height: 20),
 
@@ -5307,9 +5305,11 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 
               // 5. Submit Button
               ElevatedButton.icon(
-                onPressed: _submitAchievement,
-                icon: const Icon(Icons.send),
-                label: const Text('Award Achievement', style: TextStyle(fontSize: 18)),
+                onPressed: _isLoading ? null : _submitAchievement,
+                icon: _isLoading ? const SizedBox(
+                  width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                ) : const Icon(Icons.send),
+                label: Text(_isLoading ? 'Awarding...' : 'Award Achievement', style: const TextStyle(fontSize: 18)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green, 
                   foregroundColor: Colors.white,
@@ -5324,37 +5324,52 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
     );
   }
 
-  //Builds the student selection field using mock data
+  // Builds the student selection field using LIVE Firestore data
   Widget _buildStudentSelectionField() {
-    final studentItems = _mockStudents.map((student) {
-      return DropdownMenuItem<String>(
-        value: student['id'],
-        child: Text(student['name']!),
-      );
-    }).toList();
+    return FutureBuilder<List<AppUser>>(
+        future: _getStudentsList(),
+        builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+            }
+            
+            final studentList = snapshot.data ?? [];
+            
+            if (studentList.isEmpty) {
+                return const Text('Error loading students or no students found. Check Firestore rules and data.', style: TextStyle(color: Colors.red));
+            }
 
-    return DropdownButtonFormField<String>(
-      decoration: const InputDecoration(
-        labelText: 'Select Student to Award',
-        border: OutlineInputBorder(),
-        prefixIcon: Icon(Icons.person),
-      ),
-      value: _selectedStudentId,
-      items: studentItems,
-      hint: const Text('Choose a student'),
-      validator: (value) {
-        if (value == null) {
-          return 'You must select a student.';
-        }
-        return null;
-      },
-      onChanged: (String? newValue) {
-        setState(() {
-          _selectedStudentId = newValue;
-          // Find the selected student's name from the mock list
-          _selectedStudentName = _mockStudents.firstWhere((s) => s['id'] == newValue)['name'];
-        });
-      },
+            final studentItems = studentList.map((user) {
+                return DropdownMenuItem<String>(
+                    value: user.id,
+                    child: Text('${user.username} (${user.id})'),
+                );
+            }).toList();
+
+            return DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: 'Select Student to Award',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                ),
+                value: _selectedStudentId,
+                items: studentItems,
+                hint: const Text('Choose a student'),
+                validator: (value) {
+                    if (value == null) {
+                        return 'You must select a student.';
+                    }
+                    return null;
+                },
+                onChanged: (String? newValue) {
+                    setState(() {
+                        _selectedStudentId = newValue;
+                        final selectedUser = studentList.firstWhereOrNull((user) => user.id == newValue);
+                        _selectedStudentName = selectedUser?.username;
+                    });
+                },
+            );
+        },
     );
   }
 }
