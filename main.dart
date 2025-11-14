@@ -821,8 +821,269 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+<<<<<<< HEAD
+// ✅ NEW: Interactive Homepage with Logo
+class InHomePage extends StatelessWidget {
+  const InHomePage({super.key});
+
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    
+      void _navigateToPage(int pageIndex) {
+    // Find the HomePage in the widget tree and update its selectedIndex
+    final homePageState = context.findAncestorStateOfType<_HomePageState>();
+    if (homePageState != null) {
+      homePageState.setState(() {
+        homePageState.selectedIndex = pageIndex;
+      });
+    }
+  }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Logo Section
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue[700]!, Colors.purple[400]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                // App Logo (using icon since we can't load images in this environment)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Icon(
+                    Icons.code,
+                    size: 80,
+                    color: Colors.blue[700],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'CodingBahasa',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const Text(
+                  'Connect, Code and Challenge',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+          
+          // Welcome Message
+          Text(
+            'Welcome back, ${user?.username ?? "User"}!',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // Stats Cards (for students only)
+           if (user?.userType == UserType.student) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _navigateToPage(6), // Navigate to Achievements
+                    child: _buildStatCard(
+                      icon: Icons.star,
+                      title: 'Points',
+                      value: user!.points.toString(),
+                      color: Colors.amber,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _navigateToPage(6), // Navigate to Achievements
+                    child: _buildStatCard(
+                      icon: Icons.emoji_events,
+                      title: 'Badges',
+                      value: user.badges.length.toString(),
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => _navigateToPage(5), // Navigate to Progress
+              child: _buildStatCard(
+                icon: Icons.trending_up,
+                title: 'Completion',
+                value: '${(user.completionLevel * 100).toStringAsFixed(0)}%',
+                color: Colors.green,
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+          
+          // Quick Actions
+          const Text(
+            'Quick Actions',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            children: [
+              _buildQuickActionCard(
+                icon: Icons.book,
+                title: 'Courses',
+                color: Colors.blue,
+                onTap: () => _navigateToPage(1),
+              ),
+              _buildQuickActionCard(
+                icon: Icons.quiz,
+                title: 'Quizzes',
+                color: Colors.purple,
+                onTap: () => _navigateToPage(3),
+              ),
+              _buildQuickActionCard(
+                icon: Icons.chat,
+                title: 'AI Chatbot',
+                color: Colors.teal,
+                onTap: () => _navigateToPage(4),
+              ),
+              _buildQuickActionCard(
+                icon: Icons.folder,
+                title: 'Materials',
+                color: Colors.orange,
+                onTap: () => _navigateToPage(2),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 30),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildQuickActionCard({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 40, color: color),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+=======
+>>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
 class _HomePageState extends State<HomePage> {
-  var selectedIndex = 0;
+  int selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -2837,7 +3098,123 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     super.dispose();
   }
   
+
+   Future<void> _saveQuizScoreToDatabase(int score, int total) async {
+    final user = context.read<FirebaseUserState>().currentUser;
+    if (user == null || !mounted) return;
+    
+    try {
+      await FirebaseFirestore.instance.collection('quiz_attempts').add({
+        'userId': user.id,
+        'username': user.username,
+        'quizTitle': widget.quizTitle,
+        'score': score,
+        'total': total,
+        'percentage': (score / total * 100).toDouble(),
+        'timestamp': FieldValue.serverTimestamp(),
+        'userAnswers': _userAnswers,
+      });
+      
+      if (!mounted) return;
+      
+      final earnedPoints = (score / total * 100).toInt();
+      await context.read<FirebaseUserState>().addPoints(earnedPoints);
+      
+      if (score / total >= 0.8) {
+        await context.read<FirebaseUserState>().awardBadge(
+          name: 'Quiz Master',
+          description: 'Scored 80% or above in a quiz',
+        );
+      }
+    } catch (e) {
+      print('Error saving quiz score: $e');
+    }
+  }
+
   // NEW: Updated submit quiz with AI Marking
+<<<<<<< HEAD
+Future<void> _submitQuiz() async {
+  if (!mounted) return; // Add this check
+  
+  setState(() => _isSubmitting = true);
+  
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const AlertDialog(
+      content: Row(
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(width: 20),
+          Text('Marking quiz...'),
+        ],
+      ),
+    ),
+  );
+
+  int score = 0;
+  for (var q in widget.questions) {
+    final userAnswer = _userAnswers[q.id]?.toLowerCase().trim() ?? "";
+    final correctAnswer = q.answer.toLowerCase().trim();
+    
+    if (userAnswer.isEmpty) continue;
+
+    if (q.type == QuestionType.mcq) {
+      if (userAnswer == correctAnswer) {
+        score++;
+      }
+    } else if (q.type == QuestionType.shortAnswer) {
+      if (userAnswer == correctAnswer) {
+        score++;
+      } else {
+        try {
+          final prompt = 'Is the following user answer similar to or a correct variation of the expected answer?\n\n'
+              'Expected Answer: $correctAnswer\n'
+              'User Answer: $userAnswer\n\n'
+              'Respond with only "YES" or "NO".';
+          
+          final response = await _markingModel.generateContent([Content.text(prompt)]);
+          
+          if (response.text?.trim().toUpperCase() == 'YES') {
+            score++;
+          }
+        } catch (e) {
+          print('AI marking error: $e');
+        }
+      }
+    }
+  }
+
+    // Add mounted check before saving to database
+  if (!mounted) return;
+  
+  await _saveQuizScoreToDatabase(score, widget.questions.length);
+  
+  final attempt = QuizAttempt(
+    quizTitle: widget.quizTitle,
+    questions: widget.questions,
+    userAnswers: Map.from(_userAnswers),
+    score: score,
+    total: widget.questions.length,
+    timestamp: DateTime.now(),
+  );
+  
+  userQuizAttempts.add(attempt);
+
+  if (!mounted) return; // Add this check
+  setState(() => _isSubmitting = false);
+  
+  if (!mounted) return; // Add this check
+  Navigator.pop(context); // Close loading dialog
+
+  if (!mounted) return; // Add this check
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => QuizResultsPage(attempt: attempt),
+    ),
+  );
+=======
   Future<void> _submitQuiz() async {
     setState(() => _isSubmitting = true);
     
@@ -2937,6 +3314,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
         builder: (context) => QuizResultsPage(attempt: attempt),
       ),
     );
+>>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
   }
 
 
@@ -4112,6 +4490,10 @@ class ProgressHistoryPage extends StatefulWidget {
   State<ProgressHistoryPage> createState() => _ProgressHistoryPageState();
 }
 
+<<<<<<< HEAD
+// ---------- Achievements ----------
+// ---------- Achievements (CORRECTED) ----------
+=======
 class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
   final FirebaseFirestore _fs = FirebaseFirestore.instance;
 
@@ -4259,6 +4641,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
 
 
 // ---------- Achievements (CORRECTED) ----------
+>>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
 
@@ -4814,6 +5197,41 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
                 return const Text('Error loading students or no students found. Check Firestore rules and data.', style: TextStyle(color: Colors.red));
             }
 
+<<<<<<< HEAD
+            final studentItems = studentList.map((user) {
+                return DropdownMenuItem<String>(
+                    value: user.id,
+                    child: Text('${user.username} (${user.id})'),
+                );
+            }).toList();
+
+            return DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: 'Select Student to Award',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                ),
+                value: _selectedStudentId,
+                items: studentItems,
+                hint: const Text('Choose a student'),
+                validator: (value) {
+                    if (value == null) {
+                        return 'You must select a student.';
+                    }
+                    return null;
+                },
+                onChanged: (String? newValue) {
+                    setState(() {
+                        _selectedStudentId = newValue;
+                        final selectedUser = studentList.cast<AppUser?>().firstWhere(
+                          (user) => user?.id == newValue,
+                          orElse: () => null,);
+                        _selectedStudentName = selectedUser?.username;
+                    });
+                },
+            );
+        },
+=======
             final studentItems = studentList.map((user) {
                 return DropdownMenuItem<String>(
                     value: user.id,
@@ -4845,6 +5263,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
                 },
             );
         },
+>>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
     );
   }
 }
@@ -4853,6 +5272,24 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
+<<<<<<< HEAD
+  Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
+  final picker = ImagePicker();
+  final image = await picker.pickImage(source: ImageSource.gallery);
+  
+  if (image == null) return null;
+  
+  // Store local path (In production, upload to Firebase Storage)
+  return image.path;
+}
+  @override
+Widget build(BuildContext context) {
+  final userState = context.watch<FirebaseUserState>();
+  final user = userState.currentUser;
+
+  if (user == null) {
+    return const Center(child: Text('Not logged in'));
+=======
   @override
   Widget build(BuildContext context) {
     final userState = context.watch<FirebaseUserState>();
@@ -5061,8 +5498,306 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
     );
+>>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
   }
 
+<<<<<<< HEAD
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: AppBar(
+      title: const Text('👤 User Profile'),
+      backgroundColor: Colors.lightBlue,
+      foregroundColor: Colors.white,
+      actions: [
+        PopupMenuButton(
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit, size: 20),
+                  SizedBox(width: 8),
+                  Text('Edit Profile'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'password',
+              child: Row(
+                children: [
+                  Icon(Icons.lock, size: 20),
+                  SizedBox(width: 8),
+                  Text('Change Password'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete, size: 20, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Delete Account', style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
+          ],
+          onSelected: (value) {
+            if (value == 'edit') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EditProfilePage()),
+              );
+            } else if (value == 'password') {
+              _showChangePasswordDialog(context);
+            } else if (value == 'delete') {
+              _showDeleteDialog(context);
+            }
+          },
+        ),
+      ],
+    ),
+    body: Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header Section with Profile Picture
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue[700]!, Colors.blue[300]!],
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Profile picture with edit button
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.white,
+                            backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
+                                ? FileImage(File(user.profilePicture!))
+                                : null,
+                            child: user.profilePicture == null || user.profilePicture!.isEmpty
+                                ? const Icon(Icons.person, size: 50, color: Colors.blue)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: InkWell(
+                              onTap: () async {
+                                final picturePath = await _pickAndUploadProfilePicture(context);
+                                if (picturePath != null && context.mounted) {
+                                  final success = await context.read<FirebaseUserState>().updateUserProfile(
+                                    profilePicture: picturePath,
+                                  );
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(success ? 'Profile picture updated!' : 'Failed to update picture'),
+                                        backgroundColor: success ? Colors.green : Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        user.username,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          isTeacher ? 'Teacher' : 'Student',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Common Info for Both Teacher and Student
+                      _buildInfoCard(
+                        icon: Icons.email,
+                        title: 'Email',
+                        value: user.email,
+                      ),
+
+                      // STUDENT-SPECIFIC FIELDS
+                      if (!isTeacher) ...[
+                        _buildInfoCard(
+                          icon: Icons.school,
+                          title: 'Form Level',
+                          value: user.formLevel ?? 'Not set',
+                        ),
+                        _buildInfoCard(
+                          icon: Icons.class_,
+                          title: 'Class',
+                          value: user.className ?? 'Not set',
+                        ),
+                        
+                        // Points Card (Students Only)
+                        _buildInfoCard(
+                          icon: Icons.stars,
+                          title: 'Total Points',
+                          value: user.points.toString(),
+                          color: Colors.amber,
+                        ),
+                        
+                        // Badges Card (Students Only)
+                        _buildInfoCard(
+                          icon: Icons.emoji_events,
+                          title: 'Badges Earned',
+                          value: user.badges.length.toString(),
+                          color: Colors.orange,
+                        ),
+                        
+                        // Completion Level (Students Only)
+                        _buildInfoCard(
+                          icon: Icons.trending_up,
+                          title: 'Completion Level',
+                          value: '${(user.completionLevel * 100).toStringAsFixed(1)}%',
+                          color: Colors.green,
+                        ),
+                        if (user.badges.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Your Badges',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: user.badges
+                                        .map(
+                                          (badge) => Chip(
+                                            label: Text(badge),
+                                            avatar: const Icon(Icons.emoji_events, size: 16),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // ✅ NEW: Logout button at the bottom
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            onPressed: () => _handleLogout(context),
+            icon: const Icon(Icons.logout),
+            label: const Text('Logout', style: TextStyle(fontSize: 16)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ✅ Keep the logout handler function as is
+void _handleLogout(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Logout'),
+      content: const Text('Are you sure you want to logout?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            await context.read<FirebaseUserState>().logout();
+            if (context.mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text('Logout'),
+        ),
+      ],
+    ),
+  );
+}
+
+=======
+>>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
    Widget _buildInfoCard({
     required IconData icon,
     required String title,
