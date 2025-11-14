@@ -10,11 +10,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'forum_page.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:collection/collection.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'package:firebase_ai/firebase_ai.dart';
 
 
-late final GenerativeModel aiModel;
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
@@ -385,28 +385,16 @@ class FirebaseUserState extends ChangeNotifier {
   Future<void> awardBadge({required String name, required String description}) async {
     if (_currentUser == null) return;
 
-    // 1. Check if badge already exists
     if (_currentUser!.badges.contains(name)) {
         return; 
     }
 
-    // 2. Add badge to user profile
     final newBadges = List<String>.from(_currentUser!.badges)..add(name);
     
     await _firestore.collection('users').doc(_currentUser!.id).update({'badges': newBadges});
     
     _currentUser = _currentUser!.copyWith(badges: newBadges);
     _lastUnlockedMessage = 'Congratulations! You unlocked the $name badge.'; 
-    
-    // 3. Create achievement record (optional, but good for detailed history page)
-    await _firestore.collection('achievements').add({
-      'title': name,
-      'type': 'Badge',
-      'description': description,
-      'studentId': _currentUser!.id,
-      'studentName': _currentUser!.username,
-      'dateEarned': FieldValue.serverTimestamp(),
-    });
     
     notifyListeners();
   }
@@ -821,6 +809,257 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+// ✅ NEW: Interactive Homepage with Logo
+class InHomePage extends StatelessWidget {
+  const InHomePage({super.key});
+
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Logo Section
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue[700]!, Colors.purple[400]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                // App Logo (using icon since we can't load images in this environment)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Icon(
+                    Icons.code,
+                    size: 80,
+                    color: Colors.blue[700],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'CodingBahasa',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const Text(
+                  'Connect, Code and Challenge',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+          
+          // Welcome Message
+          Text(
+            'Welcome back, ${user?.username ?? "User"}!',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // Stats Cards (for students only)
+          if (user?.userType == UserType.student) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    icon: Icons.star,
+                    title: 'Points',
+                    value: user!.points.toString(),
+                    color: Colors.amber,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    icon: Icons.emoji_events,
+                    title: 'Badges',
+                    value: user.badges.length.toString(),
+                    color: Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildStatCard(
+              icon: Icons.trending_up,
+              title: 'Completion',
+              value: '${(user.completionLevel * 100).toStringAsFixed(0)}%',
+              color: Colors.green,
+            ),
+            const SizedBox(height: 30),
+          ],
+          
+          // Quick Actions
+          const Text(
+            'Quick Actions',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            children: [
+              _buildQuickActionCard(
+                icon: Icons.book,
+                title: 'Courses',
+                color: Colors.blue,
+                onTap: () {
+                  // Navigate to courses
+                  const CoursePage();
+                },
+              ),
+              _buildQuickActionCard(
+                icon: Icons.quiz,
+                title: 'Quizzes',
+                color: Colors.purple,
+                onTap: () {
+                  // Navigate to quizzes
+                  const QuizPage();
+                },
+              ),
+              _buildQuickActionCard(
+                icon: Icons.chat,
+                title: 'AI Chatbot',
+                color: Colors.teal,
+                onTap: () {
+                  // Navigate to chatbot
+                  const AIChatbotPage();
+                },
+              ),
+              _buildQuickActionCard(
+                icon: Icons.folder,
+                title: 'Materials',
+                color: Colors.orange,
+                onTap: () {
+                  // Navigate to materials
+                  const MaterialsPage();
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 30),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildQuickActionCard({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 40, color: color),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _HomePageState extends State<HomePage> {
   var selectedIndex = 0;
 
@@ -829,12 +1068,13 @@ class _HomePageState extends State<HomePage> {
     Widget page;
     switch (selectedIndex) {
       case 0:
-        page = const Center(
+        page = const InHomePage();
+        /*Center(
           child: Text(
             'Welcome to CodingBahasa!',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-        );
+        );*/
       case 1:
         page = const CoursePage();
       case 2:
@@ -936,6 +1176,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+
+
 
 // ========== USER SEARCH PAGE ==========
 class UserSearchPage extends StatefulWidget {
@@ -2683,9 +2926,19 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                 decoration: const InputDecoration(labelText: 'Question Type'),
               ),
               const SizedBox(height: 10),
-              TextFormField(
+              /*TextFormField(
                 controller: _newQuestionTextController,
                 decoration: const InputDecoration(labelText: 'Question Text', border: OutlineInputBorder()),
+              ),*/
+              TextFormField(
+                controller: _newQuestionTextController,
+                decoration: const InputDecoration(
+                  labelText: 'Question Text',
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter your question here...',
+                  ),
+                  maxLines: 5,  // ✅ Allow multiple lines
+                  minLines: 3,
               ),
               const SizedBox(height: 10),
 
@@ -2711,15 +2964,36 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               ] else ...[
                 TextFormField(
                   controller: _newAnswerController,
-                  decoration: const InputDecoration(labelText: 'Correct Short Answer', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                  labelText: 'Correct Short Answer',
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter the correct answer...',
                 ),
+                maxLines: 3,  // ✅ Allow multiple lines
+                minLines: 2,
+              ),
+                /*TextFormField(
+                  controller: _newAnswerController,
+                  decoration: const InputDecoration(labelText: 'Correct Short Answer', border: OutlineInputBorder()),
+                ),*/
               ],
               
               const SizedBox(height: 10),
               TextFormField(
                 controller: _newExplanationController,
-                decoration: const InputDecoration(labelText: 'Explanation (Optional)', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                labelText: 'Explanation (Optional)',
+                border: OutlineInputBorder(),
+                hintText: 'Provide detailed feedback...',
               ),
+              maxLines: 5,  // ✅ Allow multiple lines
+              minLines: 3,
+            ),
+
+              /*TextFormField(
+                controller: _newExplanationController,
+                decoration: const InputDecoration(labelText: 'Explanation (Optional)', border: OutlineInputBorder()),
+              ),*/
 
               const SizedBox(height: 10),
               Center(
@@ -2814,6 +3088,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
       }
     }
 
+
     // NEW: Initialize AI model for marking
     final googleAI = FirebaseAI.googleAI();
     _markingModel = googleAI.generativeModel(
@@ -2838,7 +3113,57 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
   }
   
   // NEW: Updated submit quiz with AI Marking
-  Future<void> _submitQuiz() async {
+Future<void> _submitQuiz() async {
+  setState(() => _isSubmitting = true);
+  
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const AlertDialog(
+      content: Row(
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(width: 20),
+          Text('Marking quiz...'),
+        ],
+      ),
+    ),
+  );
+
+  int score = 0;
+  for (var q in widget.questions) {
+    final userAnswer = _userAnswers[q.id]?.toLowerCase().trim() ?? "";
+    final correctAnswer = q.answer.toLowerCase().trim();
+    
+    if (userAnswer.isEmpty) continue;
+
+    if (q.type == QuestionType.mcq) {
+      if (userAnswer == correctAnswer) {
+        score++;
+      }
+    } else if (q.type == QuestionType.shortAnswer) {
+      if (userAnswer == correctAnswer) {
+        score++;
+      } else {
+        try {
+          final prompt = 'Is the following user answer similar to or a correct variation of the expected answer?\n\n'
+              'Expected Answer: $correctAnswer\n'
+              'User Answer: $userAnswer\n\n'
+              'Respond with only "YES" or "NO".';
+          
+          final response = await _markingModel.generateContent([Content.text(prompt)]);
+          
+          if (response.text?.trim().toUpperCase() == 'YES') {
+            score++;
+          }
+        } catch (e) {
+          print('AI marking error: $e');
+        }
+      }
+    }
+  }
+
+  /*Future<void> _submitQuiz() async {
     setState(() => _isSubmitting = true);
     
     // Show loading dialog
@@ -2894,10 +3219,69 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
           }
         }
       }
+    }*/
+
+    Future<void> _saveQuizScoreToDatabase(int score, int total) async {
+  final user = context.read<FirebaseUserState>().currentUser;
+  if (user == null) return;
+  
+  try {
+    // Save quiz attempt to Firestore
+    await FirebaseFirestore.instance.collection('quiz_attempts').add({
+      'userId': user.id,
+      'username': user.username,
+      'quizTitle': widget.quizTitle,
+      'score': score,
+      'total': total,
+      'percentage': (score / total * 100).toDouble(),
+      'timestamp': FieldValue.serverTimestamp(),
+      'userAnswers': _userAnswers,
+    });
+    
+    // Award points to the user
+    final earnedPoints = (score / total * 100).toInt();
+    await context.read<FirebaseUserState>().addPoints(earnedPoints);
+    
+    // Check for badges
+    if (score / total >= 0.8) {
+      await context.read<FirebaseUserState>().awardBadge(
+        name: 'Quiz Master',
+        description: 'Scored 80% or above in a quiz',
+      );
     }
     
+  } catch (e) {
+    print('Error saving quiz score: $e');
+  }
+}
+    
     // Create attempt record
-    final attempt = QuizAttempt(
+await _saveQuizScoreToDatabase(score, widget.questions.length);
+  
+  final attempt = QuizAttempt(
+    quizTitle: widget.quizTitle,
+    questions: widget.questions,
+    userAnswers: Map.from(_userAnswers),
+    score: score,
+    total: widget.questions.length,
+    timestamp: DateTime.now(),
+  );
+  
+  userQuizAttempts.add(attempt);
+
+  setState(() => _isSubmitting = false);
+  
+  if (!mounted) return;
+  Navigator.pop(context); // Close loading dialog
+
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (context) => QuizResultsPage(attempt: attempt),
+    ),
+  );
+
+    /*final attempt = QuizAttempt(
       quizTitle: widget.quizTitle,
       questions: widget.questions,
       userAnswers: Map.from(_userAnswers),
@@ -2914,29 +3298,13 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     if (!mounted) return;
     Navigator.pop(context); // Close loading dialog
 
-    // ⚠️ START: NEW ACHIEVEMENT AWARD LOGIC (US012-01) ⚠️
-    final double percentage = score / widget.questions.length;
-    const double passingThreshold = 0.8; // 80%
-
-    if (percentage >= passingThreshold) {
-        // Call the core function to award the badge
-        final userState = context.read<FirebaseUserState>();
-        if (userState.isLoggedIn) {
-            await userState.awardBadge(
-                name: 'Quiz Master',
-                description: 'Scored 80% or above in a quiz',
-            );
-        }
-    }
-    // ⚠️ END: NEW ACHIEVEMENT AWARD LOGIC ⚠️
-
     // Navigate to results page
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => QuizResultsPage(attempt: attempt),
       ),
-    );
+    );*/
   }
 
 
@@ -3559,6 +3927,8 @@ class ChatError extends ChatState {
   List<Object> get props => [error];
 }
 
+class LoadChatHistoryEvent extends ChatEvent {}
+
 // Chat BLoC Implementation
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final List<ChatMessage> _messages = [];
@@ -3582,9 +3952,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<SendMessageEvent>(_onSendMessage);
     on<ClearChatEvent>(_onClearChat);
     on<LoadWelcomeEvent>(_onLoadWelcome);
+    on<LoadChatHistoryEvent>(_onLoadChatHistory);
     
     // Initialize with welcome message
     add(const LoadWelcomeEvent());
+
+    // Load chat history on initialization
+    add(LoadChatHistoryEvent());
+
   }
 
   void _onLoadWelcome(LoadWelcomeEvent event, Emitter<ChatState> emit) {
@@ -3595,7 +3970,167 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ));
     emit(ChatLoaded(messages: List.from(_messages)));
   }
+// ✅ ADD: Load chat history from Firestore
+Future<void> _onLoadChatHistory(LoadChatHistoryEvent event, Emitter<ChatState> emit) async {
+  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    emit(const ChatLoaded(messages: []));
+    return;
+  }
+  
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('chat_history')
+        .orderBy('timestamp', descending: false)
+        .get();
+    
+    final messages = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return ChatMessage(
+        text: data['message'] ?? '',
+        isUser: data['isUser'] ?? false,
+        timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
+    }).toList();
+    
+    _messages.clear();
+    _messages.addAll(messages);
+    
+    if (_messages.isEmpty) {
+      _messages.add(ChatMessage(
+        text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang Pengaturcaraan Java!",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+    }
+    
+    emit(ChatLoaded(messages: List.from(_messages)));
+  } catch (e) {
+    print('Error loading chat history: $e');
+    emit(ChatError(error: e.toString()));
+  }
+}
 
+// ✅ MODIFY _onSendMessage to save to Firestore:
+Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
+  if (event.message.trim().isEmpty) return;
+
+  final stopwatch = Stopwatch()..start();
+  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+
+  try {
+    // Add user message immediately
+    _messages.add(ChatMessage(
+      text: event.message,
+      isUser: true,
+      timestamp: DateTime.now(),
+    ));
+
+    // ✅ Save user message to Firestore
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('chat_history')
+          .add({
+        'message': event.message,
+        'isUser': true,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+
+    _conversationHistory.add(Content.text(event.message));
+
+    emit(const ChatLoading());
+
+    final response = await _model.generateContent(_conversationHistory);
+
+    stopwatch.stop();
+
+    final responseText = response.text ?? 
+      "Maaf, saya tidak dapat memahami pertanyaan anda. Cuba tanya dengan cara lain.";
+
+    _conversationHistory.add(Content.model([TextPart(responseText)]));
+
+    // Add bot response to messages
+    _messages.add(ChatMessage(
+      text: responseText,
+      isUser: false,
+      timestamp: DateTime.now(),
+      responseTime: stopwatch.elapsedMilliseconds,
+    ));
+
+    // ✅ Save bot response to Firestore
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('chat_history')
+          .add({
+        'message': responseText,
+        'isUser': false,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+
+    emit(ChatLoaded(
+      messages: List.from(_messages),
+      responseTime: stopwatch.elapsedMilliseconds,
+    ));
+
+  } catch (e) {
+    print('Error calling Gemini API: $e');
+    
+    _messages.add(ChatMessage(
+      text: "Maaf, saya menghadapi ralat: ${e.toString()}. Sila cuba lagi.",
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+
+    emit(ChatError(error: e.toString()));
+    
+    await Future.delayed(const Duration(milliseconds: 100));
+    emit(ChatLoaded(messages: List.from(_messages)));
+  }
+}
+
+// ✅ MODIFY _onClearChat to delete from Firestore:
+void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) async {
+  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+  
+  if (user != null) {
+    try {
+      // Delete all chat history from Firestore
+      final batch = FirebaseFirestore.instance.batch();
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('chat_history')
+          .get();
+      
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+    } catch (e) {
+      print('Error clearing chat history: $e');
+    }
+  }
+  
+  _messages.clear();
+  _conversationHistory.clear();
+  
+  _messages.add(ChatMessage(
+    text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja tentang Pengaturcaraan Java!",
+    isUser: false,
+    timestamp: DateTime.now(),
+  ));
+  emit(ChatLoaded(messages: List.from(_messages)));
+}
+/*
   Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
     if (event.message.trim().isEmpty) return;
 
@@ -3668,864 +4203,209 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       timestamp: DateTime.now(),
     ));
     emit(ChatLoaded(messages: List.from(_messages)));
-  }
+  }*/
 }
 
-/*
-class AIChatbotPage extends StatelessWidget {
-  const AIChatbotPage({super.key});
+
+
+class ProgressPage extends StatefulWidget {
+  const ProgressPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => ChatBloc(),
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          title: const Text('🤖 AI Study Buddy'),
-          backgroundColor: Colors.lightBlue,
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        body: const _ChatBody(),
-      ),
-    );
-  }
+  _ProgressPageState createState() => _ProgressPageState();
 }
-
-class _ChatBody extends StatefulWidget {
-  const _ChatBody();
-
-  @override
-  State<_ChatBody> createState() => _ChatBodyState();
-}
-
-class _ChatBodyState extends State<_ChatBody> {
-  int lastRating = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Chat content
-        Expanded(
-          child: BlocBuilder<ChatBloc, ChatState>(
-            builder: (context, state) {
-              if (state is ChatLoaded) {
-                return _buildChatList(state.messages);
-              } else if (state is ChatError) {
-                return Center(
-                  child: Text(
-                    'Error: ${state.error}',
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                );
-              } else if (state is ChatLoading) {
-                return _buildChatList(const []);
-              } else {
-                return const Center(child: CircularProgressIndicator());
-              }
-            },
-          ),
-        ),
-
-        // Input, rating, stop button
-        _buildMessageInput(),
-      ],
-    );
-  }
-
-  Widget _buildChatList(List<ChatMessage> messages) {
-    if (messages.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'Hello! Saya pembantu pembelajaran AI anda.',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Tanyalah saya tentang: Pengaturcaraan Java!',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      reverse: false,
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        return _buildChatBubble(message);
-      },
-    );
-  }
-
-  Widget _buildChatBubble(ChatMessage message) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment:
-            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!message.isUser) ...[
-            CircleAvatar(
-              backgroundColor: Colors.lightBlue,
-              radius: 16,
-              child: const Text('AI',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12.0),
-              decoration: BoxDecoration(
-                color:
-                    message.isUser ? Colors.lightBlue[50] : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12.0),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    message.text,
-                    style: const TextStyle(fontSize: 16, height: 1.4),
-                  ),
-                  if (message.responseTime != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.schedule, size: 12, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${message.responseTime}ms',
-                          style:
-                              const TextStyle(fontSize: 10, color: Colors.grey),
-                        ),
-                        if (message.confidence != null) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color:
-                                  _getConfidenceColor(message.confidence!),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              message.confidence!.toUpperCase(),
-                              style: const TextStyle(
-                                  fontSize: 8,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          if (message.isUser) ...[
-            const SizedBox(width: 8),
-            const CircleAvatar(
-              backgroundColor: Colors.green,
-              radius: 16,
-              child: Icon(Icons.person, color: Colors.white, size: 16),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  static Color _getConfidenceColor(String confidence) {
-    switch (confidence) {
-      case 'high':
-        return Colors.green;
-      case 'medium':
-        return Colors.orange;
-      case 'low':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Widget _buildMessageInput() {
-    final controller = TextEditingController();
-
-    return Column(
-      children: [
-        // ---- Text Input Row ----
-        Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Colors.grey[300]!)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  decoration: InputDecoration(
-                    hintText: 'Tanyalah saya tentang: Pengaturcaraan Java...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24.0),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 12.0),
-                  ),
-                  onSubmitted: (value) => _sendMessage(controller),
-                ),
-              ),
-              const SizedBox(width: 8),
-              BlocBuilder<ChatBloc, ChatState>(
-                builder: (context, state) {
-                  final isLoading = state is ChatLoading;
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: isLoading ? Colors.grey : Colors.lightBlue,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Icon(Icons.send, color: Colors.white),
-                      onPressed:
-                          isLoading ? null : () => _sendMessage(controller),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-
-        // ---- Rating + End Conversation Row ----
-        Container(
-          color: Colors.grey[100],
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // --- Rating Section ---
-              Row(
-                children: [
-                  const Text('Rate chatbot:'),
-                  const SizedBox(width: 8),
-                  for (int s = 1; s <= 5; s++)
-                    IconButton(
-                      icon: Icon(
-                        s <= lastRating ? Icons.star : Icons.star_border,
-                        color: Colors.orange,
-                      ),
-                      onPressed: () {
-                        setState(() => lastRating = s);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content:
-                                Text('Thanks! You rated the bot $s star(s).'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                ],
-              ),
-
-              // --- Stop Conversation Button ---
-              IconButton(
-                icon: const Icon(Icons.stop_circle, color: Colors.red, size: 32),
-                tooltip: 'End Conversation',
-                onPressed: () {
-                  
-                  context.read<ChatBloc>().add(ClearChatEvent());
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content:
-                            Text('Perbualan telah tamat. Memulakan semula')),
-                  );
-                  
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _sendMessage(TextEditingController controller) {
-    final text = controller.text.trim();
-    if (text.isNotEmpty && mounted) {
-      context.read<ChatBloc>().add(SendMessageEvent(text));
-      controller.clear();
-    }
-  }
-}
-
-
-// ========== AI CHATBOT SUPPORTING CLASSES ==========
-
-// Chat Message Model
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-  final int? responseTime;
-  final String? confidence;
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-    this.responseTime,
-    this.confidence,
-  });
-
-  @override
-  String toString() {
-    return 'ChatMessage{text: $text, isUser: $isUser, timestamp: $timestamp}';
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ChatMessage &&
-          runtimeType == other.runtimeType &&
-          text == other.text &&
-          isUser == other.isUser &&
-          timestamp == other.timestamp;
-
-  @override
-  int get hashCode => text.hashCode ^ isUser.hashCode ^ timestamp.hashCode;
-}
-
-// Chat BLoC Events
-abstract class ChatEvent extends Equatable {
-  const ChatEvent();
-
-  @override
-  List<Object> get props => [];
-}
-
-class SendMessageEvent extends ChatEvent {
-  final String message;
-
-  const SendMessageEvent(this.message);
-
-  @override
-  List<Object> get props => [message];
-}
-
-class ClearChatEvent extends ChatEvent {}
-
-// Chat BLoC Events 
-class LoadWelcomeEvent extends ChatEvent {
-  const LoadWelcomeEvent();
-
-  @override
-  List<Object> get props => [];
-}
-
-// Chat BLoC States
-abstract class ChatState extends Equatable {
-  const ChatState();
-
-  @override
-  List<Object> get props => [];
-}
-
-class ChatInitial extends ChatState {
-  const ChatInitial();
-}
-
-class ChatLoading extends ChatState {
-  const ChatLoading();
-}
-
-class ChatLoaded extends ChatState {
-  final List<ChatMessage> messages;
-  final int responseTime;
-
-  const ChatLoaded({required this.messages, this.responseTime = 0});
-
-  @override
-  List<Object> get props => [messages, responseTime];
-}
-
-class ChatError extends ChatState {
-  final String error;
-
-  const ChatError({required this.error});
-
-  @override
-  List<Object> get props => [error];
-}
-
-// Chat BLoC Implementation
-
-class ChatBloc extends Bloc<ChatEvent, ChatState> {
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      text: "Hello! Saya pembantu pembelajaran AI anda.",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ),
-  ];
-
-  // Predefined FAQs for Java (Bloc version)
-final Map<String, Map<String, dynamic>> _faqs = {
-  'pembolehubah': {
-    'answer': 'Dalam Java, pembolehubah ialah bekas yang menyimpan data dengan jenis tertentu. Contoh: int umur = 20;',
-    'keywords': ['pembolehubah', 'data', 'int', 'bekas'],
-    'category': 'Asas Java'
-  },
-  'jenis data': {
-    'answer': 'Java mempunyai jenis data primitif seperti int, double, char, boolean, dan jenis bukan primitif seperti String dan tatasusunan (array).',
-    'keywords': ['jenis data', 'primitif', 'string', 'array'],
-    'category': 'Asas Java'
-  },
-  'gelung': {
-    'answer': 'Java menyokong gelung for, while, dan do-while. Contoh: for(int i=0; i<5; i++) { System.out.println(i); }',
-    'keywords': ['gelung', 'for', 'while', 'ulangan'],
-    'category': 'Struktur Kawalan'
-  },
-  'if': {
-    'answer': 'Pernyataan if dalam Java digunakan untuk menyemak sesuatu syarat: if(x > 0) { System.out.println("Positif"); } else { System.out.println("Negatif"); }',
-    'keywords': ['if', 'else', 'syarat', 'keputusan'],
-    'category': 'Struktur Kawalan'
-  },
-  'kelas': {
-    'answer': 'Kelas dalam Java menentukan pelan (blueprint) bagi objek. Contoh: class Kereta { String model; void pandu() { System.out.println("Memandu"); } }',
-    'keywords': ['kelas', 'blueprint', 'objek'],
-    'category': 'OOP'
-  },
-  'objek': {
-    'answer': 'Objek ialah contoh (instance) bagi kelas. Contoh: Kereta myCar = new Kereta(); myCar.pandu();',
-    'keywords': ['objek', 'instance', 'kelas'],
-    'category': 'OOP'
-  },
-  'pembina': {
-    'answer': 'Pembina (constructor) digunakan untuk memulakan objek semasa ia dicipta. Namanya sama seperti kelas dan tiada jenis pulangan (return type).',
-    'keywords': ['pembina', 'constructor', 'objek', 'kelas'],
-    'category': 'OOP'
-  },
-  'pewarisan': {
-    'answer': 'Pewarisan membolehkan satu kelas menggunakan medan dan kaedah daripada kelas lain. Gunakan kata kunci extends: class Anjing extends Haiwan { }',
-    'keywords': ['pewarisan', 'extends', 'induk', 'anak', 'kelas'],
-    'category': 'OOP'
-  },
-  'polimorfisme': {
-    'answer': 'Polimorfisme bermaksud kaedah yang sama boleh berkelakuan berbeza bergantung pada objek yang memanggilnya (kaedah menindih / overriding).',
-    'keywords': ['polimorfisme', 'menindih', 'oop'],
-    'category': 'OOP'
-  },
-  'enkapsulasi': {
-    'answer': 'Enkapsulasi menyembunyikan data dalaman menggunakan medan peribadi (private) dan kaedah awam (getter/setter) untuk mengawal capaian.',
-    'keywords': ['enkapsulasi', 'getter', 'setter', 'private', 'oop'],
-    'category': 'OOP'
-  },
-  'abstraksi': {
-    'answer': 'Abstraksi menyembunyikan butiran pelaksanaan yang kompleks. Gunakan kelas abstrak atau antara muka (interface) untuk menentukan kontrak.',
-    'keywords': ['abstraksi', 'abstrak', 'interface', 'oop'],
-    'category': 'OOP'
-  },
-  'oop': {
-    'answer': 'Konsep OOP dalam Java termasuk Kelas, Objek, Pewarisan, Polimorfisme, Abstraksi, dan Enkapsulasi.',
-    'keywords': ['oop', 'berorientasikan objek', 'java'],
-    'category': 'OOP'
-  },
-};
-
-  ChatBloc() : super(ChatInitial()) {
-    on<SendMessageEvent>(_onSendMessage);
-    on<ClearChatEvent>(_onClearChat);
-    on<LoadWelcomeEvent>(_onLoadWelcome);
-    
-    // Initialize with welcome message
-    add(const LoadWelcomeEvent());
-  }
-
-  void _onLoadWelcome(LoadWelcomeEvent event, Emitter<ChatState> emit) {
-    emit(ChatLoaded(messages: List.from(_messages)));
-  }
-
-  Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
-    if (event.message.trim().isEmpty) return;
-
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      // Add user message immediately
-      _messages.add(ChatMessage(
-        text: event.message,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
-
-      emit(ChatLoading());
-
-      // Simulate API call delay
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Get FAQ response
-      final response = _getFAQResponse(event.message);
-      stopwatch.stop();
-
-      // Add bot response
-      _messages.add(ChatMessage(
-        text: response['answer'],
-        isUser: false,
-        timestamp: DateTime.now(),
-        responseTime: stopwatch.elapsedMilliseconds,
-        confidence: response['confidence'],
-      ));
-
-      emit(ChatLoaded(
-        messages: List.from(_messages),
-        responseTime: stopwatch.elapsedMilliseconds,
-      ));
-
-    } catch (e) {
-      // Add error message
-      _messages.add(ChatMessage(
-        text: "Maaf, saya menghadapi ralat. Sila cuba lagi.",
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
-
-      emit(ChatError(error: e.toString()));
-      
-      // Re-emit loaded state to show error message
-      await Future.delayed(const Duration(milliseconds: 100));
-      emit(ChatLoaded(messages: List.from(_messages)));
-    }
-  }
-
-  void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) {
-    _messages.clear();
-    // Add welcome message back
-    _messages.add(ChatMessage(
-      text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ));
-    emit(ChatLoaded(messages: List.from(_messages)));
-  }
-
-  Map<String, dynamic> _getFAQResponse(String userMessage) {
-    final lowerMessage = userMessage.toLowerCase();
-    Map<String, dynamic>? bestMatch;
-    int highestScore = 0;
-
-    for (var faq in _faqs.entries) {
-      final keywords = List<String>.from(faq.value['keywords']);
-      int score = _calculateMatchScore(lowerMessage, keywords);
-
-      if (score > highestScore) {
-        highestScore = score;
-        bestMatch = {
-          'answer': faq.value['answer'],
-          'matchedQuestion': faq.key,
-          'confidence': score >= 3 ? 'high' : score >= 2 ? 'medium' : 'low',
-          'category': faq.value['category'],
-        };
-      }
-    }
-
-    if (bestMatch != null && highestScore >= 1) {
-      return bestMatch;
-    } else {
-      return {
-        'answer': "Saya masih dalam proses pembelajaran! aya belum ada jawapan untuk itu. Cuba tanya tentang: ${_faqs.keys.join(', ')}",
-        'matchedQuestion': null,
-        'confidence': 'low',
-        'category': 'general',
-      };
-    }
-  }
-
-  int _calculateMatchScore(String userMessage, List<String> keywords) {
-    int score = 0;
-    
-    for (String keyword in keywords) {
-      final cleanKeyword = keyword.trim().toLowerCase();
-      if (cleanKeyword.isEmpty) continue;
-
-      // Exact word match (higher score)
-      if (RegExp(r'\b' + RegExp.escape(cleanKeyword) + r'\b').hasMatch(userMessage)) {
-        score += 2;
-      }
-      // Partial match
-      else if (userMessage.contains(cleanKeyword)) {
-        score += 1;
-      }
-    }
-    
-    return score;
-  }
-}*/
-
 
 class ProgressRecord {
   final String id;
-  final String student; 
+  final String name;
   final String activity;
   final double score;
   final String grade;
   final String comments;
-  final Timestamp? timestamp;
 
   ProgressRecord({
     required this.id,
-    required this.student,
+    required this.name,
     required this.activity,
     required this.score,
     required this.grade,
     required this.comments,
-    required this.timestamp,
   });
 
   factory ProgressRecord.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ProgressRecord(
       id: doc.id,
-      student: data['student'] ?? '',
+      name: data['name'] ?? '',
       activity: data['activity'] ?? '',
       score: (data['score'] ?? 0).toDouble(),
       grade: data['grade'] ?? '',
       comments: data['comments'] ?? '',
-      timestamp: data['timestamp'] as Timestamp?,
     );
   }
 }
 
-class ProgressPage extends StatefulWidget {
-  const ProgressPage({super.key});
-
-  @override
-  State<ProgressPage> createState() => _ProgressPageState();
-}
-
 class _ProgressPageState extends State<ProgressPage> {
   final _formKey = GlobalKey<FormState>();
-  final FirebaseFirestore _fs = FirebaseFirestore.instance;
+  final _firestore = FirebaseFirestore.instance;
 
-  // controllers for add form
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _activityController = TextEditingController();
   final TextEditingController _scoreController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
-  String? _selectedStudentUsername;
-  List<Map<String, dynamic>> _searchResults = [];
-  bool _isSearching = false;
-
-  // ---------- search users by username ----------
-  Future<void> _searchUsers(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults = [];
-      });
-      return;
-    }
-
-    setState(() => _isSearching = true);
-
-    try {
-      // fetch only students, then filter locally by username substring (case-insensitive)
-      final snapshot = await _fs
-          .collection('users')
-          .where('userType', isEqualTo: 'UserType.student')
-          .get();
-
-      final results = snapshot.docs
-          .where((doc) {
-            final username = (doc.data()['username'] ?? '').toString().toLowerCase();
-            return username.contains(query.toLowerCase());
-          })
-          .map((doc) => {
-                'id': doc.id,
-                'username': doc['username'],
-              })
-          .toList();
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-    } catch (e) {
-      setState(() => _isSearching = false);
-      // swallow or show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('User search failed: $e')),
-      );
-    }
-  }
-
-  // ---------- add progress ----------
+  // Add new progress
   Future<void> _addProgress() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedStudentUsername == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a student first')));
-      return;
-    }
-
-    try {
-      final record = {
-        'student': _selectedStudentUsername,
-        'activity': _activityController.text.trim(),
-        'score': double.tryParse(_scoreController.text) ?? 0,
-        'grade': _gradeController.text.trim(),
-        'comments': _commentsController.text.trim(),
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-
-      await _fs.collection('progress_records').add(record);
-
-      // clear only input fields, keep selected student if you want to add multiple for same student
-      _activityController.clear();
-      _scoreController.clear();
-      _gradeController.clear();
-      _commentsController.clear();
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Progress added successfully'),
-        backgroundColor: Colors.green,
-      ));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add progress: $e')));
-    }
-  }
-
-  // ---------- delete with confirmation ----------
-  Future<void> _confirmAndDelete(String docId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm delete'),
-        content: const Text('Are you sure you want to delete this progress record? This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
+    if (_formKey.currentState!.validate()) {
       try {
-        await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Record deleted'),
-          backgroundColor: Colors.red,
-        ));
+        final record = {
+          'name': _nameController.text,
+          'activity': _activityController.text,
+          'score': double.tryParse(_scoreController.text) ?? 0,
+          'grade': _gradeController.text,
+          'comments': _commentsController.text,
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        await _firestore.collection('progress_records').add(record);
+        _clearForm();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progress added successfully!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add progress: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
-  // ---------- edit dialog ----------
-  void _showEditDialog(ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(text: record.activity);
-    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
-    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
-    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
-    final _editFormKey = GlobalKey<FormState>();
+  // Delete progress record
+  Future<void> _deleteProgress(String id) async {
+    try {
+      await _firestore.collection('progress_records').doc(id).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Progress deleted!'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete progress: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Clear form controllers
+  void _clearForm() {
+    _nameController.clear();
+    _activityController.clear();
+    _scoreController.clear();
+    _gradeController.clear();
+    _commentsController.clear();
+  }
+
+  // Edit progress using a popup dialog
+  void _editProgress(ProgressRecord record) {
+    _nameController.text = record.name;
+    _activityController.text = record.activity;
+    _scoreController.text = record.score.toString();
+    _gradeController.text = record.grade;
+    _commentsController.text = record.comments;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('Edit Progress'),
         content: Form(
-          key: _editFormKey,
+          key: _formKey,
           child: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // student username (display only)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Student Name'),
+                  validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
                 ),
                 TextFormField(
-                  controller: activityCtl,
-                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
+                  controller: _activityController,
+                  decoration: const InputDecoration(labelText: 'Activity Name'),
+                  validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
                 ),
-                const SizedBox(height: 8),
                 TextFormField(
-                  controller: scoreCtl,
-                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                  controller: _scoreController,
+                  decoration: const InputDecoration(labelText: 'Score'),
                   keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
+                  validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
                 ),
-                const SizedBox(height: 8),
                 TextFormField(
-                  controller: gradeCtl,
-                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
+                  controller: _gradeController,
+                  decoration: const InputDecoration(labelText: 'Grade'),
+                  validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
                 ),
-                const SizedBox(height: 8),
                 TextFormField(
-                  controller: commentsCtl,
-                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
-                  maxLines: 2,
+                  controller: _commentsController,
+                  decoration: const InputDecoration(labelText: 'Comments'),
                 ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              _clearForm();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
-              if (!(_editFormKey.currentState?.validate() ?? false)) return;
-              try {
-                await _fs.collection('progress_records').doc(record.id).update({
-                  'activity': activityCtl.text.trim(),
-                  'score': double.tryParse(scoreCtl.text) ?? 0,
-                  'grade': gradeCtl.text.trim(),
-                  'comments': commentsCtl.text.trim(),
-                });
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Record updated'),
-                  backgroundColor: Colors.green,
-                ));
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+              if (_formKey.currentState!.validate()) {
+                try {
+                  await _firestore.collection('progress_records').doc(record.id).update({
+                    'name': _nameController.text,
+                    'activity': _activityController.text,
+                    'score': double.tryParse(_scoreController.text) ?? 0,
+                    'grade': _gradeController.text,
+                    'comments': _commentsController.text,
+                  });
+
+                  _clearForm();
+                  Navigator.of(context).pop();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Progress updated successfully!'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update progress: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Save'),
@@ -4536,188 +4416,129 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    _activityController.dispose();
-    _scoreController.dispose();
-    _gradeController.dispose();
-    _commentsController.dispose();
-    super.dispose();
-  }
-
-  // ---------- UI ----------
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Student Progress'),
-        actions: [
-          TextButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ProgressHistoryPage()),
-            ),
-            icon: const Icon(Icons.history, color: Colors.white),
-            label: const Text('Progress History', style: TextStyle(color: Colors.white)),
-          )
-        ],
-      ),
+      appBar: AppBar(title: const Text('Student Progress')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ---------- search & select student ----------
+            // ---------- Add Progress Form ----------
             Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextFormField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'Search student (username)',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _isSearching
-                          ? const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                            )
-                          : (_searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchResults = []);
-                                  },
-                                )
-                              : null),
-                      border: const OutlineInputBorder(),
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Student Name',
+                      border: OutlineInputBorder(),
                     ),
-                    onChanged: (q) => _searchUsers(q),
+                    validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
                   ),
-                  if (_searchResults.isNotEmpty) const SizedBox(height: 8),
-                  if (_searchResults.isNotEmpty)
-                    Card(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _searchResults.length,
-                        separatorBuilder: (_, __) => const Divider(height: 0),
-                        itemBuilder: (context, i) {
-                          final u = _searchResults[i];
-                          return ListTile(
-                            title: Text(u['username'] ?? ''),
-                            onTap: () {
-                              setState(() {
-                                _selectedStudentUsername = u['username'];
-                                _searchController.text = u['username'];
-                                _searchResults.clear();
-                              });
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  if (_selectedStudentUsername != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          const Text('Selected: ', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text(_selectedStudentUsername!, style: const TextStyle(color: Colors.blue)),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedStudentUsername = null;
-                                _searchController.clear();
-                              });
-                            },
-                            child: const Text('Clear'),
-                          )
-                        ],
-                      ),
-                    ),
-
-                  // ---------- add fields ----------
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _activityController,
-                    decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter an activity' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Activity Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _scoreController,
-                    decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Score',
+                      border: OutlineInputBorder(),
+                    ),
                     keyboardType: TextInputType.number,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a score' : null,
+                    validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _gradeController,
-                    decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a grade' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Grade',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _commentsController,
-                    decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Comments',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   ElevatedButton.icon(
                     onPressed: _addProgress,
                     icon: const Icon(Icons.add),
                     label: const Text('Add Progress'),
                   ),
-                  const Divider(height: 30),
+                  const Divider(height: 30, thickness: 1),
                 ],
               ),
             ),
 
-            // ---------- latest 3 cards ----------
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Latest records', style: Theme.of(context).textTheme.titleMedium),
-            ),
-            const SizedBox(height: 8),
+            // ---------- Display Progress Records ----------
             StreamBuilder<QuerySnapshot>(
-              stream: _fs
+              stream: _firestore
                   .collection('progress_records')
                   .orderBy('timestamp', descending: true)
-                  .limit(3)
                   .snapshots(),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
-                final docs = snap.data?.docs ?? [];
-                if (docs.isEmpty) return const Text('No recent records');
-                final records = docs.map((d) => ProgressRecord.fromDoc(d)).toList();
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Text(
+                    'No progress records yet.',
+                    style: TextStyle(color: Colors.grey),
+                  );
+                }
 
-                return Column(
-                  children: records.map((r) {
+                final records = snapshot.data!.docs
+                    .map((doc) => ProgressRecord.fromDoc(doc))
+                    .toList();
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: records.length,
+                  itemBuilder: (context, index) {
+                    final record = records[index];
                     return Card(
+                      elevation: 2,
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       child: ListTile(
-                        title: Text('${r.student} — ${r.activity}'),
-                        subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\n${r.comments}'),
-                        isThreeLine: true,
+                        title: Text('${record.name} — ${record.activity}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Score: ${record.score}, Grade: ${record.grade}'),
+                            Text('Comments: ${record.comments}'),
+                          ],
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _showEditDialog(r),
+                              onPressed: () => _editProgress(record),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _confirmAndDelete(r.id),
+                              onPressed: () => _deleteProgress(record.id),
                             ),
                           ],
                         ),
                       ),
                     );
-                  }).toList(),
+                  },
                 );
               },
             ),
@@ -4728,159 +4549,9 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 }
 
-/// ProgressHistoryPage: full list of all progress records with edit & delete
-class ProgressHistoryPage extends StatefulWidget {
-  @override
-  State<ProgressHistoryPage> createState() => _ProgressHistoryPageState();
-}
-
-class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
-  final FirebaseFirestore _fs = FirebaseFirestore.instance;
-
-  // Reuse same edit and delete patterns as above (duplicated for simplicity)
-  Future<void> _confirmAndDelete(BuildContext context, String docId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm delete'),
-        content: const Text('Are you sure you want to delete this progress record?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted')));
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
-      }
-    }
-  }
-
-  void _showEditDialog(BuildContext context, ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(text: record.activity);
-    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
-    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
-    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
-    final _editFormKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Progress'),
-        content: Form(
-          key: _editFormKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                TextFormField(
-                  controller: activityCtl,
-                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: scoreCtl,
-                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: gradeCtl,
-                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: commentsCtl,
-                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (!(_editFormKey.currentState?.validate() ?? false)) return;
-              try {
-                await _fs.collection('progress_records').doc(record.id).update({
-                  'activity': activityCtl.text.trim(),
-                  'score': double.tryParse(scoreCtl.text) ?? 0,
-                  'grade': gradeCtl.text.trim(),
-                  'comments': commentsCtl.text.trim(),
-                });
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated')));
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progress History'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _fs.collection('progress_records').orderBy('timestamp', descending: true).snapshots(),
-        builder: (context, snap) {
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-          final records = snap.data!.docs.map((d) => ProgressRecord.fromDoc(d)).toList();
-          if (records.isEmpty) return const Center(child: Text('No progress records yet.'));
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: records.length,
-            itemBuilder: (context, i) {
-              final r = records[i];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: ListTile(
-                  title: Text('${r.student} — ${r.activity}'),
-                  subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\nComments: ${r.comments}'),
-                  isThreeLine: true,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showEditDialog(context, r)),
-                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmAndDelete(context, r.id)),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
 
 // ---------- Achievements ----------
+const bool isDemoMode = true;
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
 
@@ -4889,74 +4560,59 @@ class AchievementsPage extends StatefulWidget {
 }
 
 class _AchievementsPageState extends State<AchievementsPage> {
+  // Mock data for demonstration purposes (moved inside state for mutability)
+  static final AppUser _mockTeacherUser = AppUser(
+    id: 'mock_teacher_id',
+    username: 'Teacher Demo',
+    email: 'teacher@demo.com',
+    userType: UserType.teacher, // Crucial for enabling teacher actions
+    points: 1200,
+    badges: ['Quiz Master', 'Top Contributor', 'File Uploader'],
+    completionLevel: 0.9,
+  );
 
-  // Helper function to get the correct achievement stream
+  // ⚠️ Mock achievements list is now mutable
+  final List<Map<String, dynamic>> _mockAchievements = [
+    {'title': 'Quiz Master', 'type': 'Badge', 'description': 'Scored 80% or above in a quiz', 'dateEarned': DateTime.now().subtract(const Duration(days: 5)), 'studentName': _mockTeacherUser.username},
+    {'title': 'Top Contributor', 'type': 'Milestone', 'description': 'Posted 10 times in the forum', 'dateEarned': DateTime.now().subtract(const Duration(days: 10)), 'studentName': _mockTeacherUser.username},
+    {'title': 'File Uploader', 'type': 'Badge', 'description': 'Uploaded a resource file', 'dateEarned': DateTime.now().subtract(const Duration(days: 20)), 'studentName': _mockTeacherUser.username},
+  ];
+
+  // ⚠️ NEW: Function to add a new achievement to the mock list
+  void _addMockAchievement(Map<String, dynamic> newAchievement) {
+    setState(() {
+      // Add new achievement to the start of the list to show it immediately
+      _mockAchievements.insert(0, newAchievement);
+    });
+  }
+
+  // Helper function to get the correct achievement stream for *real* mode
   Stream<QuerySnapshot> getAchievementStream(AppUser? user) {
     var query = FirebaseFirestore.instance.collection('achievements').orderBy('dateEarned', descending: true);
     
-    // Filter to show only the current user's achievements if logged in, otherwise show public feed
+    // If user is logged in (user != null), filter for their achievements.
     if (user != null) {
       query = query.where('studentId', isEqualTo: user.id);
     } else {
-      // If not logged in, show a public feed of recent achievements (limited for performance)
+      // If not logged in, show a public feed of recent achievements.
       query = query.limit(30); 
     }
     return query.snapshots();
   }
-
-  // ⚠️ Function to delete an achievement (US012-03)
-  Future<void> _deleteAchievement(String achievementId, String achievementTitle) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Achievement'),
-        content: Text('Are you sure you want to delete the achievement: "$achievementTitle"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        await FirebaseFirestore.instance.collection('achievements').doc(achievementId).delete();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Achievement "$achievementTitle" deleted.'), backgroundColor: Colors.green),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete achievement: $e'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
-  }
   
   @override
   Widget build(BuildContext context) {
-    // Rely exclusively on live FirebaseUserState
-    final userState = context.watch<FirebaseUserState>();
-    final isLoggedIn = userState.isLoggedIn;
-    final user = userState.currentUser;
-    final bool isTeacher = user?.userType == UserType.teacher ?? false;
+    // Conditional setup for state variables: use mock data if in demo mode
+    final userState = isDemoMode ? null : context.watch<FirebaseUserState>();
+    final isLoggedIn = isDemoMode ? true : (userState?.isLoggedIn ?? false);
+    final user = isDemoMode ? _mockTeacherUser : userState?.currentUser;
+    // Force isTeacher to true in demo mode, otherwise use actual user type
+    final bool isTeacher = isDemoMode ? true : (user?.userType == UserType.teacher ?? false);
 
-    // Page title
+    
+    // Page title (Yellow Section)
     final String pageTitle = isLoggedIn ? '🏆 Your Achievements' : '🏅 Community Achievements';
     
-    // If not logged in, show a simplified message (re-using old logic for non-logged-in state)
-    if (!isLoggedIn) {
-       return Scaffold(
-        appBar: AppBar(title: Text(pageTitle), backgroundColor: Colors.amber, foregroundColor: Colors.white),
-        body: const Center(child: Text('Please log in to view personalized achievements or community feed.')),
-      );
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -4967,8 +4623,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logic to show the 'unlocked message'
-          if (userState.lastUnlockedMessage != null) Builder(
+          // Logic to show the 'unlocked message' for logged-in users (disabled in demo mode)
+          if (!isDemoMode && userState != null && userState.lastUnlockedMessage != null) Builder(
             builder: (ctx) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 final msg = userState.lastUnlockedMessage;
@@ -4984,41 +4640,84 @@ class _AchievementsPageState extends State<AchievementsPage> {
           ),
           
           Expanded(
-            // Use live StreamBuilder
-            child: StreamBuilder<QuerySnapshot>(
-              stream: getAchievementStream(user), // Fetch achievements for current user
+            // Conditional rendering: Mock list for demo, or StreamBuilder for real data
+            child: isDemoMode 
+                ? _buildAchievementListView(_mockAchievements, isLoggedIn) 
+                : StreamBuilder<QuerySnapshot>(
+              stream: getAchievementStream(user), // Pass the user object to the stream
               builder: (context, snapshot) {
+// ========== ACHIEVEMENTS PAGE - PLACEHOLDER ==========
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error loading achievements: ${snapshot.error}'));
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                // Map DocumentSnapshot list to Map list, including the document ID
-                final achievements = snapshot.data!.docs
-                    .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-                    .toList();
+                // Map DocumentSnapshot list to Map list for use in helper function
+                final achievements = snapshot.data!.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
 
-                return _buildAchievementListView(achievements, isLoggedIn, isTeacher, user!.id);
+                return _buildAchievementListView(achievements, isLoggedIn);
               },
             ),
           ),
           
-          // Teacher Action Buttons (Only 'Add Achievement' remains, full width)
+          // NEW POSITION: Two buttons side-by-side at the bottom, visible only to teachers
           if (isTeacher) Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               children: [
-                // 1. Add Achievement Button (now takes full width)
+                // 1. Simulate Milestone Button
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      // ⚠️ Fake success message for demo mode
+                      if (isDemoMode) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Successfully simulated "Quiz Master" achievement unlocked!'),
+                            backgroundColor: Colors.green, // Show success colour
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      // Actual implementation for non-demo mode
+                      await context.read<FirebaseUserState>().awardBadge(
+                        name: 'Quiz Master',
+                        description: 'Scored 80% or above in a quiz',
+                      );
+                      if (context.mounted) {
+                        final msg = context.read<FirebaseUserState>().lastUnlockedMessage;
+                        if (msg != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(msg), backgroundColor: Colors.green),
+                          );
+                          context.read<FirebaseUserState>().consumeLastUnlockedMessage();
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Simulate Milestone'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 10),
+                
+                // 2. Add Achievement Button
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // ACTION ENABLED: Navigate to AddAchievementPage
+                      // ⚠️ ACTION ENABLED: Pass the callback function
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const AddAchievementPage(),
+                          builder: (context) => AddAchievementPage(
+                            onAchievementAwarded: _addMockAchievement,
+                          ),
                         ),
                       );
                     },
@@ -5037,24 +4736,13 @@ class _AchievementsPageState extends State<AchievementsPage> {
     );
   }
 
-  // Helper method to build the list view
-  Widget _buildAchievementListView(
-    List<Map<String, dynamic>> achievements, 
-    bool isLoggedIn, 
-    bool isTeacher,
-    String? currentUserId,
-  ) {
-    
-    // Sort achievements manually for display
-    achievements.sort((a, b) {
-      final dateA = a['dateEarned'];
-      final dateB = b['dateEarned'];
-      if (dateA is Timestamp && dateB is Timestamp) {
-        return dateB.toDate().compareTo(dateA.toDate());
-      }
-      return 0;
-    });
-
+  // Helper method to build the list view for both mock and real data
+  Widget _buildAchievementListView(List<Map<String, dynamic>> achievements, bool isLoggedIn) {
+    // Determine the message based on list size and login status
+    final String emptyMessage = isLoggedIn 
+        ? 'You have no achievements yet. Start learning and completing quizzes!' 
+        : 'No community achievements found. Check back later!';
+        
     if (achievements.isEmpty) {
       return Center(
         child: Column(
@@ -5065,9 +4753,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Text(
-                isLoggedIn 
-                    ? 'You have no achievements yet. Start learning and completing quizzes!' 
-                    : 'No public achievements found.',
+                emptyMessage,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
@@ -5085,16 +4771,20 @@ class _AchievementsPageState extends State<AchievementsPage> {
         final title = achievement['title'] ?? 'No Title';
         final type = achievement['type'] ?? 'General';
         final description = achievement['description'] ?? 'No Description';
-        final String? achievementId = achievement['id'] as String?; // Retrieved document ID
-        final String studentId = achievement['studentId'] ?? '';
         
+        // Handle both Timestamp (from Firestore) and DateTime (from Mock data)
         final dateEarned = achievement['dateEarned'];
-        DateTime? when;
-        if (dateEarned is Timestamp) when = dateEarned.toDate();
-
-        // Teachers can delete ANY achievement. 
-        final bool canDelete = isTeacher; 
+        final DateTime? when;
+        if (dateEarned is Timestamp) {
+          when = dateEarned.toDate();
+        } else if (dateEarned is DateTime) {
+          when = dateEarned;
+        } else {
+          when = null;
+        }
         
+        final studentName = achievement['studentName'] ?? 'Unknown User';
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
@@ -5106,9 +4796,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
               children: [
                 Text(description),
                 const SizedBox(height: 4),
-                if (!isLoggedIn || studentId != currentUserId) Padding(
+                // Show user name in public feed, but not in personal feed
+                if (!isLoggedIn) Padding(
                   padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text('Earned by: ${achievement['studentName'] ?? 'Unknown User'}', style: TextStyle(color: Colors.blue[700], fontSize: 12, fontWeight: FontWeight.w500)),
+                  child: Text('Earned by: $studentName', style: TextStyle(color: Colors.blue[700], fontSize: 12, fontWeight: FontWeight.w500)),
                 ),
                 Row(
                   children: [
@@ -5122,13 +4813,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 ),
               ],
             ),
-            trailing: canDelete && achievementId != null
-                ? IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteAchievement(achievementId, title),
-                    tooltip: 'Delete Achievement',
-                  )
-                : null,
           ),
         );
       },
@@ -5136,9 +4820,12 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 }
 
-// ========== Add Achievement Page (LIVE FIREBASE IMPLEMENTATION) ==========
+// ========== Add Achievement Page (MOCK STUDENT LIST & FAKE SUBMIT IMPLEMENTATION) ==========
 class AddAchievementPage extends StatefulWidget {
-  const AddAchievementPage({super.key});
+  // ⚠️ NEW: Define a callback function to update the parent's mock list
+  final void Function(Map<String, dynamic>)? onAchievementAwarded;
+  
+  const AddAchievementPage({super.key, this.onAchievementAwarded});
 
   @override
   State<AddAchievementPage> createState() => _AddAchievementPageState();
@@ -5151,31 +4838,17 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
   String _description = '';
   String? _selectedStudentId;
   String? _selectedStudentName;
-  bool _isLoading = false; // Add loading state
 
   final List<String> _achievementTypes = ['Badge', 'Certificate', 'Milestone', 'Other'];
 
-  // ⚠️ Function to fetch live student list from Firestore
-  Future<List<AppUser>> _getStudentsList() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('userType', isEqualTo: 'UserType.student') 
-          .orderBy('username')
-          .get();
-      
-      return snapshot.docs.map((doc) => AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>)).toList();
-    } catch (e) {
-      print("Error fetching student list: $e");
-      // Fallback list when fetching live data fails (e.g., due to rules)
-      return [
-        AppUser(id: 'FALLBACK_1', username: 'LOAD_ERROR: John Doe', email: '', userType: UserType.student),
-        AppUser(id: 'FALLBACK_2', username: 'LOAD_ERROR: Jane Smith', email: '', userType: UserType.student),
-      ];
-    }
-  }
+  //MOCK STUDENT DATA: Used instead of fetching from Firestore
+  final List<Map<String, String>> _mockStudents = const [
+    {'id': 'student_mock_001', 'name': 'John'},
+    {'id': 'student_mock_002', 'name': 'Bob Johnson'},
+    {'id': 'student_mock_003', 'name': 'Charlie Brown'},
+  ];
 
-  // ⚠️ Function to submit the achievement to Firestore (Live Write)
+  //Function to submit the achievement to Firestore / Mock List
   Future<void> _submitAchievement() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -5186,25 +4859,45 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
         );
         return;
       }
+
+      // Prepare the achievement data regardless of mode
+      final newAchievement = {
+        'title': _title,
+        'type': _type,
+        'description': _description,
+        'studentId': _selectedStudentId,
+        'studentName': _selectedStudentName,
+        'dateEarned': DateTime.now(), // Use DateTime object for mock list
+        'awardedBy': 'Manual Teacher Award',
+      };
+
+      // ⚠️ NEW LOGIC: FAKE SUBMISSION FOR DEMO MODE
+      if (isDemoMode) {
+        // 1. Add achievement to the parent's mock list
+        widget.onAchievementAwarded?.call(newAchievement);
+        
+        if (context.mounted) {
+          // 2. Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Achievement "${_title}" (${_type}) awarded to ${_selectedStudentName}.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // 3. Close the form page, which rebuilds AchievementsPage with the new data
+          Navigator.pop(context); 
+        }
+        return;
+      }
+      // ⚠️ END NEW LOGIC
       
-      setState(() => _isLoading = true);
 
       try {
-        // Get current logged-in teacher username
-        final teacherUsername = context.read<FirebaseUserState>().currentUser?.username ?? 'System Admin';
-
-        final achievementData = {
-          'title': _title,
-          'type': _type,
-          'description': _description,
-          'studentId': _selectedStudentId,
-          'studentName': _selectedStudentName,
-          'dateEarned': FieldValue.serverTimestamp(),
-          'awardedBy': teacherUsername,
-        };
-
-        // Live write to Firestore
-        await FirebaseFirestore.instance.collection('achievements').add(achievementData);
+        // --- ORIGINAL FIREBASE WRITE LOGIC (Only runs if isDemoMode is false) ---
+        // Convert date to FieldValue.serverTimestamp() for real Firestore write
+        newAchievement['dateEarned'] = FieldValue.serverTimestamp(); 
+        
+        await FirebaseFirestore.instance.collection('achievements').add(newAchievement);
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -5213,7 +4906,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context); 
+          Navigator.pop(context);
         }
       } catch (e) {
         if (context.mounted) {
@@ -5221,14 +4914,13 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
             SnackBar(content: Text('Failed to award achievement: $e'), backgroundColor: Colors.red),
           );
         }
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... (rest of the build method is unchanged)
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manual Achievement Award'),
@@ -5241,7 +4933,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              // 1. Student Selection Field (Uses Live Data)
+              // 1. Student Selection Field (Uses Mock Data)
               _buildStudentSelectionField(),
               const SizedBox(height: 20),
 
@@ -5305,11 +4997,9 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 
               // 5. Submit Button
               ElevatedButton.icon(
-                onPressed: _isLoading ? null : _submitAchievement,
-                icon: _isLoading ? const SizedBox(
-                  width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                ) : const Icon(Icons.send),
-                label: Text(_isLoading ? 'Awarding...' : 'Award Achievement', style: const TextStyle(fontSize: 18)),
+                onPressed: _submitAchievement,
+                icon: const Icon(Icons.send),
+                label: const Text('Award Achievement', style: TextStyle(fontSize: 18)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green, 
                   foregroundColor: Colors.white,
@@ -5324,52 +5014,37 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
     );
   }
 
-  // Builds the student selection field using LIVE Firestore data
+  //Builds the student selection field using mock data
   Widget _buildStudentSelectionField() {
-    return FutureBuilder<List<AppUser>>(
-        future: _getStudentsList(),
-        builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-            }
-            
-            final studentList = snapshot.data ?? [];
-            
-            if (studentList.isEmpty) {
-                return const Text('Error loading students or no students found. Check Firestore rules and data.', style: TextStyle(color: Colors.red));
-            }
+    final studentItems = _mockStudents.map((student) {
+      return DropdownMenuItem<String>(
+        value: student['id'],
+        child: Text(student['name']!),
+      );
+    }).toList();
 
-            final studentItems = studentList.map((user) {
-                return DropdownMenuItem<String>(
-                    value: user.id,
-                    child: Text('${user.username} (${user.id})'),
-                );
-            }).toList();
-
-            return DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                    labelText: 'Select Student to Award',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                ),
-                value: _selectedStudentId,
-                items: studentItems,
-                hint: const Text('Choose a student'),
-                validator: (value) {
-                    if (value == null) {
-                        return 'You must select a student.';
-                    }
-                    return null;
-                },
-                onChanged: (String? newValue) {
-                    setState(() {
-                        _selectedStudentId = newValue;
-                        final selectedUser = studentList.firstWhereOrNull((user) => user.id == newValue);
-                        _selectedStudentName = selectedUser?.username;
-                    });
-                },
-            );
-        },
+    return DropdownButtonFormField<String>(
+      decoration: const InputDecoration(
+        labelText: 'Select Student to Award',
+        border: OutlineInputBorder(),
+        prefixIcon: Icon(Icons.person),
+      ),
+      value: _selectedStudentId,
+      items: studentItems,
+      hint: const Text('Choose a student'),
+      validator: (value) {
+        if (value == null) {
+          return 'You must select a student.';
+        }
+        return null;
+      },
+      onChanged: (String? newValue) {
+        setState(() {
+          _selectedStudentId = newValue;
+          // Find the selected student's name from the mock list
+          _selectedStudentName = _mockStudents.firstWhere((s) => s['id'] == newValue)['name'];
+        });
+      },
     );
   }
 }
@@ -5378,7 +5053,17 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  @override
+  Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
+  final picker = ImagePicker();
+  final image = await picker.pickImage(source: ImageSource.gallery);
+  
+  if (image == null) return null;
+  
+  // Store local path (In production, upload to Firebase Storage)
+  return image.path;
+}
+
+ /* @override
   Widget build(BuildContext context) {
     final userState = context.watch<FirebaseUserState>();
     final user = userState.currentUser;
@@ -5586,7 +5271,311 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
     );
+  }*/
+  @override
+Widget build(BuildContext context) {
+  final userState = context.watch<FirebaseUserState>();
+  final user = userState.currentUser;
+
+  if (user == null) {
+    return const Center(child: Text('Not logged in'));
   }
+  final isTeacher = user.userType == UserType.teacher;
+
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: AppBar(
+      title: const Text('👤 User Profile'),
+      backgroundColor: Colors.lightBlue,
+      foregroundColor: Colors.white,
+      actions: [
+        // ✅ REMOVED logout from here - only keep edit, password, delete
+        PopupMenuButton(
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit, size: 20),
+                  SizedBox(width: 8),
+                  Text('Edit Profile'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'password',
+              child: Row(
+                children: [
+                  Icon(Icons.lock, size: 20),
+                  SizedBox(width: 8),
+                  Text('Change Password'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete, size: 20, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Delete Account', style: TextStyle(color: Colors.red)),
+                ],
+              ),
+            ),
+          ],
+          onSelected: (value) {
+            if (value == 'edit') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EditProfilePage()),
+              );
+            } else if (value == 'password') {
+              _showChangePasswordDialog(context);
+            } else if (value == 'delete') {
+              _showDeleteDialog(context);
+            }
+          },
+        ),
+      ],
+    ),
+    body: Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header Section with Profile Picture
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue[700]!, Colors.blue[300]!],
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Profile picture with edit button
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.white,
+                            backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
+                                ? FileImage(File(user.profilePicture!))
+                                : null,
+                            child: user.profilePicture == null || user.profilePicture!.isEmpty
+                                ? const Icon(Icons.person, size: 50, color: Colors.blue)
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: InkWell(
+                              onTap: () async {
+                                final picturePath = await _pickAndUploadProfilePicture(context);
+                                if (picturePath != null && context.mounted) {
+                                  final success = await context.read<FirebaseUserState>().updateUserProfile(
+                                    profilePicture: picturePath,
+                                  );
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(success ? 'Profile picture updated!' : 'Failed to update picture'),
+                                        backgroundColor: success ? Colors.green : Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(
+                                  color: Colors.blue,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        user.username,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          isTeacher ? 'Teacher' : 'Student',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Common Info for Both Teacher and Student
+                      _buildInfoCard(
+                        icon: Icons.email,
+                        title: 'Email',
+                        value: user.email,
+                      ),
+
+                      // STUDENT-SPECIFIC FIELDS
+                      if (!isTeacher) ...[
+                        _buildInfoCard(
+                          icon: Icons.school,
+                          title: 'Form Level',
+                          value: user.formLevel ?? 'Not set',
+                        ),
+                        _buildInfoCard(
+                          icon: Icons.class_,
+                          title: 'Class',
+                          value: user.className ?? 'Not set',
+                        ),
+                        
+                        // Points Card (Students Only)
+                        _buildInfoCard(
+                          icon: Icons.stars,
+                          title: 'Total Points',
+                          value: user.points.toString(),
+                          color: Colors.amber,
+                        ),
+                        
+                        // Badges Card (Students Only)
+                        _buildInfoCard(
+                          icon: Icons.emoji_events,
+                          title: 'Badges Earned',
+                          value: user.badges.length.toString(),
+                          color: Colors.orange,
+                        ),
+                        
+                        // Completion Level (Students Only)
+                        _buildInfoCard(
+                          icon: Icons.trending_up,
+                          title: 'Completion Level',
+                          value: '${(user.completionLevel * 100).toStringAsFixed(1)}%',
+                          color: Colors.green,
+                        ),
+                        if (user.badges.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Your Badges',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: user.badges
+                                        .map(
+                                          (badge) => Chip(
+                                            label: Text(badge),
+                                            avatar: const Icon(Icons.emoji_events, size: 16),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // ✅ NEW: Logout button at the bottom
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            onPressed: () => _handleLogout(context),
+            icon: const Icon(Icons.logout),
+            label: const Text('Logout', style: TextStyle(fontSize: 16)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ✅ Keep the logout handler function as is
+void _handleLogout(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Logout'),
+      content: const Text('Are you sure you want to logout?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            await context.read<FirebaseUserState>().logout();
+            if (context.mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            }
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text('Logout'),
+        ),
+      ],
+    ),
+  );
+}
 
    Widget _buildInfoCard({
     required IconData icon,
@@ -5765,32 +5754,6 @@ class ProfilePage extends StatelessWidget {
               }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<FirebaseUserState>().logout();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-                (route) => false,
-              );
-            },
-            child: const Text('Logout'),
           ),
         ],
       ),
