@@ -10,11 +10,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'forum_page.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:collection/collection.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'package:firebase_ai/firebase_ai.dart';
 
 
-late final GenerativeModel aiModel;
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
@@ -385,28 +385,16 @@ class FirebaseUserState extends ChangeNotifier {
   Future<void> awardBadge({required String name, required String description}) async {
     if (_currentUser == null) return;
 
-    // 1. Check if badge already exists
     if (_currentUser!.badges.contains(name)) {
         return; 
     }
 
-    // 2. Add badge to user profile
     final newBadges = List<String>.from(_currentUser!.badges)..add(name);
     
     await _firestore.collection('users').doc(_currentUser!.id).update({'badges': newBadges});
     
     _currentUser = _currentUser!.copyWith(badges: newBadges);
     _lastUnlockedMessage = 'Congratulations! You unlocked the $name badge.'; 
-    
-    // 3. Create achievement record (optional, but good for detailed history page)
-    await _firestore.collection('achievements').add({
-      'title': name,
-      'type': 'Badge',
-      'description': description,
-      'studentId': _currentUser!.id,
-      'studentName': _currentUser!.username,
-      'dateEarned': FieldValue.serverTimestamp(),
-    });
     
     notifyListeners();
   }
@@ -821,7 +809,6 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-<<<<<<< HEAD
 // ✅ NEW: Interactive Homepage with Logo
 class InHomePage extends StatelessWidget {
   const InHomePage({super.key});
@@ -1080,8 +1067,6 @@ class InHomePage extends StatelessWidget {
   }
 }
 
-=======
->>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
@@ -1090,12 +1075,13 @@ class _HomePageState extends State<HomePage> {
     Widget page;
     switch (selectedIndex) {
       case 0:
-        page = const Center(
+        page = const InHomePage();
+        /*Center(
           child: Text(
             'Welcome to CodingBahasa!',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-        );
+        );*/
       case 1:
         page = const CoursePage();
       case 2:
@@ -1197,6 +1183,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+
+
 
 // ========== USER SEARCH PAGE ==========
 class UserSearchPage extends StatefulWidget {
@@ -2944,9 +2933,19 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                 decoration: const InputDecoration(labelText: 'Question Type'),
               ),
               const SizedBox(height: 10),
-              TextFormField(
+              /*TextFormField(
                 controller: _newQuestionTextController,
                 decoration: const InputDecoration(labelText: 'Question Text', border: OutlineInputBorder()),
+              ),*/
+              TextFormField(
+                controller: _newQuestionTextController,
+                decoration: const InputDecoration(
+                  labelText: 'Question Text',
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter your question here...',
+                  ),
+                  maxLines: 5,  // ✅ Allow multiple lines
+                  minLines: 3,
               ),
               const SizedBox(height: 10),
 
@@ -2972,15 +2971,36 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               ] else ...[
                 TextFormField(
                   controller: _newAnswerController,
-                  decoration: const InputDecoration(labelText: 'Correct Short Answer', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                  labelText: 'Correct Short Answer',
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter the correct answer...',
                 ),
+                maxLines: 3,  // ✅ Allow multiple lines
+                minLines: 2,
+              ),
+                /*TextFormField(
+                  controller: _newAnswerController,
+                  decoration: const InputDecoration(labelText: 'Correct Short Answer', border: OutlineInputBorder()),
+                ),*/
               ],
               
               const SizedBox(height: 10),
               TextFormField(
                 controller: _newExplanationController,
-                decoration: const InputDecoration(labelText: 'Explanation (Optional)', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                labelText: 'Explanation (Optional)',
+                border: OutlineInputBorder(),
+                hintText: 'Provide detailed feedback...',
               ),
+              maxLines: 5,  // ✅ Allow multiple lines
+              minLines: 3,
+            ),
+
+              /*TextFormField(
+                controller: _newExplanationController,
+                decoration: const InputDecoration(labelText: 'Explanation (Optional)', border: OutlineInputBorder()),
+              ),*/
 
               const SizedBox(height: 10),
               Center(
@@ -3075,6 +3095,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
       }
     }
 
+
     // NEW: Initialize AI model for marking
     final googleAI = FirebaseAI.googleAI();
     _markingModel = googleAI.generativeModel(
@@ -3132,7 +3153,6 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
   }
 
   // NEW: Updated submit quiz with AI Marking
-<<<<<<< HEAD
 Future<void> _submitQuiz() async {
   if (!mounted) return; // Add this check
   
@@ -3214,107 +3234,6 @@ Future<void> _submitQuiz() async {
       builder: (context) => QuizResultsPage(attempt: attempt),
     ),
   );
-=======
-  Future<void> _submitQuiz() async {
-    setState(() => _isSubmitting = true);
-    
-    // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Marking quiz...'),
-          ],
-        ),
-      ),
-    );
-
-    int score = 0;
-    for (var q in widget.questions) {
-      final userAnswer = _userAnswers[q.id]?.toLowerCase().trim() ?? "";
-      final correctAnswer = q.answer.toLowerCase().trim();
-      
-      if (userAnswer.isEmpty) {
-        continue; // Skip if no answer
-      }
-
-      if (q.type == QuestionType.mcq) {
-        // --- MCQ Marking (Simple Check) ---
-        if (userAnswer == correctAnswer) {
-          score++;
-        }
-      } else if (q.type == QuestionType.shortAnswer) {
-        // --- Short Answer Marking (AI Check) ---
-        if (userAnswer == correctAnswer) {
-          // If it's an exact match, don't waste AI call
-          score++;
-        } else {
-          // If not an exact match, ask AI
-          try {
-            final prompt = 'Is the following user answer similar to or a correct variation of the expected answer?\n\n'
-                'Expected Answer: $correctAnswer\n'
-                'User Answer: $userAnswer\n\n'
-                'Respond with only "YES" or "NO".';
-            
-            final response = await _markingModel.generateContent([Content.text(prompt)]);
-            
-            if (response.text?.trim().toUpperCase() == 'YES') {
-              score++;
-            }
-          } catch (e) {
-            print('AI marking error: $e');
-            // If AI fails, fall back to exact match (which already failed)
-          }
-        }
-      }
-    }
-    
-    // Create attempt record
-    final attempt = QuizAttempt(
-      quizTitle: widget.quizTitle,
-      questions: widget.questions,
-      userAnswers: Map.from(_userAnswers),
-      score: score,
-      total: widget.questions.length,
-      timestamp: DateTime.now(),
-    );
-    
-    // Save to history
-    userQuizAttempts.add(attempt);
-
-    setState(() => _isSubmitting = false);
-    
-    if (!mounted) return;
-    Navigator.pop(context); // Close loading dialog
-
-    // ⚠️ START: NEW ACHIEVEMENT AWARD LOGIC (US012-01) ⚠️
-    final double percentage = score / widget.questions.length;
-    const double passingThreshold = 0.8; // 80%
-
-    if (percentage >= passingThreshold) {
-        // Call the core function to award the badge
-        final userState = context.read<FirebaseUserState>();
-        if (userState.isLoggedIn) {
-            await userState.awardBadge(
-                name: 'Quiz Master',
-                description: 'Scored 80% or above in a quiz',
-            );
-        }
-    }
-    // ⚠️ END: NEW ACHIEVEMENT AWARD LOGIC ⚠️
-
-    // Navigate to results page
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => QuizResultsPage(attempt: attempt),
-      ),
-    );
->>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
   }
 
 
@@ -3937,6 +3856,8 @@ class ChatError extends ChatState {
   List<Object> get props => [error];
 }
 
+class LoadChatHistoryEvent extends ChatEvent {}
+
 // Chat BLoC Implementation
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final List<ChatMessage> _messages = [];
@@ -3960,9 +3881,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<SendMessageEvent>(_onSendMessage);
     on<ClearChatEvent>(_onClearChat);
     on<LoadWelcomeEvent>(_onLoadWelcome);
+    on<LoadChatHistoryEvent>(_onLoadChatHistory);
     
     // Initialize with welcome message
     add(const LoadWelcomeEvent());
+
+    // Load chat history on initialization
+    add(LoadChatHistoryEvent());
+
   }
 
   void _onLoadWelcome(LoadWelcomeEvent event, Emitter<ChatState> emit) {
@@ -3973,7 +3899,167 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ));
     emit(ChatLoaded(messages: List.from(_messages)));
   }
+// ✅ ADD: Load chat history from Firestore
+Future<void> _onLoadChatHistory(LoadChatHistoryEvent event, Emitter<ChatState> emit) async {
+  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    emit(const ChatLoaded(messages: []));
+    return;
+  }
+  
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('chat_history')
+        .orderBy('timestamp', descending: false)
+        .get();
+    
+    final messages = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return ChatMessage(
+        text: data['message'] ?? '',
+        isUser: data['isUser'] ?? false,
+        timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      );
+    }).toList();
+    
+    _messages.clear();
+    _messages.addAll(messages);
+    
+    if (_messages.isEmpty) {
+      _messages.add(ChatMessage(
+        text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang Pengaturcaraan Java!",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ));
+    }
+    
+    emit(ChatLoaded(messages: List.from(_messages)));
+  } catch (e) {
+    print('Error loading chat history: $e');
+    emit(ChatError(error: e.toString()));
+  }
+}
 
+// ✅ MODIFY _onSendMessage to save to Firestore:
+Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
+  if (event.message.trim().isEmpty) return;
+
+  final stopwatch = Stopwatch()..start();
+  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+
+  try {
+    // Add user message immediately
+    _messages.add(ChatMessage(
+      text: event.message,
+      isUser: true,
+      timestamp: DateTime.now(),
+    ));
+
+    // ✅ Save user message to Firestore
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('chat_history')
+          .add({
+        'message': event.message,
+        'isUser': true,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+
+    _conversationHistory.add(Content.text(event.message));
+
+    emit(const ChatLoading());
+
+    final response = await _model.generateContent(_conversationHistory);
+
+    stopwatch.stop();
+
+    final responseText = response.text ?? 
+      "Maaf, saya tidak dapat memahami pertanyaan anda. Cuba tanya dengan cara lain.";
+
+    _conversationHistory.add(Content.model([TextPart(responseText)]));
+
+    // Add bot response to messages
+    _messages.add(ChatMessage(
+      text: responseText,
+      isUser: false,
+      timestamp: DateTime.now(),
+      responseTime: stopwatch.elapsedMilliseconds,
+    ));
+
+    // ✅ Save bot response to Firestore
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('chat_history')
+          .add({
+        'message': responseText,
+        'isUser': false,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    }
+
+    emit(ChatLoaded(
+      messages: List.from(_messages),
+      responseTime: stopwatch.elapsedMilliseconds,
+    ));
+
+  } catch (e) {
+    print('Error calling Gemini API: $e');
+    
+    _messages.add(ChatMessage(
+      text: "Maaf, saya menghadapi ralat: ${e.toString()}. Sila cuba lagi.",
+      isUser: false,
+      timestamp: DateTime.now(),
+    ));
+
+    emit(ChatError(error: e.toString()));
+    
+    await Future.delayed(const Duration(milliseconds: 100));
+    emit(ChatLoaded(messages: List.from(_messages)));
+  }
+}
+
+// ✅ MODIFY _onClearChat to delete from Firestore:
+void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) async {
+  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+  
+  if (user != null) {
+    try {
+      // Delete all chat history from Firestore
+      final batch = FirebaseFirestore.instance.batch();
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('chat_history')
+          .get();
+      
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+    } catch (e) {
+      print('Error clearing chat history: $e');
+    }
+  }
+  
+  _messages.clear();
+  _conversationHistory.clear();
+  
+  _messages.add(ChatMessage(
+    text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja tentang Pengaturcaraan Java!",
+    isUser: false,
+    timestamp: DateTime.now(),
+  ));
+  emit(ChatLoaded(messages: List.from(_messages)));
+}
+/*
   Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
     if (event.message.trim().isEmpty) return;
 
@@ -4046,242 +4132,209 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       timestamp: DateTime.now(),
     ));
     emit(ChatLoaded(messages: List.from(_messages)));
-  }
+  }*/
 }
 
 
+
+class ProgressPage extends StatefulWidget {
+  const ProgressPage({super.key});
+
+  @override
+  _ProgressPageState createState() => _ProgressPageState();
+}
+
 class ProgressRecord {
   final String id;
-  final String student; 
+  final String name;
   final String activity;
   final double score;
   final String grade;
   final String comments;
-  final Timestamp? timestamp;
 
   ProgressRecord({
     required this.id,
-    required this.student,
+    required this.name,
     required this.activity,
     required this.score,
     required this.grade,
     required this.comments,
-    required this.timestamp,
   });
 
   factory ProgressRecord.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ProgressRecord(
       id: doc.id,
-      student: data['student'] ?? '',
+      name: data['name'] ?? '',
       activity: data['activity'] ?? '',
       score: (data['score'] ?? 0).toDouble(),
       grade: data['grade'] ?? '',
       comments: data['comments'] ?? '',
-      timestamp: data['timestamp'] as Timestamp?,
     );
   }
 }
 
-class ProgressPage extends StatefulWidget {
-  const ProgressPage({super.key});
-
-  @override
-  State<ProgressPage> createState() => _ProgressPageState();
-}
-
 class _ProgressPageState extends State<ProgressPage> {
   final _formKey = GlobalKey<FormState>();
-  final FirebaseFirestore _fs = FirebaseFirestore.instance;
+  final _firestore = FirebaseFirestore.instance;
 
-  // controllers for add form
-  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _activityController = TextEditingController();
   final TextEditingController _scoreController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
-  String? _selectedStudentUsername;
-  List<Map<String, dynamic>> _searchResults = [];
-  bool _isSearching = false;
-
-  // ---------- search users by username ----------
-  Future<void> _searchUsers(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults = [];
-      });
-      return;
-    }
-
-    setState(() => _isSearching = true);
-
-    try {
-      // fetch only students, then filter locally by username substring (case-insensitive)
-      final snapshot = await _fs
-          .collection('users')
-          .where('userType', isEqualTo: 'UserType.student')
-          .get();
-
-      final results = snapshot.docs
-          .where((doc) {
-            final username = (doc.data()['username'] ?? '').toString().toLowerCase();
-            return username.contains(query.toLowerCase());
-          })
-          .map((doc) => {
-                'id': doc.id,
-                'username': doc['username'],
-              })
-          .toList();
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-    } catch (e) {
-      setState(() => _isSearching = false);
-      // swallow or show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('User search failed: $e')),
-      );
-    }
-  }
-
-  // ---------- add progress ----------
+  // Add new progress
   Future<void> _addProgress() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedStudentUsername == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a student first')));
-      return;
-    }
-
-    try {
-      final record = {
-        'student': _selectedStudentUsername,
-        'activity': _activityController.text.trim(),
-        'score': double.tryParse(_scoreController.text) ?? 0,
-        'grade': _gradeController.text.trim(),
-        'comments': _commentsController.text.trim(),
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-
-      await _fs.collection('progress_records').add(record);
-
-      // clear only input fields, keep selected student if you want to add multiple for same student
-      _activityController.clear();
-      _scoreController.clear();
-      _gradeController.clear();
-      _commentsController.clear();
-
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Progress added successfully'),
-        backgroundColor: Colors.green,
-      ));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add progress: $e')));
-    }
-  }
-
-  // ---------- delete with confirmation ----------
-  Future<void> _confirmAndDelete(String docId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm delete'),
-        content: const Text('Are you sure you want to delete this progress record? This cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
+    if (_formKey.currentState!.validate()) {
       try {
-        await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Record deleted'),
-          backgroundColor: Colors.red,
-        ));
+        final record = {
+          'name': _nameController.text,
+          'activity': _activityController.text,
+          'score': double.tryParse(_scoreController.text) ?? 0,
+          'grade': _gradeController.text,
+          'comments': _commentsController.text,
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        await _firestore.collection('progress_records').add(record);
+        _clearForm();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Progress added successfully!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add progress: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
-  // ---------- edit dialog ----------
-  void _showEditDialog(ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(text: record.activity);
-    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
-    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
-    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
-    final _editFormKey = GlobalKey<FormState>();
+  // Delete progress record
+  Future<void> _deleteProgress(String id) async {
+    try {
+      await _firestore.collection('progress_records').doc(id).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Progress deleted!'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete progress: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Clear form controllers
+  void _clearForm() {
+    _nameController.clear();
+    _activityController.clear();
+    _scoreController.clear();
+    _gradeController.clear();
+    _commentsController.clear();
+  }
+
+  // Edit progress using a popup dialog
+  void _editProgress(ProgressRecord record) {
+    _nameController.text = record.name;
+    _activityController.text = record.activity;
+    _scoreController.text = record.score.toString();
+    _gradeController.text = record.grade;
+    _commentsController.text = record.comments;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('Edit Progress'),
         content: Form(
-          key: _editFormKey,
+          key: _formKey,
           child: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // student username (display only)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Student Name'),
+                  validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
                 ),
                 TextFormField(
-                  controller: activityCtl,
-                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
+                  controller: _activityController,
+                  decoration: const InputDecoration(labelText: 'Activity Name'),
+                  validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
                 ),
-                const SizedBox(height: 8),
                 TextFormField(
-                  controller: scoreCtl,
-                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                  controller: _scoreController,
+                  decoration: const InputDecoration(labelText: 'Score'),
                   keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
+                  validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
                 ),
-                const SizedBox(height: 8),
                 TextFormField(
-                  controller: gradeCtl,
-                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
+                  controller: _gradeController,
+                  decoration: const InputDecoration(labelText: 'Grade'),
+                  validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
                 ),
-                const SizedBox(height: 8),
                 TextFormField(
-                  controller: commentsCtl,
-                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
-                  maxLines: 2,
+                  controller: _commentsController,
+                  decoration: const InputDecoration(labelText: 'Comments'),
                 ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              _clearForm();
+              Navigator.of(context).pop();
+            },
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
-              if (!(_editFormKey.currentState?.validate() ?? false)) return;
-              try {
-                await _fs.collection('progress_records').doc(record.id).update({
-                  'activity': activityCtl.text.trim(),
-                  'score': double.tryParse(scoreCtl.text) ?? 0,
-                  'grade': gradeCtl.text.trim(),
-                  'comments': commentsCtl.text.trim(),
-                });
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Record updated'),
-                  backgroundColor: Colors.green,
-                ));
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+              if (_formKey.currentState!.validate()) {
+                try {
+                  await _firestore.collection('progress_records').doc(record.id).update({
+                    'name': _nameController.text,
+                    'activity': _activityController.text,
+                    'score': double.tryParse(_scoreController.text) ?? 0,
+                    'grade': _gradeController.text,
+                    'comments': _commentsController.text,
+                  });
+
+                  _clearForm();
+                  Navigator.of(context).pop();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Progress updated successfully!'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update progress: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Save'),
@@ -4292,188 +4345,129 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    _activityController.dispose();
-    _scoreController.dispose();
-    _gradeController.dispose();
-    _commentsController.dispose();
-    super.dispose();
-  }
-
-  // ---------- UI ----------
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Student Progress'),
-        actions: [
-          TextButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ProgressHistoryPage()),
-            ),
-            icon: const Icon(Icons.history, color: Colors.white),
-            label: const Text('Progress History', style: TextStyle(color: Colors.white)),
-          )
-        ],
-      ),
+      appBar: AppBar(title: const Text('Student Progress')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ---------- search & select student ----------
+            // ---------- Add Progress Form ----------
             Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextFormField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'Search student (username)',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _isSearching
-                          ? const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                            )
-                          : (_searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchResults = []);
-                                  },
-                                )
-                              : null),
-                      border: const OutlineInputBorder(),
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Student Name',
+                      border: OutlineInputBorder(),
                     ),
-                    onChanged: (q) => _searchUsers(q),
+                    validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
                   ),
-                  if (_searchResults.isNotEmpty) const SizedBox(height: 8),
-                  if (_searchResults.isNotEmpty)
-                    Card(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _searchResults.length,
-                        separatorBuilder: (_, __) => const Divider(height: 0),
-                        itemBuilder: (context, i) {
-                          final u = _searchResults[i];
-                          return ListTile(
-                            title: Text(u['username'] ?? ''),
-                            onTap: () {
-                              setState(() {
-                                _selectedStudentUsername = u['username'];
-                                _searchController.text = u['username'];
-                                _searchResults.clear();
-                              });
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  if (_selectedStudentUsername != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          const Text('Selected: ', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text(_selectedStudentUsername!, style: const TextStyle(color: Colors.blue)),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedStudentUsername = null;
-                                _searchController.clear();
-                              });
-                            },
-                            child: const Text('Clear'),
-                          )
-                        ],
-                      ),
-                    ),
-
-                  // ---------- add fields ----------
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _activityController,
-                    decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter an activity' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Activity Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _scoreController,
-                    decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Score',
+                      border: OutlineInputBorder(),
+                    ),
                     keyboardType: TextInputType.number,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a score' : null,
+                    validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _gradeController,
-                    decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a grade' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Grade',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   TextFormField(
                     controller: _commentsController,
-                    decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Comments',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   ElevatedButton.icon(
                     onPressed: _addProgress,
                     icon: const Icon(Icons.add),
                     label: const Text('Add Progress'),
                   ),
-                  const Divider(height: 30),
+                  const Divider(height: 30, thickness: 1),
                 ],
               ),
             ),
 
-            // ---------- latest 3 cards ----------
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text('Latest records', style: Theme.of(context).textTheme.titleMedium),
-            ),
-            const SizedBox(height: 8),
+            // ---------- Display Progress Records ----------
             StreamBuilder<QuerySnapshot>(
-              stream: _fs
+              stream: _firestore
                   .collection('progress_records')
                   .orderBy('timestamp', descending: true)
-                  .limit(3)
                   .snapshots(),
-              builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
-                final docs = snap.data?.docs ?? [];
-                if (docs.isEmpty) return const Text('No recent records');
-                final records = docs.map((d) => ProgressRecord.fromDoc(d)).toList();
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Text(
+                    'No progress records yet.',
+                    style: TextStyle(color: Colors.grey),
+                  );
+                }
 
-                return Column(
-                  children: records.map((r) {
+                final records = snapshot.data!.docs
+                    .map((doc) => ProgressRecord.fromDoc(doc))
+                    .toList();
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: records.length,
+                  itemBuilder: (context, index) {
+                    final record = records[index];
                     return Card(
+                      elevation: 2,
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       child: ListTile(
-                        title: Text('${r.student} — ${r.activity}'),
-                        subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\n${r.comments}'),
-                        isThreeLine: true,
+                        title: Text('${record.name} — ${record.activity}'),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Score: ${record.score}, Grade: ${record.grade}'),
+                            Text('Comments: ${record.comments}'),
+                          ],
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _showEditDialog(r),
+                              onPressed: () => _editProgress(record),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _confirmAndDelete(r.id),
+                              onPressed: () => _deleteProgress(record.id),
                             ),
                           ],
                         ),
                       ),
                     );
-                  }).toList(),
+                  },
                 );
               },
             ),
@@ -4484,164 +4478,9 @@ class _ProgressPageState extends State<ProgressPage> {
   }
 }
 
-/// ProgressHistoryPage: full list of all progress records with edit & delete
-class ProgressHistoryPage extends StatefulWidget {
-  @override
-  State<ProgressHistoryPage> createState() => _ProgressHistoryPageState();
-}
 
-<<<<<<< HEAD
 // ---------- Achievements ----------
 // ---------- Achievements (CORRECTED) ----------
-=======
-class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
-  final FirebaseFirestore _fs = FirebaseFirestore.instance;
-
-  // Reuse same edit and delete patterns as above (duplicated for simplicity)
-  Future<void> _confirmAndDelete(BuildContext context, String docId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm delete'),
-        content: const Text('Are you sure you want to delete this progress record?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted')));
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
-      }
-    }
-  }
-
-  void _showEditDialog(BuildContext context, ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(text: record.activity);
-    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
-    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
-    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
-    final _editFormKey = GlobalKey<FormState>();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Progress'),
-        content: Form(
-          key: _editFormKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                TextFormField(
-                  controller: activityCtl,
-                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: scoreCtl,
-                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: gradeCtl,
-                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: commentsCtl,
-                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
-                  maxLines: 2,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              if (!(_editFormKey.currentState?.validate() ?? false)) return;
-              try {
-                await _fs.collection('progress_records').doc(record.id).update({
-                  'activity': activityCtl.text.trim(),
-                  'score': double.tryParse(scoreCtl.text) ?? 0,
-                  'grade': gradeCtl.text.trim(),
-                  'comments': commentsCtl.text.trim(),
-                });
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated')));
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progress History'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _fs.collection('progress_records').orderBy('timestamp', descending: true).snapshots(),
-        builder: (context, snap) {
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-          final records = snap.data!.docs.map((d) => ProgressRecord.fromDoc(d)).toList();
-          if (records.isEmpty) return const Center(child: Text('No progress records yet.'));
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: records.length,
-            itemBuilder: (context, i) {
-              final r = records[i];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: ListTile(
-                  title: Text('${r.student} — ${r.activity}'),
-                  subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\nComments: ${r.comments}'),
-                  isThreeLine: true,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showEditDialog(context, r)),
-                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmAndDelete(context, r.id)),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-
-// ---------- Achievements (CORRECTED) ----------
->>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
 
@@ -5197,7 +5036,6 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
                 return const Text('Error loading students or no students found. Check Firestore rules and data.', style: TextStyle(color: Colors.red));
             }
 
-<<<<<<< HEAD
             final studentItems = studentList.map((user) {
                 return DropdownMenuItem<String>(
                     value: user.id,
@@ -5231,39 +5069,6 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
                 },
             );
         },
-=======
-            final studentItems = studentList.map((user) {
-                return DropdownMenuItem<String>(
-                    value: user.id,
-                    child: Text('${user.username} (${user.id})'),
-                );
-            }).toList();
-
-            return DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                    labelText: 'Select Student to Award',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                ),
-                value: _selectedStudentId,
-                items: studentItems,
-                hint: const Text('Choose a student'),
-                validator: (value) {
-                    if (value == null) {
-                        return 'You must select a student.';
-                    }
-                    return null;
-                },
-                onChanged: (String? newValue) {
-                    setState(() {
-                        _selectedStudentId = newValue;
-                        final selectedUser = studentList.firstWhereOrNull((user) => user.id == newValue);
-                        _selectedStudentName = selectedUser?.username;
-                    });
-                },
-            );
-        },
->>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
     );
   }
 }
@@ -5272,7 +5077,6 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-<<<<<<< HEAD
   Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
   final picker = ImagePicker();
   final image = await picker.pickImage(source: ImageSource.gallery);
@@ -5289,219 +5093,9 @@ Widget build(BuildContext context) {
 
   if (user == null) {
     return const Center(child: Text('Not logged in'));
-=======
-  @override
-  Widget build(BuildContext context) {
-    final userState = context.watch<FirebaseUserState>();
-    final user = userState.currentUser;
-
-    if (user == null) {
-      return const Center(child: Text('Not logged in'));
-    }
-    final isTeacher = user.userType == UserType.teacher;
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('👤 User Profile'),
-        backgroundColor: Colors.lightBlue,
-        foregroundColor: Colors.white,
-        actions: [
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(
-                  children: [
-                    Icon(Icons.edit, size: 20),
-                    SizedBox(width: 8),
-                    Text('Edit Profile'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'password',
-                child: Row(
-                  children: [
-                    Icon(Icons.lock, size: 20),
-                    SizedBox(width: 8),
-                    Text('Change Password'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, size: 20, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Delete Account', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, size: 20),
-                    SizedBox(width: 8),
-                    Text('Logout'),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (value) {
-              if (value == 'edit') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const EditProfilePage()),
-                );
-              } else if (value == 'password') {
-                _showChangePasswordDialog(context);
-              } else if (value == 'delete') {
-                _showDeleteDialog(context);
-              } else if (value == 'logout') {
-                _handleLogout(context);
-              }
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header Section with Profile Picture
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue[700]!, Colors.blue[300]!],
-                ),
-              ),
-              child: Column(
-                children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.person, size: 50, color: Colors.blue),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    user.username,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      isTeacher ? 'Teacher' : 'Student',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                 children: [
-                  // Common Info for Both Teacher and Student
-                  _buildInfoCard(
-                    icon: Icons.email,
-                    title: 'Email',
-                    value: user.email,
-                  ),
-
-                  // STUDENT-SPECIFIC FIELDS
-                  if (!isTeacher) ...[
-                    _buildInfoCard(
-                      icon: Icons.school,
-                      title: 'Form Level',
-                      value: user.formLevel ?? 'Not set',
-                    ),
-                    _buildInfoCard(
-                      icon: Icons.class_,
-                      title: 'Class',
-                      value: user.className ?? 'Not set',
-                    ),
-                    
-                    // Points Card (Students Only)
-                    _buildInfoCard(
-                      icon: Icons.stars,
-                      title: 'Total Points',
-                      value: user.points.toString(),
-                      color: Colors.amber,
-                    ),
-                    
-                    // Badges Card (Students Only)
-                    _buildInfoCard(
-                      icon: Icons.emoji_events,
-                      title: 'Badges Earned',
-                      value: user.badges.length.toString(),
-                      color: Colors.orange,
-                    ),
-                    
-                    // Completion Level (Students Only)
-                    _buildInfoCard(
-                      icon: Icons.trending_up,
-                      title: 'Completion Level',
-                      value: '${(user.completionLevel * 100).toStringAsFixed(1)}%',
-                      color: Colors.green,
-                    ),
-                  if (user.badges.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Your Badges',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: user.badges
-                                  .map(
-                                    (badge) => Chip(
-                                      label: Text(badge),
-                                      avatar: const Icon(Icons.emoji_events, size: 16),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ]
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
->>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
   }
+  final isTeacher = user.userType == UserType.teacher;
 
-<<<<<<< HEAD
   return Scaffold(
     backgroundColor: Colors.white,
     appBar: AppBar(
@@ -5796,8 +5390,6 @@ void _handleLogout(BuildContext context) {
   );
 }
 
-=======
->>>>>>> 2aa9e2674be1ef3709c2c87330e16c7d7b0b4084
    Widget _buildInfoCard({
     required IconData icon,
     required String title,
@@ -5975,32 +5567,6 @@ void _handleLogout(BuildContext context) {
               }
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleLogout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<FirebaseUserState>().logout();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-                (route) => false,
-              );
-            },
-            child: const Text('Logout'),
           ),
         ],
       ),
