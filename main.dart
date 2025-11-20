@@ -3703,9 +3703,14 @@ class _ChatBodyState extends State<_ChatBody> {
         Container(
           color: Colors.grey[100],
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child:SingleChildScrollView(
+           scrollDirection: Axis.horizontal,
+            child: Row(//
             children: [
+
+              const Text('Rate chatbot:'),
+        const SizedBox(width: 8),
+
               // --- Rating Section ---
               Row(
                 children: [
@@ -3730,7 +3735,7 @@ class _ChatBodyState extends State<_ChatBody> {
                     ),
                 ],
               ),
-
+                   const SizedBox(width: 20),
               // --- Stop Conversation Button ---
               IconButton(
                 icon: const Icon(Icons.stop_circle, color: Colors.red, size: 32),
@@ -3744,8 +3749,10 @@ class _ChatBodyState extends State<_ChatBody> {
                   );
                 },
               ),
-            ],
+            
+            ], //chilldren
           ),
+          )
         ),
       ],
     );
@@ -4059,80 +4066,7 @@ void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) async {
   ));
   emit(ChatLoaded(messages: List.from(_messages)));
 }
-/*
-  Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
-    if (event.message.trim().isEmpty) return;
 
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      // Add user message immediately
-      _messages.add(ChatMessage(
-        text: event.message,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
-
-      // Add user message to conversation history
-      _conversationHistory.add(Content.text(event.message));
-
-      emit(ChatLoading());
-
-      // Use _model for API call
-      final response = await _model.generateContent(_conversationHistory);
-
-      stopwatch.stop();
-
-      // Get response text with fallback
-      final responseText = response.text ?? 
-        "Maaf, saya tidak dapat memahami pertanyaan anda. Cuba tanya dengan cara lain.";
-
-      // Add AI response to conversation history
-      _conversationHistory.add(Content.model([TextPart(responseText)]));
-
-      // Add bot response to messages
-      _messages.add(ChatMessage(
-        text: responseText,
-        isUser: false,
-        timestamp: DateTime.now(),
-        responseTime: stopwatch.elapsedMilliseconds,
-      ));
-
-      emit(ChatLoaded(
-        messages: List.from(_messages),
-        responseTime: stopwatch.elapsedMilliseconds,
-      ));
-
-    } catch (e) {
-      print('Error calling Gemini API: $e');
-      
-      // Add error message
-      _messages.add(ChatMessage(
-        text: "Maaf, saya menghadapi ralat: ${e.toString()}. Sila cuba lagi.",
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
-
-      emit(ChatError(error: e.toString()));
-      
-      // Re-emit loaded state to show error message
-      await Future.delayed(const Duration(milliseconds: 100));
-      emit(ChatLoaded(messages: List.from(_messages)));
-    }
-  }
-
-  void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) {
-    _messages.clear();
-    _conversationHistory.clear();
-    
-    // Add welcome message back
-    _messages.add(ChatMessage(
-      text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja tentang Pengaturcaraan Java!",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ));
-    emit(ChatLoaded(messages: List.from(_messages)));
-  }*/
 }
 
 
