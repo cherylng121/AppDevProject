@@ -3703,14 +3703,9 @@ class _ChatBodyState extends State<_ChatBody> {
         Container(
           color: Colors.grey[100],
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child:SingleChildScrollView(
-           scrollDirection: Axis.horizontal,
-            child: Row(//
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
-              const Text('Rate chatbot:'),
-        const SizedBox(width: 8),
-
               // --- Rating Section ---
               Row(
                 children: [
@@ -3735,7 +3730,7 @@ class _ChatBodyState extends State<_ChatBody> {
                     ),
                 ],
               ),
-                   const SizedBox(width: 20),
+
               // --- Stop Conversation Button ---
               IconButton(
                 icon: const Icon(Icons.stop_circle, color: Colors.red, size: 32),
@@ -3749,10 +3744,8 @@ class _ChatBodyState extends State<_ChatBody> {
                   );
                 },
               ),
-            
-            ], //chilldren
+            ],
           ),
-          )
         ),
       ],
     );
