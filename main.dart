@@ -4071,204 +4071,542 @@ void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) async {
 
 
 
+// Progress Page
 class ProgressPage extends StatefulWidget {
   const ProgressPage({super.key});
 
   @override
-  _ProgressPageState createState() => _ProgressPageState();
+  State<ProgressPage> createState() => _ProgressPageState();
 }
 
 class ProgressRecord {
   final String id;
-  final String name;
+  final String student; 
   final String activity;
   final double score;
   final String grade;
   final String comments;
+  final Timestamp? timestamp;
 
   ProgressRecord({
     required this.id,
-    required this.name,
+    required this.student,
     required this.activity,
     required this.score,
     required this.grade,
     required this.comments,
+    required this.timestamp,
   });
 
   factory ProgressRecord.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ProgressRecord(
       id: doc.id,
-      name: data['name'] ?? '',
+      student: data['student'] ?? '',
       activity: data['activity'] ?? '',
       score: (data['score'] ?? 0).toDouble(),
       grade: data['grade'] ?? '',
       comments: data['comments'] ?? '',
+      timestamp: data['timestamp'] as Timestamp?,
     );
   }
 }
 
 class _ProgressPageState extends State<ProgressPage> {
   final _formKey = GlobalKey<FormState>();
-  final _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _fs = FirebaseFirestore.instance;
 
-  final TextEditingController _nameController = TextEditingController();
+  // controllers for add form
+  final TextEditingController _searchController = TextEditingController();
   final TextEditingController _activityController = TextEditingController();
   final TextEditingController _scoreController = TextEditingController();
   final TextEditingController _gradeController = TextEditingController();
   final TextEditingController _commentsController = TextEditingController();
 
-  // Add new progress
+  String? _selectedStudentUsername;
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _isSearching = false;
+
+  // ---------- search users by username ----------
+  Future<void> _searchUsers(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    try {
+      // fetch only students, then filter locally by username substring (case-insensitive)
+      final snapshot = await _fs
+          .collection('users')
+          .where('userType', isEqualTo: 'UserType.student')
+          .get();
+
+      final results = snapshot.docs
+          .where((doc) {
+            final username = (doc.data()['username'] ?? '').toString().toLowerCase();
+            return username.contains(query.toLowerCase());
+          })
+          .map((doc) => {
+                'id': doc.id,
+                'username': doc['username'],
+              })
+          .toList();
+
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    } catch (e) {
+      setState(() => _isSearching = false);
+      // swallow or show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('User search failed: $e')),
+      );
+    }
+  }
+
+  // ---------- add progress ----------
   Future<void> _addProgress() async {
-    if (_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedStudentUsername == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a student first')));
+      return;
+    }
+
+    try {
+      final record = {
+        'student': _selectedStudentUsername,
+        'activity': _activityController.text.trim(),
+        'score': double.tryParse(_scoreController.text) ?? 0,
+        'grade': _gradeController.text.trim(),
+        'comments': _commentsController.text.trim(),
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      await _fs.collection('progress_records').add(record);
+
+      // clear only input fields, keep selected student if you want to add multiple for same student
+      _activityController.clear();
+      _scoreController.clear();
+      _gradeController.clear();
+      _commentsController.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Progress added successfully'),
+        backgroundColor: Colors.green,
+      ));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add progress: $e')));
+    }
+  }
+
+  // ---------- delete with confirmation ----------
+  Future<void> _confirmAndDelete(String docId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm delete'),
+        content: const Text('Are you sure you want to delete this progress record? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
       try {
-        final record = {
-          'name': _nameController.text,
-          'activity': _activityController.text,
-          'score': double.tryParse(_scoreController.text) ?? 0,
-          'grade': _gradeController.text,
-          'comments': _commentsController.text,
-          'timestamp': FieldValue.serverTimestamp(),
-        };
-
-        await _firestore.collection('progress_records').add(record);
-        _clearForm();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Progress added successfully!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        await _fs.collection('progress_records').doc(docId).delete();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Record deleted'),
+          backgroundColor: Colors.red,
+        ));
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to add progress: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
 
-  // Delete progress record
-  Future<void> _deleteProgress(String id) async {
-    try {
-      await _firestore.collection('progress_records').doc(id).delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Progress deleted!'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to delete progress: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  // Clear form controllers
-  void _clearForm() {
-    _nameController.clear();
-    _activityController.clear();
-    _scoreController.clear();
-    _gradeController.clear();
-    _commentsController.clear();
-  }
-
-  // Edit progress using a popup dialog
-  void _editProgress(ProgressRecord record) {
-    _nameController.text = record.name;
-    _activityController.text = record.activity;
-    _scoreController.text = record.score.toString();
-    _gradeController.text = record.grade;
-    _commentsController.text = record.comments;
+  // ---------- edit dialog ----------
+  void _showEditDialog(ProgressRecord record) {
+    final TextEditingController activityCtl = TextEditingController(text: record.activity);
+    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
+    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
+    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
+    final _editFormKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Edit Progress'),
         content: Form(
-          key: _formKey,
+          key: _editFormKey,
           child: SingleChildScrollView(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Student Name'),
-                  validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
+                // student username (display only)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
                 ),
                 TextFormField(
-                  controller: _activityController,
-                  decoration: const InputDecoration(labelText: 'Activity Name'),
-                  validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
+                  controller: activityCtl,
+                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
                 ),
+                const SizedBox(height: 8),
                 TextFormField(
-                  controller: _scoreController,
-                  decoration: const InputDecoration(labelText: 'Score'),
+                  controller: scoreCtl,
+                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
                   keyboardType: TextInputType.number,
-                  validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
                 ),
+                const SizedBox(height: 8),
                 TextFormField(
-                  controller: _gradeController,
-                  decoration: const InputDecoration(labelText: 'Grade'),
-                  validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
+                  controller: gradeCtl,
+                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
                 ),
+                const SizedBox(height: 8),
                 TextFormField(
-                  controller: _commentsController,
-                  decoration: const InputDecoration(labelText: 'Comments'),
+                  controller: commentsCtl,
+                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                  maxLines: 2,
                 ),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              _clearForm();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
-              if (_formKey.currentState!.validate()) {
-                try {
-                  await _firestore.collection('progress_records').doc(record.id).update({
-                    'name': _nameController.text,
-                    'activity': _activityController.text,
-                    'score': double.tryParse(_scoreController.text) ?? 0,
-                    'grade': _gradeController.text,
-                    'comments': _commentsController.text,
-                  });
+              if (!(_editFormKey.currentState?.validate() ?? false)) return;
+              try {
+                await _fs.collection('progress_records').doc(record.id).update({
+                  'activity': activityCtl.text.trim(),
+                  'score': double.tryParse(scoreCtl.text) ?? 0,
+                  'grade': gradeCtl.text.trim(),
+                  'comments': commentsCtl.text.trim(),
+                });
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Text('Record updated'),
+                  backgroundColor: Colors.green,
+                ));
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
 
-                  _clearForm();
-                  Navigator.of(context).pop();
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _activityController.dispose();
+    _scoreController.dispose();
+    _gradeController.dispose();
+    _commentsController.dispose();
+    super.dispose();
+  }
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Progress updated successfully!'),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                      duration: Duration(seconds: 2),
+  // ---------- UI ----------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Student Progress'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => ProgressHistoryPage()),
+            ),
+            icon: const Icon(Icons.history, color: Colors.white),
+            label: const Text('Progress History', style: TextStyle(color: Colors.white)),
+          )
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // ---------- search & select student ----------
+            Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      labelText: 'Search student (username)',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _isSearching
+                          ? const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            )
+                          : (_searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchResults = []);
+                                  },
+                                )
+                              : null),
+                      border: const OutlineInputBorder(),
                     ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to update progress: $e'),
-                      backgroundColor: Colors.red,
+                    onChanged: (q) => _searchUsers(q),
+                  ),
+                  if (_searchResults.isNotEmpty) const SizedBox(height: 8),
+                  if (_searchResults.isNotEmpty)
+                    Card(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _searchResults.length,
+                        separatorBuilder: (_, __) => const Divider(height: 0),
+                        itemBuilder: (context, i) {
+                          final u = _searchResults[i];
+                          return ListTile(
+                            title: Text(u['username'] ?? ''),
+                            onTap: () {
+                              setState(() {
+                                _selectedStudentUsername = u['username'];
+                                _searchController.text = u['username'];
+                                _searchResults.clear();
+                              });
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  );
+                  const SizedBox(height: 12),
+                  if (_selectedStudentUsername != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const Text('Selected: ', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(_selectedStudentUsername!, style: const TextStyle(color: Colors.blue)),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedStudentUsername = null;
+                                _searchController.clear();
+                              });
+                            },
+                            child: const Text('Clear'),
+                          )
+                        ],
+                      ),
+                    ),
+
+                  // ---------- add fields ----------
+                  TextFormField(
+                    controller: _activityController,
+                    decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter an activity' : null,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _scoreController,
+                    decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number,
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a score' : null,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _gradeController,
+                    decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
+                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a grade' : null,
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _commentsController,
+                    decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _addProgress,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Progress'),
+                  ),
+                  const Divider(height: 30),
+                ],
+              ),
+            ),
+
+            // ---------- latest 3 cards ----------
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Latest records', style: Theme.of(context).textTheme.titleMedium),
+            ),
+            const SizedBox(height: 8),
+            StreamBuilder<QuerySnapshot>(
+              stream: _fs
+                  .collection('progress_records')
+                  .orderBy('timestamp', descending: true)
+                  .limit(3)
+                  .snapshots(),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
                 }
+                final docs = snap.data?.docs ?? [];
+                if (docs.isEmpty) return const Text('No recent records');
+                final records = docs.map((d) => ProgressRecord.fromDoc(d)).toList();
+
+                return Column(
+                  children: records.map((r) {
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      child: ListTile(
+                        title: Text('${r.student} — ${r.activity}'),
+                        subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\n${r.comments}'),
+                        isThreeLine: true,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _showEditDialog(r),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _confirmAndDelete(r.id),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ProgressHistoryPage: full list of all progress records with edit & delete
+class ProgressHistoryPage extends StatefulWidget {
+  @override
+  State<ProgressHistoryPage> createState() => _ProgressHistoryPageState();
+}
+
+class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
+  final FirebaseFirestore _fs = FirebaseFirestore.instance;
+
+  // Reuse same edit and delete patterns as above (duplicated for simplicity)
+  Future<void> _confirmAndDelete(BuildContext context, String docId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm delete'),
+        content: const Text('Are you sure you want to delete this progress record?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _fs.collection('progress_records').doc(docId).delete();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted')));
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      }
+    }
+  }
+
+  void _showEditDialog(BuildContext context, ProgressRecord record) {
+    final TextEditingController activityCtl = TextEditingController(text: record.activity);
+    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
+    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
+    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
+    final _editFormKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Progress'),
+        content: Form(
+          key: _editFormKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                TextFormField(
+                  controller: activityCtl,
+                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: scoreCtl,
+                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: gradeCtl,
+                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: commentsCtl,
+                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (!(_editFormKey.currentState?.validate() ?? false)) return;
+              try {
+                await _fs.collection('progress_records').doc(record.id).update({
+                  'activity': activityCtl.text.trim(),
+                  'score': double.tryParse(scoreCtl.text) ?? 0,
+                  'grade': gradeCtl.text.trim(),
+                  'comments': commentsCtl.text.trim(),
+                });
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated')));
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
               }
             },
             child: const Text('Save'),
@@ -4281,132 +4619,39 @@ class _ProgressPageState extends State<ProgressPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Student Progress')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // ---------- Add Progress Form ----------
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Student Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) => v!.isEmpty ? 'Please enter a student name' : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _activityController,
-                    decoration: const InputDecoration(
-                      labelText: 'Activity Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) => v!.isEmpty ? 'Please enter an activity' : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _scoreController,
-                    decoration: const InputDecoration(
-                      labelText: 'Score',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (v) => v!.isEmpty ? 'Please enter a score' : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _gradeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Grade',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) => v!.isEmpty ? 'Please enter a grade' : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _commentsController,
-                    decoration: const InputDecoration(
-                      labelText: 'Comments',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    onPressed: _addProgress,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Progress'),
-                  ),
-                  const Divider(height: 30, thickness: 1),
-                ],
-              ),
-            ),
+      appBar: AppBar(
+        title: const Text('Progress History'),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _fs.collection('progress_records').orderBy('timestamp', descending: true).snapshots(),
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final records = snap.data!.docs.map((d) => ProgressRecord.fromDoc(d)).toList();
+          if (records.isEmpty) return const Center(child: Text('No progress records yet.'));
 
-            // ---------- Display Progress Records ----------
-            StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('progress_records')
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Text(
-                    'No progress records yet.',
-                    style: TextStyle(color: Colors.grey),
-                  );
-                }
-
-                final records = snapshot.data!.docs
-                    .map((doc) => ProgressRecord.fromDoc(doc))
-                    .toList();
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: records.length,
-                  itemBuilder: (context, index) {
-                    final record = records[index];
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      child: ListTile(
-                        title: Text('${record.name} — ${record.activity}'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Score: ${record.score}, Grade: ${record.grade}'),
-                            Text('Comments: ${record.comments}'),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _editProgress(record),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteProgress(record.id),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ],
-        ),
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: records.length,
+            itemBuilder: (context, i) {
+              final r = records[i];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                child: ListTile(
+                  title: Text('${r.student} — ${r.activity}'),
+                  subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\nComments: ${r.comments}'),
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showEditDialog(context, r)),
+                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmAndDelete(context, r.id)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
