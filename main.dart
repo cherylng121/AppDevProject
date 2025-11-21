@@ -4696,20 +4696,18 @@ class _ProgressPageState extends State<ProgressPage> {
       // fetch only students, then filter locally by username substring (case-insensitive)
       final snapshot = await _fs
           .collection('users')
-          .where(
-            'userType',
-            isEqualTo: UserType.student.toString(),
-          ) // FIX: Use enum.toString()
+          .where('userType', isEqualTo: 'UserType.student')
           .get();
 
       final results = snapshot.docs
           .where((doc) {
-            final username = (doc.data()['username'] ?? '')
-                .toString()
-                .toLowerCase();
+            final username = (doc.data()['username'] ?? '').toString().toLowerCase();
             return username.contains(query.toLowerCase());
           })
-          .map((doc) => {'id': doc.id, 'username': doc['username']})
+          .map((doc) => {
+                'id': doc.id,
+                'username': doc['username'],
+              })
           .toList();
 
       setState(() {
@@ -4719,9 +4717,9 @@ class _ProgressPageState extends State<ProgressPage> {
     } catch (e) {
       setState(() => _isSearching = false);
       // swallow or show error
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('User search failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('User search failed: $e')),
+      );
     }
   }
 
@@ -4760,9 +4758,7 @@ class _ProgressPageState extends State<ProgressPage> {
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add progress: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add progress: $e')));
     }
   }
 
@@ -4798,27 +4794,17 @@ class _ProgressPageState extends State<ProgressPage> {
           ),
         );
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
 
   // ---------- edit dialog ----------
   void _showEditDialog(ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(
-      text: record.activity,
-    );
-    final TextEditingController scoreCtl = TextEditingController(
-      text: record.score.toString(),
-    );
-    final TextEditingController gradeCtl = TextEditingController(
-      text: record.grade,
-    );
-    final TextEditingController commentsCtl = TextEditingController(
-      text: record.comments,
-    );
+    final TextEditingController activityCtl = TextEditingController(text: record.activity);
+    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
+    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
+    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
     final _editFormKey = GlobalKey<FormState>();
 
     showDialog(
@@ -4848,8 +4834,7 @@ class _ProgressPageState extends State<ProgressPage> {
                     labelText: 'Activity',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Enter activity' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -4859,8 +4844,7 @@ class _ProgressPageState extends State<ProgressPage> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Enter score' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -4869,8 +4853,7 @@ class _ProgressPageState extends State<ProgressPage> {
                     labelText: 'Grade',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Enter grade' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -4908,9 +4891,7 @@ class _ProgressPageState extends State<ProgressPage> {
                   ),
                 );
               } catch (e) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
               }
             },
             child: const Text('Save'),
@@ -4933,14 +4914,19 @@ class _ProgressPageState extends State<ProgressPage> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
+    final userState = context.watch<FirebaseUserState>();
+    final currentUser = userState.currentUser;
+    final isTeacher = currentUser?.userType == UserType.teacher;
+    final currentUsername = currentUser?.username;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Progress'),
         actions: [
           TextButton.icon(
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => ProgressHistoryPage())),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProgressHistoryPage()),
+            ),
             icon: const Icon(Icons.history, color: Colors.white),
             label: const Text(
               'Progress History',
@@ -4953,29 +4939,30 @@ class _ProgressPageState extends State<ProgressPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ---------- search & select student ----------
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'Search student (username)',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _isSearching
-                          ? const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+            // ---------- TEACHER VIEW: Add Progress Form ----------
+            if (isTeacher) ...[
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'Search student (username)',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _isSearching
+                            ? const Padding(
+                                padding: EdgeInsets.all(8),
+                                child: SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
-                              ),
-                            )
-                          : (_searchController.text.isNotEmpty
+                              )
+                            : (_searchController.text.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear),
                                     onPressed: () {
@@ -4984,129 +4971,159 @@ class _ProgressPageState extends State<ProgressPage> {
                                     },
                                   )
                                 : null),
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: (q) => _searchUsers(q),
-                  ),
-                  if (_searchResults.isNotEmpty) const SizedBox(height: 8),
-                  if (_searchResults.isNotEmpty)
-                    Card(
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _searchResults.length,
-                        separatorBuilder: (_, __) => const Divider(height: 0),
-                        itemBuilder: (context, i) {
-                          final u = _searchResults[i];
-                          return ListTile(
-                            title: Text(u['username'] ?? ''),
-                            onTap: () {
-                              setState(() {
-                                _selectedStudentUsername = u['username'];
-                                _searchController.text = u['username'];
-                                _searchResults.clear();
-                              });
-                            },
-                          );
-                        },
+                        border: const OutlineInputBorder(),
                       ),
+                      onChanged: (q) => _searchUsers(q),
                     ),
-                  const SizedBox(height: 12),
-                  if (_selectedStudentUsername != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Selected: ',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          Text(
-                            _selectedStudentUsername!,
-                            style: const TextStyle(color: Colors.blue),
-                          ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedStudentUsername = null;
-                                _searchController.clear();
-                              });
-                            },
-                            child: const Text('Clear'),
-                          ),
-                        ],
+                    if (_searchResults.isNotEmpty) const SizedBox(height: 8),
+                    if (_searchResults.isNotEmpty)
+                      Card(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _searchResults.length,
+                          separatorBuilder: (_, __) => const Divider(height: 0),
+                          itemBuilder: (context, i) {
+                            final u = _searchResults[i];
+                            return ListTile(
+                              title: Text(u['username'] ?? ''),
+                              onTap: () {
+                                setState(() {
+                                  _selectedStudentUsername = u['username'];
+                                  _searchController.text = u['username'];
+                                  _searchResults.clear();
+                                });
+                              },
+                            );
+                          },
+                        ),
                       ),
-                    ),
+                    const SizedBox(height: 12),
+                    if (_selectedStudentUsername != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            const Text(
+                              'Selected: ',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              _selectedStudentUsername!,
+                              style: const TextStyle(color: Colors.blue),
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _selectedStudentUsername = null;
+                                  _searchController.clear();
+                                });
+                              },
+                              child: const Text('Clear'),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                  // ---------- add fields ----------
-                  TextFormField(
-                    controller: _activityController,
-                    decoration: const InputDecoration(
-                      labelText: 'Activity',
-                      border: OutlineInputBorder(),
+                    // ---------- add fields ----------
+                    TextFormField(
+                      controller: _activityController,
+                      decoration: const InputDecoration(
+                        labelText: 'Activity',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Please enter an activity' : null,
                     ),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Please enter an activity'
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _scoreController,
-                    decoration: const InputDecoration(
-                      labelText: 'Score',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _scoreController,
+                      decoration: const InputDecoration(
+                        labelText: 'Score',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a score' : null,
                     ),
-                    keyboardType: TextInputType.number,
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Please enter a score'
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _gradeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Grade',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _gradeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Grade',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a grade' : null,
                     ),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Please enter a grade'
-                        : null,
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _commentsController,
-                    decoration: const InputDecoration(
-                      labelText: 'Comments',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _commentsController,
+                      decoration: const InputDecoration(
+                        labelText: 'Comments',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: _addProgress,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Progress'),
-                  ),
-                  const Divider(height: 30),
-                ],
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: _addProgress,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Progress'),
+                    ),
+                    const Divider(height: 30),
+                  ],
+                ),
               ),
-            ),
+            ],
 
-            // ---------- latest 3 cards ----------
+            // ---------- STUDENT VIEW: Welcome Message ----------
+            if (!isTeacher) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Icon(Icons.school, size: 64, color: Colors.blue[700]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Your Progress Records',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'View all your progress records and feedback from teachers',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // ---------- Progress Records List ----------
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Latest records',
+                isTeacher ? 'Latest records' : 'Your Progress Records',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
             const SizedBox(height: 8),
             StreamBuilder<QuerySnapshot>(
-              stream: _fs
-                  .collection('progress_records')
-                  .orderBy('timestamp', descending: true)
-                  .limit(3)
-                  .snapshots(),
+              stream: isTeacher
+                  ? _fs
+                      .collection('progress_records')
+                      .orderBy('timestamp', descending: true)
+                      .limit(3)
+                      .snapshots()
+                  : _fs
+                      .collection('progress_records')
+                      .where('student', isEqualTo: currentUsername)
+                      .orderBy('timestamp', descending: true)
+                      .snapshots(),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const SizedBox(
@@ -5115,10 +5132,10 @@ class _ProgressPageState extends State<ProgressPage> {
                   );
                 }
                 final docs = snap.data?.docs ?? [];
-                if (docs.isEmpty) return const Text('No recent records');
-                final records = docs
-                    .map((d) => ProgressRecord.fromDoc(d))
-                    .toList();
+                if (docs.isEmpty) {
+                  return Text(isTeacher ? 'No recent records' : 'No progress records found for you');
+                }
+                final records = docs.map((d) => ProgressRecord.fromDoc(d)).toList();
 
                 return Column(
                   children: records.map((r) {
@@ -5130,19 +5147,21 @@ class _ProgressPageState extends State<ProgressPage> {
                           'Score: ${r.score}, Grade: ${r.grade}\n${r.comments}',
                         ),
                         isThreeLine: true,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _showEditDialog(r),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _confirmAndDelete(r.id),
-                            ),
-                          ],
-                        ),
+                        trailing: isTeacher
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _showEditDialog(r),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _confirmAndDelete(r.id),
+                                  ),
+                                ],
+                              )
+                            : null, // Students don't get edit/delete buttons
                       ),
                     );
                   }).toList(),
@@ -5158,6 +5177,8 @@ class _ProgressPageState extends State<ProgressPage> {
 
 /// ProgressHistoryPage: full list of all progress records with edit & delete
 class ProgressHistoryPage extends StatefulWidget {
+  const ProgressHistoryPage({super.key});
+
   @override
   State<ProgressHistoryPage> createState() => _ProgressHistoryPageState();
 }
@@ -5165,7 +5186,7 @@ class ProgressHistoryPage extends StatefulWidget {
 class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
   final FirebaseFirestore _fs = FirebaseFirestore.instance;
 
-  // Reuse same edit and delete patterns as above (duplicated for simplicity)
+  // Reuse same edit and delete patterns as above
   Future<void> _confirmAndDelete(BuildContext context, String docId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -5190,30 +5211,18 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
     if (confirmed == true) {
       try {
         await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Record deleted')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted')));
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
 
   void _showEditDialog(BuildContext context, ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(
-      text: record.activity,
-    );
-    final TextEditingController scoreCtl = TextEditingController(
-      text: record.score.toString(),
-    );
-    final TextEditingController gradeCtl = TextEditingController(
-      text: record.grade,
-    );
-    final TextEditingController commentsCtl = TextEditingController(
-      text: record.comments,
-    );
+    final TextEditingController activityCtl = TextEditingController(text: record.activity);
+    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
+    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
+    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
     final _editFormKey = GlobalKey<FormState>();
 
     showDialog(
@@ -5242,8 +5251,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                     labelText: 'Activity',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Enter activity' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -5253,8 +5261,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Enter score' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -5263,8 +5270,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                     labelText: 'Grade',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Enter grade' : null,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -5295,13 +5301,9 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                   'comments': commentsCtl.text.trim(),
                 });
                 Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Record updated')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated')));
               } catch (e) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
               }
             },
             child: const Text('Save'),
@@ -5313,21 +5315,29 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final userState = context.watch<FirebaseUserState>();
+    final currentUser = userState.currentUser;
+    final isTeacher = currentUser?.userType == UserType.teacher;
+    final currentUsername = currentUser?.username;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Progress History')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _fs
-            .collection('progress_records')
-            .orderBy('timestamp', descending: true)
-            .snapshots(),
+        stream: isTeacher
+            ? _fs.collection('progress_records').orderBy('timestamp', descending: true).snapshots()
+            : _fs
+                .collection('progress_records')
+                .where('student', isEqualTo: currentUsername)
+                .orderBy('timestamp', descending: true)
+                .snapshots(),
         builder: (context, snap) {
-          if (!snap.hasData)
-            return const Center(child: CircularProgressIndicator());
-          final records = snap.data!.docs
-              .map((d) => ProgressRecord.fromDoc(d))
-              .toList();
-          if (records.isEmpty)
-            return const Center(child: Text('No progress records yet.'));
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final records = snap.data!.docs.map((d) => ProgressRecord.fromDoc(d)).toList();
+          if (records.isEmpty) {
+            return Center(
+              child: Text(isTeacher ? 'No progress records yet.' : 'No progress records found for you.'),
+            );
+          }
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -5342,19 +5352,21 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                     'Score: ${r.score}, Grade: ${r.grade}\nComments: ${r.comments}',
                   ),
                   isThreeLine: true,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _showEditDialog(context, r),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _confirmAndDelete(context, r.id),
-                      ),
-                    ],
-                  ),
+                  trailing: isTeacher
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _showEditDialog(context, r),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _confirmAndDelete(context, r.id),
+                            ),
+                          ],
+                        )
+                      : null, // Students don't get edit/delete buttons
                 ),
               );
             },
@@ -5364,7 +5376,6 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
     );
   }
 }
-
 // ---------- Achievements ----------
 
 class AchievementsPage extends StatefulWidget {
