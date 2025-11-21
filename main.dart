@@ -14,16 +14,12 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_ai/firebase_ai.dart';
 
-
-
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   runApp(
     MultiProvider(
@@ -84,8 +80,8 @@ class AppUser {
       id: id,
       username: map['username'] ?? '',
       email: map['email'] ?? '',
-      userType: map['userType'] == 'UserType.teacher' 
-          ? UserType.teacher 
+      userType: map['userType'] == 'UserType.teacher'
+          ? UserType.teacher
           : UserType.student,
       profilePicture: map['profilePicture'],
       className: map['className'],
@@ -124,7 +120,7 @@ class AppUser {
 class FirebaseUserState extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
-  
+
   AppUser? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
@@ -172,7 +168,7 @@ class FirebaseUserState extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-    
+
     try {
       final usernameQuery = await _firestore
           .collection('users')
@@ -211,7 +207,6 @@ class FirebaseUserState extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-
     } on firebase_auth.FirebaseAuthException catch (e) {
       _errorMessage = _getAuthErrorMessage(e.code);
       print('Error during registration: $_errorMessage');
@@ -236,7 +231,6 @@ class FirebaseUserState extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
-
     } on firebase_auth.FirebaseAuthException catch (e) {
       _errorMessage = _getAuthErrorMessage(e.code);
       _isLoading = false;
@@ -283,7 +277,10 @@ class FirebaseUserState extends ChangeNotifier {
       if (className != null) updates['className'] = className;
       if (formLevel != null) updates['formLevel'] = formLevel;
 
-      await _firestore.collection('users').doc(_currentUser!.id).update(updates);
+      await _firestore
+          .collection('users')
+          .doc(_currentUser!.id)
+          .update(updates);
 
       _currentUser = _currentUser!.copyWith(
         username: username,
@@ -303,7 +300,10 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
-  Future<bool> changePassword(String currentPassword, String newPassword) async {
+  Future<bool> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
     if (_currentUser == null) return false;
 
     try {
@@ -312,7 +312,7 @@ class FirebaseUserState extends ChangeNotifier {
         email: user.email!,
         password: currentPassword,
       );
-      
+
       await user.reauthenticateWithCredential(credential);
       await user.updatePassword(newPassword);
       return true;
@@ -332,7 +332,7 @@ class FirebaseUserState extends ChangeNotifier {
         email: user.email!,
         password: password,
       );
-      
+
       await user.reauthenticateWithCredential(credential);
       await _firestore.collection('users').doc(_currentUser!.id).delete();
       await user.delete();
@@ -352,22 +352,32 @@ class FirebaseUserState extends ChangeNotifier {
       final snapshot = await _firestore.collection('users').get();
       return snapshot.docs
           .map((doc) => AppUser.fromMap(doc.id, doc.data()))
-          .where((user) => user.username.toLowerCase().contains(query.toLowerCase()))
+          .where(
+            (user) => user.username.toLowerCase().contains(query.toLowerCase()),
+          )
           .toList();
     } catch (e) {
       return [];
     }
   }
 
-  Future<List<AppUser>> filterUsers({String? className, String? formLevel}) async {
+  Future<List<AppUser>> filterUsers({
+    String? className,
+    String? formLevel,
+  }) async {
     try {
       Query query = _firestore.collection('users');
-      if (className != null) query = query.where('className', isEqualTo: className);
-      if (formLevel != null) query = query.where('formLevel', isEqualTo: formLevel);
+      if (className != null)
+        query = query.where('className', isEqualTo: className);
+      if (formLevel != null)
+        query = query.where('formLevel', isEqualTo: formLevel);
 
       final snapshot = await query.get();
       return snapshot.docs
-          .map((doc) => AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>))
+          .map(
+            (doc) =>
+                AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>),
+          )
           .toList();
     } catch (e) {
       return [];
@@ -377,25 +387,32 @@ class FirebaseUserState extends ChangeNotifier {
   Future<void> addPoints(int points) async {
     if (_currentUser == null) return;
     final newPoints = _currentUser!.points + points;
-    await _firestore.collection('users').doc(_currentUser!.id).update({'points': newPoints});
+    await _firestore.collection('users').doc(_currentUser!.id).update({
+      'points': newPoints,
+    });
     _currentUser = _currentUser!.copyWith(points: newPoints);
     notifyListeners();
   }
 
-  Future<void> awardBadge({required String name, required String description}) async {
+  Future<void> awardBadge({
+    required String name,
+    required String description,
+  }) async {
     if (_currentUser == null) return;
 
     if (_currentUser!.badges.contains(name)) {
-        return; 
+      return;
     }
 
     final newBadges = List<String>.from(_currentUser!.badges)..add(name);
-    
-    await _firestore.collection('users').doc(_currentUser!.id).update({'badges': newBadges});
-    
+
+    await _firestore.collection('users').doc(_currentUser!.id).update({
+      'badges': newBadges,
+    });
+
     _currentUser = _currentUser!.copyWith(badges: newBadges);
-    _lastUnlockedMessage = 'Congratulations! You unlocked the $name badge.'; 
-    
+    _lastUnlockedMessage = 'Congratulations! You unlocked the $name badge.';
+
     notifyListeners();
   }
 
@@ -406,13 +423,20 @@ class FirebaseUserState extends ChangeNotifier {
 
   String _getAuthErrorMessage(String code) {
     switch (code) {
-      case 'email-already-in-use': return 'Email already registered';
-      case 'invalid-email': return 'Invalid email address';
-      case 'weak-password': return 'Password is too weak';
-      case 'user-not-found': return 'No user found with this email';
-      case 'wrong-password': return 'Incorrect password';
-      case 'invalid-credential': return 'Invalid email or password';
-      default: return 'Authentication error';
+      case 'email-already-in-use':
+        return 'Email already registered';
+      case 'invalid-email':
+        return 'Invalid email address';
+      case 'weak-password':
+        return 'Password is too weak';
+      case 'user-not-found':
+        return 'No user found with this email';
+      case 'wrong-password':
+        return 'Incorrect password';
+      case 'invalid-credential':
+        return 'Invalid email or password';
+      default:
+        return 'Authentication error';
     }
   }
 }
@@ -434,24 +458,19 @@ class CodingBahasa extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-       home: Consumer<FirebaseUserState>(
+      home: Consumer<FirebaseUserState>(
         builder: (context, userState, _) {
           if (userState.isLoading) {
             return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: CircularProgressIndicator()),
             );
           }
-          
-           return userState.isLoggedIn 
-            ? const HomePage()  
-            : const LoginPage();
+
+          return userState.isLoggedIn ? const HomePage() : const LoginPage();
         },
       ),
       debugShowCheckedModeBanner: false,
     );
-    
   }
 }
 
@@ -488,9 +507,9 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => HomePage()),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (context) => HomePage()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -520,7 +539,9 @@ class _LoginPageState extends State<LoginPage> {
               padding: const EdgeInsets.all(24),
               child: Card(
                 elevation: 8,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Form(
@@ -530,8 +551,17 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         Icon(Icons.school, size: 80, color: Colors.blue[700]),
                         const SizedBox(height: 16),
-                        const Text('CodingBahasa', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                        const Text('Connect, Code and Challenge', style: TextStyle(color: Colors.grey)),
+                        const Text(
+                          'CodingBahasa',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          'Connect, Code and Challenge',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                         const SizedBox(height: 32),
                         TextFormField(
                           controller: _emailController,
@@ -539,11 +569,15 @@ class _LoginPageState extends State<LoginPage> {
                           decoration: InputDecoration(
                             labelText: 'Email',
                             prefixIcon: const Icon(Icons.email),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty) return 'Please enter email';
-                            if (!value.contains('@')) return 'Please enter a valid email';
+                            if (value == null || value.isEmpty)
+                              return 'Please enter email';
+                            if (!value.contains('@'))
+                              return 'Please enter a valid email';
                             return null;
                           },
                         ),
@@ -555,32 +589,56 @@ class _LoginPageState extends State<LoginPage> {
                             labelText: 'Password',
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
                             ),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          validator: (value) => value == null || value.isEmpty ? 'Please enter password' : null,
+                          validator: (value) => value == null || value.isEmpty
+                              ? 'Please enter password'
+                              : null,
                         ),
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 48,
                           child: ElevatedButton(
-                            onPressed: userState.isLoading ? null : _handleLogin,
+                            onPressed: userState.isLoading
+                                ? null
+                                : _handleLogin,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue[700],
                               foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: userState.isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text('Login', style: TextStyle(fontSize: 16)),
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : const Text(
+                                    'Login',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 16),
                         TextButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterPage())),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterPage(),
+                            ),
+                          ),
                           child: const Text("Don't have an account? Register"),
                         ),
                       ],
@@ -637,7 +695,9 @@ class _RegisterPageState extends State<RegisterPage> {
       email: _emailController.text.trim(),
       password: _passwordController.text,
       userType: _selectedUserType,
-      className: _classNameController.text.trim().isEmpty ? null : _classNameController.text.trim(),
+      className: _classNameController.text.trim().isEmpty
+          ? null
+          : _classNameController.text.trim(),
       formLevel: _selectedFormLevel,
     );
 
@@ -645,12 +705,18 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration successful!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Registration successful!'),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(userState.errorMessage ?? 'Registration failed'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(userState.errorMessage ?? 'Registration failed'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -660,7 +726,11 @@ class _RegisterPageState extends State<RegisterPage> {
     final userState = context.watch<FirebaseUserState>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Account'), backgroundColor: Colors.blue[700], foregroundColor: Colors.white),
+      appBar: AppBar(
+        title: const Text('Create Account'),
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -668,18 +738,25 @@ class _RegisterPageState extends State<RegisterPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Register New Account', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const Text(
+                'Register New Account',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _usernameController,
                 decoration: InputDecoration(
                   labelText: 'Username',
                   prefixIcon: const Icon(Icons.person),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter username';
-                  if (value.length < 3) return 'Username must be at least 3 characters';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter username';
+                  if (value.length < 3)
+                    return 'Username must be at least 3 characters';
                   return null;
                 },
               ),
@@ -690,10 +767,13 @@ class _RegisterPageState extends State<RegisterPage> {
                 decoration: InputDecoration(
                   labelText: 'Email',
                   prefixIcon: const Icon(Icons.email),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter email';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter email';
                   if (!value.contains('@')) return 'Please enter a valid email';
                   return null;
                 },
@@ -706,14 +786,23 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelText: 'Password',
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter password';
-                  if (value.length < 6) return 'Password must be at least 6 characters';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter password';
+                  if (value.length < 6)
+                    return 'Password must be at least 6 characters';
                   return null;
                 },
               ),
@@ -725,15 +814,28 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelText: 'Confirm Password',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    ),
                   ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                validator: (value) => value != _passwordController.text ? 'Passwords do not match' : null,
+                validator: (value) => value != _passwordController.text
+                    ? 'Passwords do not match'
+                    : null,
               ),
               const SizedBox(height: 16),
-              const Text('User Type', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              const Text(
+                'User Type',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
               Row(
                 children: [
                   Expanded(
@@ -741,7 +843,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       title: const Text('Student'),
                       value: UserType.student,
                       groupValue: _selectedUserType,
-                      onChanged: (value) => setState(() => _selectedUserType = value!),
+                      onChanged: (value) =>
+                          setState(() => _selectedUserType = value!),
                     ),
                   ),
                   Expanded(
@@ -749,7 +852,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       title: const Text('Teacher'),
                       value: UserType.teacher,
                       groupValue: _selectedUserType,
-                      onChanged: (value) => setState(() => _selectedUserType = value!),
+                      onChanged: (value) =>
+                          setState(() => _selectedUserType = value!),
                     ),
                   ),
                 ],
@@ -761,10 +865,18 @@ class _RegisterPageState extends State<RegisterPage> {
                   decoration: InputDecoration(
                     labelText: 'Form Level',
                     prefixIcon: const Icon(Icons.school),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: ['Form 4', 'Form 5'].map((level) => DropdownMenuItem(value: level, child: Text(level))).toList(),
-                  onChanged: (value) => setState(() => _selectedFormLevel = value),
+                  items: ['Form 4', 'Form 5']
+                      .map(
+                        (level) =>
+                            DropdownMenuItem(value: level, child: Text(level)),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedFormLevel = value),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -772,7 +884,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   decoration: InputDecoration(
                     labelText: 'Class Name (Optional)',
                     prefixIcon: const Icon(Icons.class_),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ],
@@ -785,21 +899,22 @@ class _RegisterPageState extends State<RegisterPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: userState.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Register', style: TextStyle(fontSize: 16)),
                 ),
               ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-              }
-
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ========== HOME PAGE ==========
 class HomePage extends StatefulWidget {
@@ -813,20 +928,19 @@ class HomePage extends StatefulWidget {
 class InHomePage extends StatelessWidget {
   const InHomePage({super.key});
 
-
   @override
   Widget build(BuildContext context) {
     final user = context.watch<FirebaseUserState>().currentUser;
-    
-      void _navigateToPage(int pageIndex) {
-    // Find the HomePage in the widget tree and update its selectedIndex
-    final homePageState = context.findAncestorStateOfType<_HomePageState>();
-    if (homePageState != null) {
-      homePageState.setState(() {
-        homePageState.selectedIndex = pageIndex;
-      });
+
+    void _navigateToPage(int pageIndex) {
+      // Find the HomePage in the widget tree and update its selectedIndex
+      final homePageState = context.findAncestorStateOfType<_HomePageState>();
+      if (homePageState != null) {
+        homePageState.setState(() {
+          homePageState.selectedIndex = pageIndex;
+        });
+      }
     }
-  }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -853,11 +967,7 @@ class InHomePage extends StatelessWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(
-                    Icons.code,
-                    size: 80,
-                    color: Colors.blue[700],
-                  ),
+                  child: Icon(Icons.code, size: 80, color: Colors.blue[700]),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -870,28 +980,22 @@ class InHomePage extends StatelessWidget {
                 ),
                 const Text(
                   'Connect, Code and Challenge',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.white70),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 30),
-          
+
           // Welcome Message
           Text(
             'Welcome back, ${user?.username ?? "User"}!',
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
-          
+
           // Stats Cards (for students only)
-           if (user?.userType == UserType.student) ...[
+          if (user?.userType == UserType.student) ...[
             Row(
               children: [
                 Expanded(
@@ -931,17 +1035,14 @@ class InHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 30),
           ],
-          
+
           // Quick Actions
           const Text(
             'Quick Actions',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          
+
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
@@ -979,7 +1080,7 @@ class InHomePage extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildStatCard({
     required IconData icon,
     required String title,
@@ -1008,10 +1109,7 @@ class InHomePage extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                   Text(
                     value,
@@ -1028,7 +1126,7 @@ class InHomePage extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildQuickActionCard({
     required IconData icon,
     required String title,
@@ -1055,10 +1153,7 @@ class InHomePage extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -1076,7 +1171,7 @@ class _HomePageState extends State<HomePage> {
     switch (selectedIndex) {
       case 0:
         page = const InHomePage();
-        /*Center(
+      /*Center(
           child: Text(
             'Welcome to CodingBahasa!',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -1146,7 +1241,6 @@ class _HomePageState extends State<HomePage> {
                   _buildMenuButton('Achievements', 6),
                   _buildMenuButton('Users', 8),
                   _buildMenuButton('Forum', 9),
-
                 ],
               ),
             ),
@@ -1183,9 +1277,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-
-
 
 // ========== USER SEARCH PAGE ==========
 class UserSearchPage extends StatefulWidget {
@@ -1231,8 +1322,10 @@ class _UserSearchPageState extends State<UserSearchPage> {
 
     if (_filterClassName != null || _filterFormLevel != null) {
       results = results.where((user) {
-        if (_filterClassName != null && user.className != _filterClassName) return false;
-        if (_filterFormLevel != null && user.formLevel != _filterFormLevel) return false;
+        if (_filterClassName != null && user.className != _filterClassName)
+          return false;
+        if (_filterFormLevel != null && user.formLevel != _filterFormLevel)
+          return false;
         return true;
       }).toList();
     }
@@ -1246,19 +1339,30 @@ class _UserSearchPageState extends State<UserSearchPage> {
   Future<void> _applyFilters() async {
     setState(() => _isLoading = true);
     final userState = context.read<FirebaseUserState>();
-    
+
     if (_filterClassName == null && _filterFormLevel == null) {
-      _displayedUsers = await userState.searchUserByName(_searchController.text);
+      _displayedUsers = await userState.searchUserByName(
+        _searchController.text,
+      );
     } else {
-      var results = await userState.filterUsers(className: _filterClassName, formLevel: _filterFormLevel);
-      
+      var results = await userState.filterUsers(
+        className: _filterClassName,
+        formLevel: _filterFormLevel,
+      );
+
       if (_searchController.text.isNotEmpty) {
-        results = results.where((user) => user.username.toLowerCase().contains(_searchController.text.toLowerCase())).toList();
+        results = results
+            .where(
+              (user) => user.username.toLowerCase().contains(
+                _searchController.text.toLowerCase(),
+              ),
+            )
+            .toList();
       }
-      
+
       _displayedUsers = results;
     }
-    
+
     setState(() => _isLoading = false);
   }
 
@@ -1286,23 +1390,38 @@ class _UserSearchPageState extends State<UserSearchPage> {
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: tempFormLevel,
-                  decoration: const InputDecoration(labelText: 'Form Level', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Form Level',
+                    border: OutlineInputBorder(),
+                  ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All')),
-                    ...['Form 4', 'Form 5'].map((level) => DropdownMenuItem(value: level, child: Text(level))),
+                    ...['Form 4', 'Form 5'].map(
+                      (level) =>
+                          DropdownMenuItem(value: level, child: Text(level)),
+                    ),
                   ],
-                  onChanged: (value) => setDialogState(() => tempFormLevel = value),
+                  onChanged: (value) =>
+                      setDialogState(() => tempFormLevel = value),
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Class Name', border: OutlineInputBorder()),
-                  onChanged: (value) => setDialogState(() => tempClassName = value.isEmpty ? null : value),
+                  decoration: const InputDecoration(
+                    labelText: 'Class Name',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) => setDialogState(
+                    () => tempClassName = value.isEmpty ? null : value,
+                  ),
                   controller: TextEditingController(text: tempClassName),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
@@ -1332,9 +1451,17 @@ class _UserSearchPageState extends State<UserSearchPage> {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(icon: const Icon(Icons.filter_list), onPressed: _showFilterDialog, tooltip: 'Filter'),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: _showFilterDialog,
+            tooltip: 'Filter',
+          ),
           if (_filterClassName != null || _filterFormLevel != null)
-            IconButton(icon: const Icon(Icons.clear), onPressed: _clearFilters, tooltip: 'Clear Filters'),
+            IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: _clearFilters,
+              tooltip: 'Clear Filters',
+            ),
         ],
       ),
       body: Column(
@@ -1347,12 +1474,17 @@ class _UserSearchPageState extends State<UserSearchPage> {
                 hintText: 'Search by username...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(icon: const Icon(Icons.clear), onPressed: () {
-                        _searchController.clear();
-                        _searchUsers('');
-                      })
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchUsers('');
+                        },
+                      )
                     : null,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onChanged: _searchUsers,
             ),
@@ -1363,16 +1495,23 @@ class _UserSearchPageState extends State<UserSearchPage> {
               child: Row(
                 children: [
                   const Text('Filters: '),
-                  if (_filterFormLevel != null) Chip(label: Text(_filterFormLevel!), onDeleted: () => setState(() {
-                    _filterFormLevel = null;
-                    _applyFilters();
-                  })),
+                  if (_filterFormLevel != null)
+                    Chip(
+                      label: Text(_filterFormLevel!),
+                      onDeleted: () => setState(() {
+                        _filterFormLevel = null;
+                        _applyFilters();
+                      }),
+                    ),
                   if (_filterClassName != null) ...[
                     const SizedBox(width: 8),
-                    Chip(label: Text(_filterClassName!), onDeleted: () => setState(() {
-                      _filterClassName = null;
-                      _applyFilters();
-                    })),
+                    Chip(
+                      label: Text(_filterClassName!),
+                      onDeleted: () => setState(() {
+                        _filterClassName = null;
+                        _applyFilters();
+                      }),
+                    ),
                   ],
                 ],
               ),
@@ -1381,76 +1520,124 @@ class _UserSearchPageState extends State<UserSearchPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('${_displayedUsers.length} user(s) found', style: TextStyle(color: Colors.grey[600])),
+              child: Text(
+                '${_displayedUsers.length} user(s) found',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
             ),
           ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _displayedUsers.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.person_off, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text('No users found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.person_off,
+                          size: 64,
+                          color: Colors.grey[400],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _displayedUsers.length,
-                        itemBuilder: (context, index) {
-                          final user = _displayedUsers[index];
-                          final isCurrentUser = user.id == currentUser?.id;
+                        const SizedBox(height: 16),
+                        Text(
+                          'No users found',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _displayedUsers.length,
+                    itemBuilder: (context, index) {
+                      final user = _displayedUsers[index];
+                      final isCurrentUser = user.id == currentUser?.id;
 
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: user.userType == UserType.student ? Colors.blue[100] : Colors.green[100],
-                                child: Icon(
-                                  user.userType == UserType.student ? Icons.school : Icons.person,
-                                  color: user.userType == UserType.student ? Colors.blue[700] : Colors.green[700],
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: user.userType == UserType.student
+                                ? Colors.blue[100]
+                                : Colors.green[100],
+                            child: Icon(
+                              user.userType == UserType.student
+                                  ? Icons.school
+                                  : Icons.person,
+                              color: user.userType == UserType.student
+                                  ? Colors.blue[700]
+                                  : Colors.green[700],
+                            ),
+                          ),
+                          title: Row(
+                            children: [
+                              Text(user.username),
+                              if (isCurrentUser) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[100],
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    'You',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue[700],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.userType == UserType.student
+                                    ? 'Student'
+                                    : 'Teacher',
+                                style: TextStyle(
+                                  color: user.userType == UserType.student
+                                      ? Colors.blue[700]
+                                      : Colors.green[700],
                                 ),
                               ),
-                              title: Row(
-                                children: [
-                                  Text(user.username),
-                                  if (isCurrentUser) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(color: Colors.blue[100], borderRadius: BorderRadius.circular(10)),
-                                      child: Text('You', style: TextStyle(fontSize: 12, color: Colors.blue[700])),
+                              if (user.formLevel != null)
+                                Text('Form: ${user.formLevel}'),
+                              if (user.className != null)
+                                Text('Class: ${user.className}'),
+                            ],
+                          ),
+                          trailing: user.userType == UserType.student
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.star,
+                                      size: 16,
+                                      color: Colors.amber,
+                                    ),
+                                    Text(
+                                      '${user.points}',
+                                      style: const TextStyle(fontSize: 12),
                                     ),
                                   ],
-                                ],
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(user.userType == UserType.student ? 'Student' : 'Teacher',
-                                      style: TextStyle(color: user.userType == UserType.student ? Colors.blue[700] : Colors.green[700])),
-                                  if (user.formLevel != null) Text('Form: ${user.formLevel}'),
-                                  if (user.className != null) Text('Class: ${user.className}'),
-                                ],
-                              ),
-                              trailing: user.userType == UserType.student
-                                  ? Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.star, size: 16, color: Colors.amber),
-                                        Text('${user.points}', style: const TextStyle(fontSize: 12)),
-                                      ],
-                                    )
-                                  : null,
-                              onTap: () => _showUserDetailsDialog(user),
-                            ),
-                          );
-                        },
-                      ),
+                                )
+                              : null,
+                          onTap: () => _showUserDetailsDialog(user),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -1464,22 +1651,35 @@ class _UserSearchPageState extends State<UserSearchPage> {
         title: Row(
           children: [
             CircleAvatar(
-              backgroundColor: user.userType == UserType.student ? Colors.blue[100] : Colors.green[100],
-              child: Icon(user.userType == UserType.student ? Icons.school : Icons.person,
-                  color: user.userType == UserType.student ? Colors.blue[700] : Colors.green[700]),
+              backgroundColor: user.userType == UserType.student
+                  ? Colors.blue[100]
+                  : Colors.green[100],
+              child: Icon(
+                user.userType == UserType.student ? Icons.school : Icons.person,
+                color: user.userType == UserType.student
+                    ? Colors.blue[700]
+                    : Colors.green[700],
+              ),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(user.username, style: const TextStyle(fontSize: 20))),
+            Expanded(
+              child: Text(user.username, style: const TextStyle(fontSize: 20)),
+            ),
           ],
         ),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDetailRow('User Type', user.userType == UserType.student ? 'Student' : 'Teacher'),
+            _buildDetailRow(
+              'User Type',
+              user.userType == UserType.student ? 'Student' : 'Teacher',
+            ),
             _buildDetailRow('Email', user.email),
-            if (user.formLevel != null) _buildDetailRow('Form Level', user.formLevel!),
-            if (user.className != null) _buildDetailRow('Class', user.className!),
+            if (user.formLevel != null)
+              _buildDetailRow('Form Level', user.formLevel!),
+            if (user.className != null)
+              _buildDetailRow('Class', user.className!),
             if (user.userType == UserType.student) ...[
               const Divider(),
               _buildDetailRow('Points', user.points.toString()),
@@ -1487,7 +1687,12 @@ class _UserSearchPageState extends State<UserSearchPage> {
             ],
           ],
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -1497,7 +1702,13 @@ class _UserSearchPageState extends State<UserSearchPage> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          SizedBox(width: 100, child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w500))),
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
           Expanded(child: Text(value)),
         ],
       ),
@@ -1539,7 +1750,7 @@ Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian
 5. Menentukan tindakan
 6. Melaksanakan penyelesaian
 7. Membuat penilaian
-8. Membuat penambahbaikan"""
+8. Membuat penambahbaikan""",
     },
     {
       "title": "1.2 Algoritma",
@@ -1590,7 +1801,7 @@ Tulis Algortima➡️Uji ALgortima➡️Pembetulan➡️Pengaturcaraan
 2. Kenal pasti "Output Diperoleh"
 3. Bandingkan "Output Diperoleh" dengan "Output Dijangka"
 4. Analisis & baiki algoritma
-"""
+""",
     },
     {
       "title": "1.3 Pemboleh Ubah, Pemalar dan Jenis Data",
@@ -1609,7 +1820,7 @@ Tetap & tidak akan berubah
 Hanya berfungsi dalam atur cara sahaja
 \nPEMBOLEH UBAH SETEMPAT (LOCAL)
 Hanya berfungsi dalam subatur cara yang diisytiharkan
-"""
+""",
     },
     {
       "title": "1.4 Struktur Kawalan",
@@ -1628,7 +1839,7 @@ Hanya berfungsi dalam subatur cara yang diisytiharkan
 • AND - ✅ jika semua betul
 • OR - ✅ jika salah satu betul
 • NOT - Menukarkan status kepada lawannya
-"""
+""",
     },
     {
       "title": "1.5 Amalan Terbaik Pengaturcaraan",
@@ -1650,7 +1861,7 @@ atur cara yang baik
 \nRALAT MASA LARIAN
 • Atur cara tidak berfungsi seperti yang diingini
 • Tidak dapat dikesan
-"""
+""",
     },
     {
       "title": "1.6 Struktur Data dan Modular",
@@ -1666,7 +1877,7 @@ namaTatasusunan = new jenisData [saizTatasusunan];
 • Projek kompleks menjadi lebiringkas
 • Lebih mudah untuk menangani projek komputer
 • Membolehkan tugasan pengaturcaraan dibahagikan kepada ahli kumpulan yang berbeza
-"""
+""",
     },
     {
       "title": "1.7 Pembagunan Aplikasi",
@@ -1677,7 +1888,7 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
 3. Laksana penyelesaian
 4. Uji & nyah ralat
 5. Dokumentasi
-"""
+""",
     },
   ];
 
@@ -1720,10 +1931,7 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
                     const SizedBox(height: 10),
 
                     // Pre-written note (read-only)
-                    Text(
-                      topic["note"]!,
-                      style: const TextStyle(fontSize: 16),
-                    ),
+                    Text(topic["note"]!, style: const TextStyle(fontSize: 16)),
                   ],
                 ),
               ),
@@ -1737,6 +1945,7 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
 
 // ---------- Quiz ----------
 enum QuestionType { mcq, shortAnswer }
+
 enum QuizStatus { draft, published }
 
 /// Model for a single question
@@ -1757,7 +1966,7 @@ class Question {
     this.explanation,
   });
 
-   // NEW: Convert Question object to a Map for Firestore
+  // NEW: Convert Question object to a Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -1776,7 +1985,8 @@ class Question {
       questionText: map['questionText'] as String,
       type: QuestionType.values.firstWhere(
         (e) => e.name == map['type'],
-        orElse: () => QuestionType.mcq, // Default to MCQ if type is missing/invalid
+        orElse: () =>
+            QuestionType.mcq, // Default to MCQ if type is missing/invalid
       ),
       options: List<String>.from(map['options'] ?? []),
       answer: map['answer'] as String,
@@ -1803,12 +2013,14 @@ class Quiz {
     required this.createdBy,
   });
 
-   // Convert Quiz object to a Map for Firestore
+  // Convert Quiz object to a Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'title': title,
       'topic': topic,
-      'questions': questions.map((q) => q.toMap()).toList(), // Convert list of Questions
+      'questions': questions
+          .map((q) => q.toMap())
+          .toList(), // Convert list of Questions
       'status': status.name, // Store enum as string
       'createdBy': createdBy,
       'createdAt': FieldValue.serverTimestamp(), // Good practice
@@ -1822,7 +2034,8 @@ class Quiz {
       id: doc.id,
       title: data['title'] ?? '',
       topic: data['topic'] ?? '',
-      questions: (data['questions'] as List<dynamic>?)
+      questions:
+          (data['questions'] as List<dynamic>?)
               ?.map((qMap) => Question.fromMap(qMap as Map<String, dynamic>))
               .toList() ??
           [],
@@ -1866,38 +2079,57 @@ final Map<String, List<Question>> systemQuizData = {
       questionText: 'Senaraikan empat teknik pemikiran komputasional.',
       type: QuestionType.shortAnswer,
       answer: 'Leraian, Pengecaman corak, Peniskalaan, Algoritma',
-      explanation: 'Keempat-empat teknik ini adalah asas kepada pemikiran komputasional.'
+      explanation:
+          'Keempat-empat teknik ini adalah asas kepada pemikiran komputasional.',
     ),
     Question(
       id: 's1-2',
-      questionText: 'Manakah antara berikut BUKAN ciri penyelesaian masalah berkesan?',
+      questionText:
+          'Manakah antara berikut BUKAN ciri penyelesaian masalah berkesan?',
       type: QuestionType.mcq,
       options: const ['Kos', 'Masa', 'Sumber', 'Populariti'],
       answer: 'Populariti',
-      explanation: 'Penyelesaian berkesan dinilai berdasarkan kos, masa, dan sumber yang digunakan.'
+      explanation:
+          'Penyelesaian berkesan dinilai berdasarkan kos, masa, dan sumber yang digunakan.',
     ),
     Question(
       id: 's1-3',
-      questionText: 'Proses memecahkan masalah kepada bahagian yang lebih kecil & terkawal dipanggil...',
+      questionText:
+          'Proses memecahkan masalah kepada bahagian yang lebih kecil & terkawal dipanggil...',
       type: QuestionType.mcq,
-      options: const ['Leraian', 'Pengecaman corak', 'Peniskalaan', 'Algoritma'],
+      options: const [
+        'Leraian',
+        'Pengecaman corak',
+        'Peniskalaan',
+        'Algoritma',
+      ],
       answer: 'Leraian',
-      explanation: 'Leraian (Decomposition) adalah langkah pertama dalam mempermudahkan masalah yang kompleks.'
+      explanation:
+          'Leraian (Decomposition) adalah langkah pertama dalam mempermudahkan masalah yang kompleks.',
     ),
     Question(
       id: 's1-4',
-      questionText: 'Apakah proses penyelesaian masalah yang kelapan (terakhir)?',
+      questionText:
+          'Apakah proses penyelesaian masalah yang kelapan (terakhir)?',
       type: QuestionType.shortAnswer,
       answer: 'Membuat penambahbaikan',
-      explanation: 'Selepas penilaian, langkah terakhir adalah membuat penambahbaikan berdasarkan maklum balas.'
+      explanation:
+          'Selepas penilaian, langkah terakhir adalah membuat penambahbaikan berdasarkan maklum balas.',
     ),
     Question(
       id: 's1-5',
-      questionText: 'Mencari persamaan antara masalah & dalam masalah ialah teknik...',
+      questionText:
+          'Mencari persamaan antara masalah & dalam masalah ialah teknik...',
       type: QuestionType.mcq,
-      options: const ['Leraian', 'Pengecaman corak', 'Peniskalaan', 'Algoritma'],
+      options: const [
+        'Leraian',
+        'Pengecaman corak',
+        'Peniskalaan',
+        'Algoritma',
+      ],
       answer: 'Pengecaman corak',
-      explanation: 'Pengecaman corak membantu kita mencari penyelesaian yang boleh diguna semula.'
+      explanation:
+          'Pengecaman corak membantu kita mencari penyelesaian yang boleh diguna semula.',
     ),
   ],
   "1.2 Algoritma": [
@@ -1906,49 +2138,79 @@ final Map<String, List<Question>> systemQuizData = {
       questionText: 'Senaraikan tiga (3) ciri algoritma.',
       type: QuestionType.shortAnswer,
       answer: 'Butiran jelas, Boleh dilaksanakan, Mempunyai batasan',
-      explanation: 'Algoritma mesti jelas, boleh diikuti, dan mempunyai titik permulaan dan penamat yang terhad.'
+      explanation:
+          'Algoritma mesti jelas, boleh diikuti, dan mempunyai titik permulaan dan penamat yang terhad.',
     ),
     Question(
       id: 's2-2',
-      questionText: 'Apakah perwakilan algoritma yang menggunakan simbol grafik?',
+      questionText:
+          'Apakah perwakilan algoritma yang menggunakan simbol grafik?',
       type: QuestionType.mcq,
-      options: const ['Pseudokod', 'Carta Alir', 'Kod Atur Cara', 'Ralat Sintaks'],
+      options: const [
+        'Pseudokod',
+        'Carta Alir',
+        'Kod Atur Cara',
+        'Ralat Sintaks',
+      ],
       answer: 'Carta Alir',
-      explanation: 'Carta Alir (Flowchart) menggunakan simbol-simbol piawai untuk mewakili arahan dan aliran.'
+      explanation:
+          'Carta Alir (Flowchart) menggunakan simbol-simbol piawai untuk mewakili arahan dan aliran.',
     ),
     Question(
       id: 's2-3',
-      questionText: 'Struktur kawalan yang manakah membuat keputusan berasaskan syarat?',
+      questionText:
+          'Struktur kawalan yang manakah membuat keputusan berasaskan syarat?',
       type: QuestionType.mcq,
-      options: const ['Struktur Kawalan Urutan', 'Struktur Kawalan Pilihan', 'Struktur Kawalan Pengulangan', 'Struktur Kawalan Data'],
+      options: const [
+        'Struktur Kawalan Urutan',
+        'Struktur Kawalan Pilihan',
+        'Struktur Kawalan Pengulangan',
+        'Struktur Kawalan Data',
+      ],
       answer: 'Struktur Kawalan Pilihan',
-      explanation: 'Struktur Kawalan Pilihan (Selection) menggunakan "if-else" atau "switch-case" untuk membuat keputusan.'
+      explanation:
+          'Struktur Kawalan Pilihan (Selection) menggunakan "if-else" atau "switch-case" untuk membuat keputusan.',
     ),
     Question(
       id: 's2-4',
-      questionText: 'Ralat yang timbul apabila atur cara dijalankan, seperti pembahagian dengan sifar, dipanggil...',
+      questionText:
+          'Ralat yang timbul apabila atur cara dijalankan, seperti pembahagian dengan sifar, dipanggil...',
       type: QuestionType.mcq,
-      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Algoritma'],
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Algoritma',
+      ],
       answer: 'Ralat Masa Larian',
-      explanation: 'Ralat Masa Larian (Run-time Error) berlaku semasa program sedang dilaksanakan.'
+      explanation:
+          'Ralat Masa Larian (Run-time Error) berlaku semasa program sedang dilaksanakan.',
     ),
     Question(
       id: 's2-5',
-      questionText: 'Ralat yang menyebabkan atur cara tidak berfungsi seperti yang diingini (cth: output salah) dipanggil...',
+      questionText:
+          'Ralat yang menyebabkan atur cara tidak berfungsi seperti yang diingini (cth: output salah) dipanggil...',
       type: QuestionType.mcq,
-      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Pengecaman'],
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Pengecaman',
+      ],
       answer: 'Ralat Logik',
-      explanation: 'Ralat Logik (Logic Error) bermakna atur cara boleh berjalan, tetapi menghasilkan output yang salah.'
+      explanation:
+          'Ralat Logik (Logic Error) bermakna atur cara boleh berjalan, tetapi menghasilkan output yang salah.',
     ),
   ],
   "1.3 Pemboleh Ubah, Pemalar dan Jenis Data": [
     Question(
       id: 's3-1',
-      questionText: 'Apakah jenis data yang sesuai untuk menyimpan nilai "hello world"?',
+      questionText:
+          'Apakah jenis data yang sesuai untuk menyimpan nilai "hello world"?',
       type: QuestionType.mcq,
       options: const ['int', 'double', 'char', 'String'],
       answer: 'String',
-      explanation: 'String digunakan untuk menyimpan jujukan aksara (teks).'
+      explanation: 'String digunakan untuk menyimpan jujukan aksara (teks).',
     ),
     Question(
       id: 's3-2',
@@ -1956,47 +2218,57 @@ final Map<String, List<Question>> systemQuizData = {
       type: QuestionType.mcq,
       options: const ['int', 'double', 'char', 'String'],
       answer: 'char',
-      explanation: 'char digunakan untuk menyimpan satu aksara sahaja.'
+      explanation: 'char digunakan untuk menyimpan satu aksara sahaja.',
     ),
     Question(
       id: 's3-3',
-      questionText: 'Apakah jenis data yang sesuai untuk menyimpan nilai "true" atau "false"?',
+      questionText:
+          'Apakah jenis data yang sesuai untuk menyimpan nilai "true" atau "false"?',
       type: QuestionType.mcq,
       options: const ['int', 'boolean', 'char', 'String'],
       answer: 'boolean',
-      explanation: 'Boolean hanya boleh memegang nilai benar (true) atau palsu (false).'
+      explanation:
+          'Boolean hanya boleh memegang nilai benar (true) atau palsu (false).',
     ),
     Question(
       id: 's3-4',
-      questionText: 'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
+      questionText:
+          'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
       type: QuestionType.shortAnswer,
       answer: 'Pemboleh ubah sejagat',
-      explanation: 'Pemboleh ubah Sejagat (Global Variable) mempunyai skop di seluruh atur cara.'
+      explanation:
+          'Pemboleh ubah Sejagat (Global Variable) mempunyai skop di seluruh atur cara.',
     ),
     Question(
       id: 's3-5',
-      questionText: 'Pemboleh ubah yang diisytiharkan dalam sebuah fungsi dan tidak boleh diakses di luar fungsi itu dipanggil...',
+      questionText:
+          'Pemboleh ubah yang diisytiharkan dalam sebuah fungsi dan tidak boleh diakses di luar fungsi itu dipanggil...',
       type: QuestionType.shortAnswer,
       answer: 'Pemboleh ubah setempat',
-      explanation: 'Pemboleh ubah Setempat (Local Variable) hanya wujud di dalam fungsi ia diisytiharkan.'
+      explanation:
+          'Pemboleh ubah Setempat (Local Variable) hanya wujud di dalam fungsi ia diisytiharkan.',
     ),
   ],
   "1.4 Struktur Kawalan": [
     Question(
       id: 's4-1',
-      questionText: 'Operator logikal yang manakah hanya benar jika SEMUA syarat benar?',
+      questionText:
+          'Operator logikal yang manakah hanya benar jika SEMUA syarat benar?',
       type: QuestionType.mcq,
       options: const ['AND', 'OR', 'NOT', 'IF'],
       answer: 'AND',
-      explanation: 'Operator AND (&&) memerlukan semua syarat benar untuk menghasilkan "true".'
+      explanation:
+          'Operator AND (&&) memerlukan semua syarat benar untuk menghasilkan "true".',
     ),
     Question(
       id: 's4-2',
-      questionText: 'Operator logikal yang manakah benar jika SALAH SATU syarat benar?',
+      questionText:
+          'Operator logikal yang manakah benar jika SALAH SATU syarat benar?',
       type: QuestionType.mcq,
       options: const ['AND', 'OR', 'NOT', 'IF'],
       answer: 'OR',
-      explanation: 'Operator OR (||) hanya memerlukan satu syarat benar untuk menghasilkan "true".'
+      explanation:
+          'Operator OR (||) hanya memerlukan satu syarat benar untuk menghasilkan "true".',
     ),
     Question(
       id: 's4-3',
@@ -2004,85 +2276,115 @@ final Map<String, List<Question>> systemQuizData = {
       type: QuestionType.mcq,
       options: const ['==', '!=', '>=', '<='],
       answer: '!=',
-      explanation: '`!=` digunakan untuk menyemak jika dua nilai tidak sama.'
+      explanation: '`!=` digunakan untuk menyemak jika dua nilai tidak sama.',
     ),
     Question(
       id: 's4-4',
-      questionText: 'Apakah struktur kawalan yang menggunakan "For", "While", dan "Do-while"?',
+      questionText:
+          'Apakah struktur kawalan yang menggunakan "For", "While", dan "Do-while"?',
       type: QuestionType.shortAnswer,
       answer: 'Struktur Kawalan Pengulangan',
-      explanation: 'Ini adalah jenis-jenis gelung (loops) yang digunakan untuk pengulangan.'
+      explanation:
+          'Ini adalah jenis-jenis gelung (loops) yang digunakan untuk pengulangan.',
     ),
     Question(
       id: 's4-5',
-      questionText: 'Struktur kawalan "Switch-case" adalah sejenis struktur kawalan...',
+      questionText:
+          'Struktur kawalan "Switch-case" adalah sejenis struktur kawalan...',
       type: QuestionType.shortAnswer,
       answer: 'Pilihan',
-      explanation: 'Switch-case ialah satu cara untuk melaksanakan Struktur Kawalan Pilihan, alternatif kepada "if-else-if".'
+      explanation:
+          'Switch-case ialah satu cara untuk melaksanakan Struktur Kawalan Pilihan, alternatif kepada "if-else-if".',
     ),
   ],
   "1.5 Amalan Terbaik Pengaturcaraan": [
     Question(
       id: 's5-1',
-      questionText: 'Senaraikan tiga (3) faktor yang mempengaruhi kebolehbacaan kod.',
+      questionText:
+          'Senaraikan tiga (3) faktor yang mempengaruhi kebolehbacaan kod.',
       type: QuestionType.shortAnswer,
       answer: 'Inden yang konsisten, Pemboleh ubah yang bermakna, Komen',
-      explanation: 'Faktor-faktor ini (termasuk juga jenis data) membantu pengatur cara lain memahami kod anda.'
+      explanation:
+          'Faktor-faktor ini (termasuk juga jenis data) membantu pengatur cara lain memahami kod anda.',
     ),
     Question(
       id: 's5-2',
-      questionText: 'Apakah jenis ralat yang disebabkan oleh kesalahan tatabahasa dalam kod?',
+      questionText:
+          'Apakah jenis ralat yang disebabkan oleh kesalahan tatabahasa dalam kod?',
       type: QuestionType.mcq,
-      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Amalan'],
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Amalan',
+      ],
       answer: 'Ralat Sintaks',
-      explanation: 'Ralat Sintaks (Syntax Error) adalah seperti kesalahan ejaan atau tatabahasa yang tidak difahami oleh pengkompil.'
+      explanation:
+          'Ralat Sintaks (Syntax Error) adalah seperti kesalahan ejaan atau tatabahasa yang tidak difahami oleh pengkompil.',
     ),
     Question(
       id: 's5-3',
-      questionText: 'Penggunaan nama pemboleh ubah seperti "x" dan "y" adalah amalan yang baik. (Benar/Palsu)',
+      questionText:
+          'Penggunaan nama pemboleh ubah seperti "x" dan "y" adalah amalan yang baik. (Benar/Palsu)',
       type: QuestionType.mcq,
       options: const ['Benar', 'Palsu'],
       answer: 'Palsu',
-      explanation: 'Nama pemboleh ubah harus bermakna (cth: "lebar", "tinggi") supaya kod mudah difahami.'
+      explanation:
+          'Nama pemboleh ubah harus bermakna (cth: "lebar", "tinggi") supaya kod mudah difahami.',
     ),
     Question(
       id: 's5-4',
-      questionText: 'Apakah tujuan utama meletakkan "komen" (comments) dalam atur cara?',
+      questionText:
+          'Apakah tujuan utama meletakkan "komen" (comments) dalam atur cara?',
       type: QuestionType.shortAnswer,
       answer: 'Untuk menerangkan fungsi kod',
-      explanation: 'Komen membantu manusia (pengatur cara) memahami apa yang dilakukan oleh sesuatu bahagian kod.'
+      explanation:
+          'Komen membantu manusia (pengatur cara) memahami apa yang dilakukan oleh sesuatu bahagian kod.',
     ),
     Question(
       id: 's5-5',
-      questionText: 'Pembahagian dengan digit 0 akan menyebabkan ralat jenis apa?',
+      questionText:
+          'Pembahagian dengan digit 0 akan menyebabkan ralat jenis apa?',
       type: QuestionType.mcq,
-      options: const ['Ralat Sintaks', 'Ralat Logik', 'Ralat Masa Larian', 'Ralat Komen'],
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Komen',
+      ],
       answer: 'Ralat Masa Larian',
-      explanation: 'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya boleh dikesan semasa atur cara dijalankan.'
+      explanation:
+          'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya boleh dikesan semasa atur cara dijalankan.',
     ),
   ],
   "1.6 Struktur Data dan Modular": [
     Question(
       id: 's6-1',
-      questionText: 'Apakah nama struktur data yang membolehkan koleksi beberapa nilai data dalam satu pemboleh ubah menggunakan indeks?',
+      questionText:
+          'Apakah nama struktur data yang membolehkan koleksi beberapa nilai data dalam satu pemboleh ubah menggunakan indeks?',
       type: QuestionType.shortAnswer,
       answer: 'Tatasusunan',
-      explanation: 'Tatasusunan (Array) menyimpan elemen dalam ruang memori berindeks.'
+      explanation:
+          'Tatasusunan (Array) menyimpan elemen dalam ruang memori berindeks.',
     ),
     Question(
       id: 's6-2',
-      questionText: 'Jika diberi: int[] senaraiUmur = {17, 18, 19}; Apakah nilai bagi senaraiUmur[1]?',
+      questionText:
+          'Jika diberi: int[] senaraiUmur = {17, 18, 19}; Apakah nilai bagi senaraiUmur[1]?',
       type: QuestionType.mcq,
       options: const ['17', '18', '19', 'Ralat'],
       answer: '18',
-      explanation: 'Indeks tatasusunan bermula dari 0. Jadi, indeks 0 ialah 17, dan indeks 1 ialah 18.'
+      explanation:
+          'Indeks tatasusunan bermula dari 0. Jadi, indeks 0 ialah 17, dan indeks 1 ialah 18.',
     ),
     Question(
       id: 's6-3',
-      questionText: 'Nyatakan satu kelebihan menggunakan struktur modul (subatur cara).',
+      questionText:
+          'Nyatakan satu kelebihan menggunakan struktur modul (subatur cara).',
       type: QuestionType.shortAnswer,
       answer: 'Lebih mudah untuk digunakan semula',
-      explanation: 'Kelebihan lain: lebih mudah diuji, projek kompleks jadi ringkas, mudah dibahagikan tugas. (Mana-mana jawapan ini diterima)'
+      explanation:
+          'Kelebihan lain: lebih mudah diuji, projek kompleks jadi ringkas, mudah dibahagikan tugas. (Mana-mana jawapan ini diterima)',
     ),
     Question(
       id: 's6-4',
@@ -2090,15 +2392,18 @@ final Map<String, List<Question>> systemQuizData = {
       type: QuestionType.mcq,
       options: const ['Prosedur', 'Fungsi', 'Tatasusunan', 'Modul'],
       answer: 'Fungsi',
-      explanation: 'Fungsi (Function) memulangkan nilai (cth: "int kiraLuas()"), manakala Prosedur (Procedure) tidak (cth: "void paparNama()").'
+      explanation:
+          'Fungsi (Function) memulangkan nilai (cth: "int kiraLuas()"), manakala Prosedur (Procedure) tidak (cth: "void paparNama()").',
     ),
     Question(
       id: 's6-5',
-      questionText: 'Dalam "void paparHarga(String item, double h)", "item" dan "h" dipanggil...',
+      questionText:
+          'Dalam "void paparHarga(String item, double h)", "item" dan "h" dipanggil...',
       type: QuestionType.mcq,
       options: const ['Parameter', 'Pemboleh ubah', 'Fungsi', 'Jenis Data'],
       answer: 'Parameter',
-      explanation: 'Ini adalah parameter yang menerima nilai apabila subatur cara itu dipanggil.'
+      explanation:
+          'Ini adalah parameter yang menerima nilai apabila subatur cara itu dipanggil.',
     ),
   ],
   "1.7 Pembagunan Aplikasi": [
@@ -2107,37 +2412,47 @@ final Map<String, List<Question>> systemQuizData = {
       questionText: 'Apakah maksud singkatan SDLC?',
       type: QuestionType.shortAnswer,
       answer: 'Kitaran Hayat Pembangunan Sistem',
-      explanation: 'SDLC bermaksud "System Development Life Cycle".'
+      explanation: 'SDLC bermaksud "System Development Life Cycle".',
     ),
     Question(
       id: 's7-2',
       questionText: 'Nyatakan fasa pertama dalam SDLC.',
       type: QuestionType.shortAnswer,
       answer: 'Analisis masalah',
-      explanation: 'Fasa pertama ialah Analisis Masalah, diikuti Reka Bentuk, Laksana, Uji & Nyah Ralat, dan Dokumentasi.'
+      explanation:
+          'Fasa pertama ialah Analisis Masalah, diikuti Reka Bentuk, Laksana, Uji & Nyah Ralat, dan Dokumentasi.',
     ),
     Question(
       id: 's7-3',
       questionText: 'Fasa "Uji & Nyah Ralat" datang SELEPAS fasa mana?',
       type: QuestionType.mcq,
-      options: const ['Analisis masalah', 'Reka bentuk penyelesaian', 'Laksana penyelesaian', 'Dokumentasi'],
+      options: const [
+        'Analisis masalah',
+        'Reka bentuk penyelesaian',
+        'Laksana penyelesaian',
+        'Dokumentasi',
+      ],
       answer: 'Laksana penyelesaian',
-      explanation: 'Selepas kod ditulis (dilaksana), ia mesti diuji untuk mencari ralat.'
+      explanation:
+          'Selepas kod ditulis (dilaksana), ia mesti diuji untuk mencari ralat.',
     ),
     Question(
       id: 's7-4',
-      questionText: 'Reka bentuk yang manakah melibatkan reka bentuk antara muka (GUI)?',
+      questionText:
+          'Reka bentuk yang manakah melibatkan reka bentuk antara muka (GUI)?',
       type: QuestionType.mcq,
       options: const ['Logikal', 'Fizikal', 'Analisis', 'Laksana'],
       answer: 'Fizikal',
-      explanation: 'Reka bentuk logikal ialah aliran (carta alir/pseudokod), manakala reka bentuk fizikal ialah rupa (GUI) dan pangkalan data.'
+      explanation:
+          'Reka bentuk logikal ialah aliran (carta alir/pseudokod), manakala reka bentuk fizikal ialah rupa (GUI) dan pangkalan data.',
     ),
     Question(
       id: 's7-5',
       questionText: 'Apakah fasa terakhir dalam SDLC?',
       type: QuestionType.shortAnswer,
       answer: 'Dokumentasi',
-      explanation: 'Fasa terakhir ialah Dokumentasi, yang penting untuk rujukan dan penyelenggaraan masa depan.'
+      explanation:
+          'Fasa terakhir ialah Dokumentasi, yang penting untuk rujukan dan penyelenggaraan masa depan.',
     ),
   ],
 };
@@ -2145,129 +2460,194 @@ final Map<String, List<Question>> systemQuizData = {
 /// System-Generated Summative Test (US-System)
 final List<Question> summativeTestQuestions = [
   Question(
-      id: 'sum-1',
-      questionText: 'Yang manakah penyataan yang tidak tepat mengenai mengapa perlunya strategi dalam penyelesaian masalah?',
-      type: QuestionType.mcq,
-      options: const ['Membantu pengembangan sesuatu konsep', 'Menggalakkan pembelajaran kendiri', 'Meningkatkan kemahiran berfikir', 'Mewujudkan komunikasi sehala'],
-      answer: 'Mewujudkan komunikasi sehala',
-      explanation: 'Strategi penyelesaian masalah menggalakkan komunikasi DUA hala, bukan sehala.'
+    id: 'sum-1',
+    questionText:
+        'Yang manakah penyataan yang tidak tepat mengenai mengapa perlunya strategi dalam penyelesaian masalah?',
+    type: QuestionType.mcq,
+    options: const [
+      'Membantu pengembangan sesuatu konsep',
+      'Menggalakkan pembelajaran kendiri',
+      'Meningkatkan kemahiran berfikir',
+      'Mewujudkan komunikasi sehala',
+    ],
+    answer: 'Mewujudkan komunikasi sehala',
+    explanation:
+        'Strategi penyelesaian masalah menggalakkan komunikasi DUA hala, bukan sehala.',
   ),
   Question(
-      id: 'sum-2',
-      questionText: 'Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian, merujuk kepada konsep...',
-      type: QuestionType.mcq,
-      options: const ['Analisis Masalah', 'Penyelesaian Masalah', 'Reka Bentuk Sistem', 'Algoritma'],
-      answer: 'Penyelesaian Masalah',
-      explanation: 'Ini adalah definisi asas bagi penyelesaian masalah.'
+    id: 'sum-2',
+    questionText:
+        'Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian, merujuk kepada konsep...',
+    type: QuestionType.mcq,
+    options: const [
+      'Analisis Masalah',
+      'Penyelesaian Masalah',
+      'Reka Bentuk Sistem',
+      'Algoritma',
+    ],
+    answer: 'Penyelesaian Masalah',
+    explanation: 'Ini adalah definisi asas bagi penyelesaian masalah.',
   ),
   Question(
-      id: 'sum-3',
-      questionText: 'Teknik Leraian, Pengecaman Corak, Peniskalaan, dan Algoritma adalah teknik dalam...',
-      type: QuestionType.mcq,
-      options: const ['SDLC', 'Amalan Terbaik', 'Pemikiran Komputasional', 'Struktur Kawalan'],
-      answer: 'Pemikiran Komputasional',
-      explanation: 'Ini adalah empat tonggak utama dalam Pemikiran Komputasional.'
+    id: 'sum-3',
+    questionText:
+        'Teknik Leraian, Pengecaman Corak, Peniskalaan, dan Algoritma adalah teknik dalam...',
+    type: QuestionType.mcq,
+    options: const [
+      'SDLC',
+      'Amalan Terbaik',
+      'Pemikiran Komputasional',
+      'Struktur Kawalan',
+    ],
+    answer: 'Pemikiran Komputasional',
+    explanation:
+        'Ini adalah empat tonggak utama dalam Pemikiran Komputasional.',
   ),
   Question(
-      id: 'sum-4',
-      questionText: 'Apakah fungsi bagi struktur kawalan pilihan?',
-      type: QuestionType.mcq,
-      options: const [
+    id: 'sum-4',
+    questionText: 'Apakah fungsi bagi struktur kawalan pilihan?',
+    type: QuestionType.mcq,
+    options: const [
+      'Memberikan perisian komputer keupayaan untuk membuat keputusan berasaskan syarat',
+      'Mengulang satu set arahan sehingga syarat dipenuhi',
+      'Melaksanakan arahan satu per satu mengikut urutan',
+      'Menyimpan data dalam memori',
+    ],
+    answer:
         'Memberikan perisian komputer keupayaan untuk membuat keputusan berasaskan syarat',
-        'Mengulang satu set arahan sehingga syarat dipenuhi',
-        'Melaksanakan arahan satu per satu mengikut urutan',
-        'Menyimpan data dalam memori'
-      ],
-      answer: 'Memberikan perisian komputer keupayaan untuk membuat keputusan berasaskan syarat',
-      explanation: 'Struktur kawalan pilihan (cth: "if", "switch") membenarkan atur cara membuat keputusan.'
+    explanation:
+        'Struktur kawalan pilihan (cth: "if", "switch") membenarkan atur cara membuat keputusan.',
   ),
   Question(
-      id: 'sum-5',
-      questionText: 'Apakah yang dimaksudkan dengan amalan terbaik dalam pengaturcaraan?',
-      type: QuestionType.mcq,
-      options: const [
-        'Menjalankan atur cara tanpa sebarang ralat',
+    id: 'sum-5',
+    questionText:
+        'Apakah yang dimaksudkan dengan amalan terbaik dalam pengaturcaraan?',
+    type: QuestionType.mcq,
+    options: const [
+      'Menjalankan atur cara tanpa sebarang ralat',
+      'Mempraktikkan amalan-amalan untuk menghasilkan atur cara yang baik dan mudah difahami',
+      'Menulis kod atur cara dengan paling pantas',
+      'Menggunakan pemboleh ubah yang paling sedikit',
+    ],
+    answer:
         'Mempraktikkan amalan-amalan untuk menghasilkan atur cara yang baik dan mudah difahami',
-        'Menulis kod atur cara dengan paling pantas',
-        'Menggunakan pemboleh ubah yang paling sedikit'
-      ],
-      answer: 'Mempraktikkan amalan-amalan untuk menghasilkan atur cara yang baik dan mudah difahami',
-      explanation: 'Amalan terbaik mementingkan kebolehbacaan, kecekapan, dan penyelenggaraan kod.'
+    explanation:
+        'Amalan terbaik mementingkan kebolehbacaan, kecekapan, dan penyelenggaraan kod.',
   ),
   Question(
-      id: 'sum-6',
-      questionText: 'Kata kunci "int" dalam Java digunakan untuk mengisytiharkan pemboleh ubah jenis...',
-      type: QuestionType.shortAnswer,
-      answer: 'Integer',
-      explanation: '`int` adalah singkatan untuk "Integer", yang merupakan nombor bulat.'
+    id: 'sum-6',
+    questionText:
+        'Kata kunci "int" dalam Java digunakan untuk mengisytiharkan pemboleh ubah jenis...',
+    type: QuestionType.shortAnswer,
+    answer: 'Integer',
+    explanation:
+        '`int` adalah singkatan untuk "Integer", yang merupakan nombor bulat.',
   ),
   Question(
-      id: 'sum-7',
-      questionText: 'Jenis data "float" atau "double" digunakan untuk menyimpan nombor yang mempunyai...',
-      type: QuestionType.shortAnswer,
-      answer: 'Titik perpuluhan',
-      explanation: 'Nombor perpuluhan (cth: 10.5) disimpan sebagai "float" atau "double".'
+    id: 'sum-7',
+    questionText:
+        'Jenis data "float" atau "double" digunakan untuk menyimpan nombor yang mempunyai...',
+    type: QuestionType.shortAnswer,
+    answer: 'Titik perpuluhan',
+    explanation:
+        'Nombor perpuluhan (cth: 10.5) disimpan sebagai "float" atau "double".',
   ),
   Question(
-      id: 'sum-8',
-      questionText: 'Data dalam bentuk pilihan "Benar" (True) atau "Palsu" (False) ialah jenis data...',
-      type: QuestionType.shortAnswer,
-      answer: 'Boolean',
-      explanation: 'Jenis data "boolean" hanya boleh menyimpan nilai "true" atau "false".'
+    id: 'sum-8',
+    questionText:
+        'Data dalam bentuk pilihan "Benar" (True) atau "Palsu" (False) ialah jenis data...',
+    type: QuestionType.shortAnswer,
+    answer: 'Boolean',
+    explanation:
+        'Jenis data "boolean" hanya boleh menyimpan nilai "true" atau "false".',
   ),
   Question(
-      id: 'sum-9',
-      questionText: 'Perwakilan algoritma yang menggunakan senarai arahan dalam bahasa pertuturan manusia dipanggil...',
-      type: QuestionType.shortAnswer,
-      answer: 'Pseudokod',
-      explanation: 'Pseudokod ialah cara menulis logik atur cara menggunakan bahasa biasa, bukan kod sebenar.'
+    id: 'sum-9',
+    questionText:
+        'Perwakilan algoritma yang menggunakan senarai arahan dalam bahasa pertuturan manusia dipanggil...',
+    type: QuestionType.shortAnswer,
+    answer: 'Pseudokod',
+    explanation:
+        'Pseudokod ialah cara menulis logik atur cara menggunakan bahasa biasa, bukan kod sebenar.',
   ),
   Question(
-      id: 'sum-10',
-      questionText: 'Perwakilan algoritma yang menggunakan simbol grafik dipanggil...',
-      type: QuestionType.shortAnswer,
-      answer: 'Carta alir',
-      explanation: 'Carta alir (flowchart) menggunakan simbol untuk mewakili proses, keputusan, dan aliran.'
+    id: 'sum-10',
+    questionText:
+        'Perwakilan algoritma yang menggunakan simbol grafik dipanggil...',
+    type: QuestionType.shortAnswer,
+    answer: 'Carta alir',
+    explanation:
+        'Carta alir (flowchart) menggunakan simbol untuk mewakili proses, keputusan, dan aliran.',
   ),
   Question(
-      id: 'sum-11',
-      questionText: 'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
-      type: QuestionType.mcq,
-      options: const ['Pemboleh ubah setempat', 'Pemboleh ubah sejagat', 'Pemalar', 'Jenis Data'],
-      answer: 'Pemboleh ubah sejagat',
-      explanation: 'Pemboleh ubah sejagat (global) boleh diakses dari mana-mana bahagian atur cara.'
+    id: 'sum-11',
+    questionText:
+        'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
+    type: QuestionType.mcq,
+    options: const [
+      'Pemboleh ubah setempat',
+      'Pemboleh ubah sejagat',
+      'Pemalar',
+      'Jenis Data',
+    ],
+    answer: 'Pemboleh ubah sejagat',
+    explanation:
+        'Pemboleh ubah sejagat (global) boleh diakses dari mana-mana bahagian atur cara.',
   ),
   Question(
-      id: 'sum-12',
-      questionText: 'Fasa pertama dalam Kitaran Hayat Pembangunan Sistem (SDLC) ialah...',
-      type: QuestionType.mcq,
-      options: const ['Reka bentuk penyelesaian', 'Laksana penyelesaian', 'Analisis Masalah', 'Dokumentasi'],
-      answer: 'Analisis Masalah',
-      explanation: 'Proses SDLC sentiasa bermula dengan menganalisis masalah yang perlu diselesaikan.'
+    id: 'sum-12',
+    questionText:
+        'Fasa pertama dalam Kitaran Hayat Pembangunan Sistem (SDLC) ialah...',
+    type: QuestionType.mcq,
+    options: const [
+      'Reka bentuk penyelesaian',
+      'Laksana penyelesaian',
+      'Analisis Masalah',
+      'Dokumentasi',
+    ],
+    answer: 'Analisis Masalah',
+    explanation:
+        'Proses SDLC sentiasa bermula dengan menganalisis masalah yang perlu diselesaikan.',
   ),
   Question(
-      id: 'sum-13',
-      questionText: 'Ralat yang berlaku disebabkan pembahagian dengan digit 0 ialah...',
-      type: QuestionType.mcq,
-      options: const ['Ralat logik', 'Ralat masa larian', 'Ralat sintaks', 'Ralat pengguna'],
-      answer: 'Ralat masa larian',
-      explanation: 'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya dikesan semasa atur cara cuba melakukan pembahagian itu.'
+    id: 'sum-13',
+    questionText:
+        'Ralat yang berlaku disebabkan pembahagian dengan digit 0 ialah...',
+    type: QuestionType.mcq,
+    options: const [
+      'Ralat logik',
+      'Ralat masa larian',
+      'Ralat sintaks',
+      'Ralat pengguna',
+    ],
+    answer: 'Ralat masa larian',
+    explanation:
+        'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya dikesan semasa atur cara cuba melakukan pembahagian itu.',
   ),
   Question(
-      id: 'sum-14',
-      questionText: 'Fasa "Menguji dan Menyahralat" dalam SDLC datang selepas fasa...',
-      type: QuestionType.mcq,
-      options: const ['Analisis Masalah', 'Reka Bentuk Penyelesaian', 'Laksana Penyelesaian', 'Dokumentasi'],
-      answer: 'Laksana Penyelesaian',
-      explanation: 'Selepas atur cara ditulis (dilaksanakan), ia mesti diuji untuk mencari ralat.'
+    id: 'sum-14',
+    questionText:
+        'Fasa "Menguji dan Menyahralat" dalam SDLC datang selepas fasa...',
+    type: QuestionType.mcq,
+    options: const [
+      'Analisis Masalah',
+      'Reka Bentuk Penyelesaian',
+      'Laksana Penyelesaian',
+      'Dokumentasi',
+    ],
+    answer: 'Laksana Penyelesaian',
+    explanation:
+        'Selepas atur cara ditulis (dilaksanakan), ia mesti diuji untuk mencari ralat.',
   ),
   Question(
-      id: 'sum-15',
-      questionText: 'Diberi: String[] senaraiWarna = {"Ungu", "Biru", "Merah"}; Apakah indeks bagi "Biru"?',
-      type: QuestionType.mcq,
-      options: const ['0', '1', '2', '3'],
-      answer: '1',
-      explanation: 'Indeks tatasusunan (array) bermula dari 0. "Ungu" ialah [0], "Biru" ialah [1], dan "Merah" ialah [2].'
+    id: 'sum-15',
+    questionText:
+        'Diberi: String[] senaraiWarna = {"Ungu", "Biru", "Merah"}; Apakah indeks bagi "Biru"?',
+    type: QuestionType.mcq,
+    options: const ['0', '1', '2', '3'],
+    answer: '1',
+    explanation:
+        'Indeks tatasusunan (array) bermula dari 0. "Ungu" ialah [0], "Biru" ialah [1], dan "Merah" ialah [2].',
   ),
 ];
 
@@ -2281,14 +2661,16 @@ class QuizPage extends StatefulWidget {
 
 class _QuizPageState extends State<QuizPage> {
   // Helper function to navigate to the quiz-taking page
-  void _startQuiz(BuildContext context, String title, List<Question> questions) {
+  void _startQuiz(
+    BuildContext context,
+    String title,
+    List<Question> questions,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TakeQuizPage(
-          quizTitle: title,
-          questions: questions,
-        ),
+        builder: (context) =>
+            TakeQuizPage(quizTitle: title, questions: questions),
       ),
     ).then((_) {
       // When returning from a quiz, refresh the state to show new quiz history
@@ -2296,15 +2678,20 @@ class _QuizPageState extends State<QuizPage> {
     });
   }
 
- // Helper function to delete a quiz from Firestore
+  // Helper function to delete a quiz from Firestore
   void _deleteQuiz(Quiz quiz) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Quiz'),
-        content: Text('Are you sure you want to delete "${quiz.title}"? This action cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete "${quiz.title}"? This action cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -2315,16 +2702,25 @@ class _QuizPageState extends State<QuizPage> {
 
     if (confirm == true) {
       try {
-        await FirebaseFirestore.instance.collection('quizzes').doc(quiz.id).delete();
+        await FirebaseFirestore.instance
+            .collection('quizzes')
+            .doc(quiz.id)
+            .delete();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Quiz deleted'), backgroundColor: Colors.red),
+            const SnackBar(
+              content: Text('Quiz deleted'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete quiz: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Failed to delete quiz: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -2335,24 +2731,20 @@ class _QuizPageState extends State<QuizPage> {
   void _editQuiz(Quiz quiz) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => CreateQuizPage(quizToEdit: quiz),
-      ),
+      MaterialPageRoute(builder: (context) => CreateQuizPage(quizToEdit: quiz)),
     ).then((_) {
       // Refresh the list in case changes were made
       setState(() {});
     });
   }
 
-// Helper function to review a quiz
+  // Helper function to review a quiz
   void _reviewQuiz(Quiz quiz) {
-     Navigator.push(
+    Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ReviewQuizPage(
-          quizTitle: quiz.title,
-          questions: quiz.questions,
-        ),
+        builder: (context) =>
+            ReviewQuizPage(quizTitle: quiz.title, questions: quiz.questions),
       ),
     );
   }
@@ -2376,7 +2768,9 @@ class _QuizPageState extends State<QuizPage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const CreateQuizPage()),
+                  MaterialPageRoute(
+                    builder: (context) => const CreateQuizPage(),
+                  ),
                 ).then((_) {
                   // Refresh list when returning from create page
                   setState(() {});
@@ -2403,7 +2797,8 @@ class _QuizPageState extends State<QuizPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const SystemQuizListPage()),
+                      builder: (context) => const SystemQuizListPage(),
+                    ),
                   );
                 },
               ),
@@ -2415,15 +2810,21 @@ class _QuizPageState extends State<QuizPage> {
               child: ListTile(
                 leading: const Icon(Icons.quiz, color: Colors.blue),
                 title: const Text('Summative Test (Bab 1)'),
-                subtitle: const Text('Test your knowledge on the whole chapter'),
+                subtitle: const Text(
+                  'Test your knowledge on the whole chapter',
+                ),
                 trailing: const Icon(Icons.play_arrow),
-                onTap: () => _startQuiz(context, 'Summative Test (Bab 1)', summativeTestQuestions),
+                onTap: () => _startQuiz(
+                  context,
+                  'Summative Test (Bab 1)',
+                  summativeTestQuestions,
+                ),
               ),
             ),
             const Divider(height: 30, thickness: 1),
 
             // --- 2. Teacher-Created Quizzes ---
-             _buildSectionTitle('Teacher Quizzes'),
+            _buildSectionTitle('Teacher Quizzes'),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('quizzes')
@@ -2455,39 +2856,54 @@ class _QuizPageState extends State<QuizPage> {
                   itemCount: quizzes.length,
                   itemBuilder: (context, index) {
                     final quiz = quizzes[index];
-                    
+
                     // Show drafts only to teachers
                     if (quiz.status == QuizStatus.draft && !isTeacher) {
                       return const SizedBox.shrink();
                     }
-                    
+
                     return Card(
                       elevation: 2,
                       child: ListTile(
                         leading: Icon(
-                          quiz.status == QuizStatus.published ? Icons.check_circle : Icons.edit,
-                          color: quiz.status == QuizStatus.published ? Colors.green : Colors.orange,
+                          quiz.status == QuizStatus.published
+                              ? Icons.check_circle
+                              : Icons.edit,
+                          color: quiz.status == QuizStatus.published
+                              ? Colors.green
+                              : Colors.orange,
                         ),
                         title: Text(quiz.title),
                         subtitle: Text(
-                            '${quiz.topic} - ${quiz.questions.length} questions'),
+                          '${quiz.topic} - ${quiz.questions.length} questions',
+                        ),
                         trailing: isTeacher
                             ? PopupMenuButton<String>(
                                 onSelected: (value) {
                                   if (value == 'edit') _editQuiz(quiz);
                                   if (value == 'delete') _deleteQuiz(quiz);
-                                  if (value == 'review') _reviewQuiz(quiz); // NEW: Handle review
+                                  if (value == 'review')
+                                    _reviewQuiz(quiz); // NEW: Handle review
                                 },
                                 itemBuilder: (context) => [
                                   // NEW: Only show 'Edit' if quiz is a draft
                                   if (quiz.status == QuizStatus.draft)
-                                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                                  
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('Edit'),
+                                    ),
+
                                   // NEW: Show 'Review' for all
-                                  const PopupMenuItem(value: 'review', child: Text('Review Answers')),
+                                  const PopupMenuItem(
+                                    value: 'review',
+                                    child: Text('Review Answers'),
+                                  ),
 
                                   // 'Delete' is always available for teachers
-                                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete'),
+                                  ),
                                 ],
                               )
                             : const Icon(Icons.play_arrow),
@@ -2524,20 +2940,27 @@ class _QuizPageState extends State<QuizPage> {
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: userQuizAttempts.length,
                       itemBuilder: (context, index) {
-                        final attempt = userQuizAttempts.reversed.toList()[index]; // Show newest first
+                        final attempt = userQuizAttempts.reversed
+                            .toList()[index]; // Show newest first
                         return Card(
                           elevation: 2,
                           child: ListTile(
-                            leading: const Icon(Icons.history, color: Colors.purple),
+                            leading: const Icon(
+                              Icons.history,
+                              color: Colors.purple,
+                            ),
                             title: Text(attempt.quizTitle),
-                            subtitle: Text('Score: ${attempt.score}/${attempt.total} - Completed on ${attempt.timestamp.toLocal().toString().split(' ')[0]}'),
+                            subtitle: Text(
+                              'Score: ${attempt.score}/${attempt.total} - Completed on ${attempt.timestamp.toLocal().toString().split(' ')[0]}',
+                            ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () {
                               // Navigate to the results page to review
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => QuizResultsPage(attempt: attempt),
+                                  builder: (context) =>
+                                      QuizResultsPage(attempt: attempt),
                                 ),
                               );
                             },
@@ -2557,7 +2980,11 @@ class _QuizPageState extends State<QuizPage> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
       ),
     );
   }
@@ -2571,7 +2998,7 @@ class SystemQuizListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<FirebaseUserState>().currentUser;
     final isTeacher = user?.userType == UserType.teacher;
-    
+
     return Scaffold(
       appBar: AppBar(title: const Text('System-Generated Quizzes')),
       body: ListView.builder(
@@ -2620,16 +3047,15 @@ class SystemQuizListPage extends StatelessWidget {
   }
 }
 
-
 // ---------- REVIEW QUIZ PAGE (FOR TEACHERS) ----------
 class ReviewQuizPage extends StatelessWidget {
   final String quizTitle;
   final List<Question> questions;
 
   const ReviewQuizPage({
-    super.key, 
-    required this.quizTitle, 
-    required this.questions
+    super.key,
+    required this.quizTitle,
+    required this.questions,
   });
 
   @override
@@ -2655,7 +3081,7 @@ class ReviewQuizPage extends StatelessWidget {
               itemCount: questions.length,
               itemBuilder: (context, index) {
                 final q = questions[index];
-                
+
                 return Card(
                   elevation: 2,
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -2667,19 +3093,28 @@ class ReviewQuizPage extends StatelessWidget {
                       children: [
                         Text(
                           'Q${index + 1}: ${q.questionText}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        
+
                         if (q.type == QuestionType.mcq)
-                          ...q.options.map((opt) => Text(
-                            '- $opt',
-                            style: TextStyle(
-                              color: opt == q.answer ? Colors.green[800] : Colors.black87,
-                              fontWeight: opt == q.answer ? FontWeight.bold : FontWeight.normal,
+                          ...q.options.map(
+                            (opt) => Text(
+                              '- $opt',
+                              style: TextStyle(
+                                color: opt == q.answer
+                                    ? Colors.green[800]
+                                    : Colors.black87,
+                                fontWeight: opt == q.answer
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
                             ),
-                          )),
-                        
+                          ),
+
                         const SizedBox(height: 8),
                         Text(
                           'Correct Answer: ${q.answer}',
@@ -2696,10 +3131,13 @@ class ReviewQuizPage extends StatelessWidget {
                             color: Colors.grey[200],
                             child: Text(
                               'Explanation: ${q.explanation}',
-                              style: TextStyle(color: Colors.grey[800], fontStyle: FontStyle.italic),
+                              style: TextStyle(
+                                color: Colors.grey[800],
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                          )
-                        ]
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -2728,7 +3166,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   late TextEditingController _topicController;
   List<Question> _questions = [];
   bool _isEditing = false;
-  bool _isLoading = false; 
+  bool _isLoading = false;
 
   // Controllers for adding a new question
   final _newQuestionTextController = TextEditingController();
@@ -2739,7 +3177,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     TextEditingController(),
     TextEditingController(),
     TextEditingController(),
-    TextEditingController()
+    TextEditingController(),
   ];
   int _correctMcqOptionIndex = 0; // Index of the correct option
 
@@ -2791,7 +3229,8 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         return;
       }
       answer = options[_correctMcqOptionIndex];
-    } else { // Short Answer
+    } else {
+      // Short Answer
       if (_newAnswerController.text.isEmpty) {
         _showError('Please enter the correct answer.');
         return;
@@ -2807,7 +3246,9 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
           type: _newQuestionType,
           options: options,
           answer: answer,
-          explanation: _newExplanationController.text.isEmpty ? null : _newExplanationController.text,
+          explanation: _newExplanationController.text.isEmpty
+              ? null
+              : _newExplanationController.text,
         ),
       );
     });
@@ -2827,15 +3268,15 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       _showError('Please add at least one question.');
       return;
     }
-    
+
     _formKey.currentState!.save();
-    
+
     final user = context.read<FirebaseUserState>().currentUser;
     if (user == null) {
       _showError('You must be logged in to create a quiz.');
       return;
     }
-    
+
     setState(() => _isLoading = true);
 
     try {
@@ -2846,26 +3287,29 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         quiz.topic = _topicController.text;
         quiz.questions = _questions;
         quiz.status = status;
-        
+
         // Update in Firestore
         await FirebaseFirestore.instance
             .collection('quizzes')
             .doc(quiz.id)
             .update(quiz.toMap());
-
       } else {
         // Add a new quiz to the global list
         final newQuiz = Quiz(
           id: '', // ID will be auto-generated by Firestore
           title: _titleController.text,
-          topic: _topicController.text.isEmpty ? 'General' : _topicController.text,
+          topic: _topicController.text.isEmpty
+              ? 'General'
+              : _topicController.text,
           questions: _questions,
           status: status,
           createdBy: user.id, // Link quiz to the teacher
         );
-        
+
         // Add to Firestore
-        await FirebaseFirestore.instance.collection('quizzes').add(newQuiz.toMap());
+        await FirebaseFirestore.instance
+            .collection('quizzes')
+            .add(newQuiz.toMap());
       }
 
       if (mounted) {
@@ -2877,7 +3321,6 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         );
         Navigator.pop(context); // Go back to the QuizPage
       }
-
     } catch (e) {
       _showError('Failed to save quiz: $e');
     } finally {
@@ -2886,7 +3329,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       }
     }
   }
-  
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
@@ -2896,166 +3339,206 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Quiz' : 'Create New Quiz'),
-      ),
-      body: _isLoading 
-      ? const Center(child: CircularProgressIndicator()) 
-      : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Quiz Title', border: OutlineInputBorder()),
-                validator: (v) => v!.isEmpty ? 'Please enter a title' : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _topicController,
-                decoration: const InputDecoration(labelText: 'Topic (e.g., 1.1)', border: OutlineInputBorder()),
-                validator: (v) => v!.isEmpty ? 'Please enter a topic' : null,
-              ),
-              const Divider(height: 30, thickness: 2),
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Quiz' : 'Create New Quiz')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Quiz Title',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) =>
+                          v!.isEmpty ? 'Please enter a title' : null,
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _topicController,
+                      decoration: const InputDecoration(
+                        labelText: 'Topic (e.g., 1.1)',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) =>
+                          v!.isEmpty ? 'Please enter a topic' : null,
+                    ),
+                    const Divider(height: 30, thickness: 2),
 
-              // --- Add New Question Form ---
-              const Text('Add New Question:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              DropdownButtonFormField<QuestionType>(
-                value: _newQuestionType,
-                items: const [
-                  DropdownMenuItem(value: QuestionType.mcq, child: Text('Multiple Choice (MCQ)')),
-                  DropdownMenuItem(value: QuestionType.shortAnswer, child: Text('Short Answer')),
-                ],
-                onChanged: (QuestionType? value) => setState(() => _newQuestionType = value!),
-                decoration: const InputDecoration(labelText: 'Question Type'),
-              ),
-              const SizedBox(height: 10),
-              /*TextFormField(
+                    // --- Add New Question Form ---
+                    const Text(
+                      'Add New Question:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    DropdownButtonFormField<QuestionType>(
+                      value: _newQuestionType,
+                      items: const [
+                        DropdownMenuItem(
+                          value: QuestionType.mcq,
+                          child: Text('Multiple Choice (MCQ)'),
+                        ),
+                        DropdownMenuItem(
+                          value: QuestionType.shortAnswer,
+                          child: Text('Short Answer'),
+                        ),
+                      ],
+                      onChanged: (QuestionType? value) =>
+                          setState(() => _newQuestionType = value!),
+                      decoration: const InputDecoration(
+                        labelText: 'Question Type',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    /*TextFormField(
                 controller: _newQuestionTextController,
                 decoration: const InputDecoration(labelText: 'Question Text', border: OutlineInputBorder()),
               ),*/
-              TextFormField(
-                controller: _newQuestionTextController,
-                decoration: const InputDecoration(
-                  labelText: 'Question Text',
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter your question here...',
-                  ),
-                  maxLines: 5,  // ✅ Allow multiple lines
-                  minLines: 3,
-              ),
-              const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _newQuestionTextController,
+                      decoration: const InputDecoration(
+                        labelText: 'Question Text',
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter your question here...',
+                      ),
+                      maxLines: 5, // ✅ Allow multiple lines
+                      minLines: 3,
+                    ),
+                    const SizedBox(height: 10),
 
-              if (_newQuestionType == QuestionType.mcq) ...[
-                const Text('MCQ Options (Select the correct one):', style: TextStyle(fontWeight: FontWeight.w500)),
-                ...List.generate(_mcqOptionControllers.length, (index) {
-                  return Row(
-                    children: [
-                      Radio<int>(
-                        value: index,
-                        groupValue: _correctMcqOptionIndex,
-                        onChanged: (int? value) => setState(() => _correctMcqOptionIndex = value!),
+                    if (_newQuestionType == QuestionType.mcq) ...[
+                      const Text(
+                        'MCQ Options (Select the correct one):',
+                        style: TextStyle(fontWeight: FontWeight.w500),
                       ),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _mcqOptionControllers[index],
-                          decoration: InputDecoration(labelText: 'Option ${index + 1}'),
+                      ...List.generate(_mcqOptionControllers.length, (index) {
+                        return Row(
+                          children: [
+                            Radio<int>(
+                              value: index,
+                              groupValue: _correctMcqOptionIndex,
+                              onChanged: (int? value) => setState(
+                                () => _correctMcqOptionIndex = value!,
+                              ),
+                            ),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _mcqOptionControllers[index],
+                                decoration: InputDecoration(
+                                  labelText: 'Option ${index + 1}',
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ] else ...[
+                      TextFormField(
+                        controller: _newAnswerController,
+                        decoration: const InputDecoration(
+                          labelText: 'Correct Short Answer',
+                          border: OutlineInputBorder(),
+                          hintText: 'Enter the correct answer...',
                         ),
+                        maxLines: 3, // ✅ Allow multiple lines
+                        minLines: 2,
                       ),
-                    ],
-                  );
-                }),
-              ] else ...[
-                TextFormField(
-                  controller: _newAnswerController,
-                  decoration: const InputDecoration(
-                  labelText: 'Correct Short Answer',
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter the correct answer...',
-                ),
-                maxLines: 3,  // ✅ Allow multiple lines
-                minLines: 2,
-              ),
-                /*TextFormField(
+                      /*TextFormField(
                   controller: _newAnswerController,
                   decoration: const InputDecoration(labelText: 'Correct Short Answer', border: OutlineInputBorder()),
                 ),*/
-              ],
-              
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _newExplanationController,
-                decoration: const InputDecoration(
-                labelText: 'Explanation (Optional)',
-                border: OutlineInputBorder(),
-                hintText: 'Provide detailed feedback...',
-              ),
-              maxLines: 5,  // ✅ Allow multiple lines
-              minLines: 3,
-            ),
+                    ],
 
-              /*TextFormField(
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _newExplanationController,
+                      decoration: const InputDecoration(
+                        labelText: 'Explanation (Optional)',
+                        border: OutlineInputBorder(),
+                        hintText: 'Provide detailed feedback...',
+                      ),
+                      maxLines: 5, // ✅ Allow multiple lines
+                      minLines: 3,
+                    ),
+
+                    /*TextFormField(
                 controller: _newExplanationController,
                 decoration: const InputDecoration(labelText: 'Explanation (Optional)', border: OutlineInputBorder()),
               ),*/
+                    const SizedBox(height: 10),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: _addQuestion,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Question to Quiz'),
+                      ),
+                    ),
+                    const Divider(height: 30, thickness: 2),
 
-              const SizedBox(height: 10),
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: _addQuestion,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Question to Quiz'),
+                    // --- Added Questions List ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Quiz Questions:',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text('${_questions.length} Question(s)'),
+                      ],
+                    ),
+                    ..._questions.asMap().entries.map((entry) {
+                      int idx = entry.key;
+                      Question q = entry.value;
+                      return ListTile(
+                        title: Text('Q${idx + 1}: ${q.questionText}'),
+                        subtitle: Text('Answer: ${q.answer}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () =>
+                              setState(() => _questions.removeAt(idx)),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 30),
+
+                    // --- Save/Publish Buttons ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => _saveQuiz(QuizStatus.draft),
+                          icon: const Icon(Icons.drafts),
+                          label: const Text('Save as Draft'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _saveQuiz(QuizStatus.published),
+                          icon: const Icon(Icons.cloud_upload),
+                          label: Text(
+                            _isEditing ? 'Update & Publish' : 'Publish Quiz',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const Divider(height: 30, thickness: 2),
-
-              // --- Added Questions List ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Quiz Questions:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text('${_questions.length} Question(s)'),
-                ],
-              ),
-              ..._questions.asMap().entries.map((entry) {
-                int idx = entry.key;
-                Question q = entry.value;
-                return ListTile(
-                  title: Text('Q${idx + 1}: ${q.questionText}'),
-                  subtitle: Text('Answer: ${q.answer}'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => setState(() => _questions.removeAt(idx)),
-                  ),
-                );
-              }),
-              const SizedBox(height: 30),
-
-              // --- Save/Publish Buttons ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => _saveQuiz(QuizStatus.draft),
-                    icon: const Icon(Icons.drafts),
-                    label: const Text('Save as Draft'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () => _saveQuiz(QuizStatus.published),
-                    icon: const Icon(Icons.cloud_upload),
-                    label: Text(_isEditing ? 'Update & Publish' : 'Publish Quiz'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
@@ -3095,7 +3578,6 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
       }
     }
 
-
     // NEW: Initialize AI model for marking
     final googleAI = FirebaseAI.googleAI();
     _markingModel = googleAI.generativeModel(
@@ -3105,7 +3587,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
         'Compare them for semantic similarity, not just exact text match, including synonyms and variations, and lowercase and uppercase differences. '
         'Respond with only the word "YES" if the user answer is correct or a close synonym/variation. '
         'Respond with only the word "NO" if the user answer is incorrect.'
-        'Give an justification for each answer.'
+        'Give an justification for each answer.',
       ),
     );
   }
@@ -3118,13 +3600,14 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     }
     super.dispose();
   }
-  
 
-   Future<void> _saveQuizScoreToDatabase(int score, int total) async {
-    final user = context.read<FirebaseUserState>().currentUser;
+  Future<void> _saveQuizScoreToDatabase(int score, int total) async {
+    final userState = context.read<FirebaseUserState>();
+    final user = userState.currentUser;
     if (user == null || !mounted) return;
-    
+
     try {
+      // 1. Save quiz attempt
       await FirebaseFirestore.instance.collection('quiz_attempts').add({
         'userId': user.id,
         'username': user.username,
@@ -3135,17 +3618,39 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
         'timestamp': FieldValue.serverTimestamp(),
         'userAnswers': _userAnswers,
       });
-      
+
       if (!mounted) return;
-      
+
+      // 2. Add points
       final earnedPoints = (score / total * 100).toInt();
-      await context.read<FirebaseUserState>().addPoints(earnedPoints);
-      
+      await userState.addPoints(earnedPoints);
+
+      // 3. Check for automatic badge (80% or above)
       if (score / total >= 0.8) {
-        await context.read<FirebaseUserState>().awardBadge(
-          name: 'Quiz Master',
-          description: 'Scored 80% or above in a quiz',
-        );
+        const badgeName = 'Quiz Master';
+        const badgeDescription = 'Scored 80% or above in a system quiz';
+
+        // Check if user already has the badge based on the current user state model.
+        if (!user.badges.contains(badgeName)) {
+          // 3a. Award the badge (updates AppUser model & Firestore 'users' collection)
+          // This call must happen before the Firestore write to 'achievements' so we know the badge was newly earned.
+          await userState.awardBadge(
+            name: badgeName,
+            description: badgeDescription,
+          );
+
+          // 3b. Create a persistent record in the teacher-facing 'achievements' collection
+          // This fulfills the requirement for the auto-awarded badge to appear in the teacher's list (US012-01 req).
+          await FirebaseFirestore.instance.collection('achievements').add({
+            'title': badgeName,
+            'type': 'Badge (Auto)',
+            'description': '$badgeDescription on Quiz: ${widget.quizTitle}',
+            'studentId': user.id,
+            'studentName': user.username,
+            'dateEarned': FieldValue.serverTimestamp(),
+            'awardedBy': 'System',
+          });
+        }
       }
     } catch (e) {
       print('Error saving quiz score: $e');
@@ -3153,89 +3658,91 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
   }
 
   // NEW: Updated submit quiz with AI Marking
-Future<void> _submitQuiz() async {
-  if (!mounted) return; // Add this check
-  
-  setState(() => _isSubmitting = true);
-  
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const AlertDialog(
-      content: Row(
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(width: 20),
-          Text('Marking quiz...'),
-        ],
+  Future<void> _submitQuiz() async {
+    if (!mounted) return; // Add this check
+
+    setState(() => _isSubmitting = true);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Marking quiz...'),
+          ],
+        ),
       ),
-    ),
-  );
+    );
 
-  int score = 0;
-  for (var q in widget.questions) {
-    final userAnswer = _userAnswers[q.id]?.toLowerCase().trim() ?? "";
-    final correctAnswer = q.answer.toLowerCase().trim();
-    
-    if (userAnswer.isEmpty) continue;
+    int score = 0;
+    for (var q in widget.questions) {
+      final userAnswer = _userAnswers[q.id]?.toLowerCase().trim() ?? "";
+      final correctAnswer = q.answer.toLowerCase().trim();
 
-    if (q.type == QuestionType.mcq) {
-      if (userAnswer == correctAnswer) {
-        score++;
-      }
-    } else if (q.type == QuestionType.shortAnswer) {
-      if (userAnswer == correctAnswer) {
-        score++;
-      } else {
-        try {
-          final prompt = 'Is the following user answer similar to or a correct variation of the expected answer?\n\n'
-              'Expected Answer: $correctAnswer\n'
-              'User Answer: $userAnswer\n\n'
-              'Respond with only "YES" or "NO".';
-          
-          final response = await _markingModel.generateContent([Content.text(prompt)]);
-          
-          if (response.text?.trim().toUpperCase() == 'YES') {
-            score++;
+      if (userAnswer.isEmpty) continue;
+
+      if (q.type == QuestionType.mcq) {
+        if (userAnswer == correctAnswer) {
+          score++;
+        }
+      } else if (q.type == QuestionType.shortAnswer) {
+        if (userAnswer == correctAnswer) {
+          score++;
+        } else {
+          try {
+            final prompt =
+                'Is the following user answer similar to or a correct variation of the expected answer?\n\n'
+                'Expected Answer: $correctAnswer\n'
+                'User Answer: $userAnswer\n\n'
+                'Respond with only "YES" or "NO".';
+
+            final response = await _markingModel.generateContent([
+              Content.text(prompt),
+            ]);
+
+            if (response.text?.trim().toUpperCase() == 'YES') {
+              score++;
+            }
+          } catch (e) {
+            print('AI marking error: $e');
           }
-        } catch (e) {
-          print('AI marking error: $e');
         }
       }
     }
-  }
 
     // Add mounted check before saving to database
-  if (!mounted) return;
-  
-  await _saveQuizScoreToDatabase(score, widget.questions.length);
-  
-  final attempt = QuizAttempt(
-    quizTitle: widget.quizTitle,
-    questions: widget.questions,
-    userAnswers: Map.from(_userAnswers),
-    score: score,
-    total: widget.questions.length,
-    timestamp: DateTime.now(),
-  );
-  
-  userQuizAttempts.add(attempt);
+    if (!mounted) return;
 
-  if (!mounted) return; // Add this check
-  setState(() => _isSubmitting = false);
-  
-  if (!mounted) return; // Add this check
-  Navigator.pop(context); // Close loading dialog
+    await _saveQuizScoreToDatabase(score, widget.questions.length);
 
-  if (!mounted) return; // Add this check
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (context) => QuizResultsPage(attempt: attempt),
-    ),
-  );
+    final attempt = QuizAttempt(
+      quizTitle: widget.quizTitle,
+      questions: widget.questions,
+      userAnswers: Map.from(_userAnswers),
+      score: score,
+      total: widget.questions.length,
+      timestamp: DateTime.now(),
+    );
+
+    userQuizAttempts.add(attempt);
+
+    if (!mounted) return; // Add this check
+    setState(() => _isSubmitting = false);
+
+    if (!mounted) return; // Add this check
+    Navigator.pop(context); // Close loading dialog
+
+    if (!mounted) return; // Add this check
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuizResultsPage(attempt: attempt),
+      ),
+    );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -3269,24 +3776,26 @@ Future<void> _submitQuiz() async {
               onPressed: _currentPage == 0 || _isSubmitting
                   ? null
                   : () => _pageController.previousPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeIn,
-                      ),
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeIn,
+                    ),
               child: const Text('Previous'),
             ),
             Text('Question ${_currentPage + 1}/${widget.questions.length}'),
             ElevatedButton(
-              onPressed: _isSubmitting ? null : () {
-                if (_currentPage < widget.questions.length - 1) {
-                  _pageController.nextPage(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeIn,
-                  );
-                } else {
-                  // Last page, show submit dialog
-                  _showSubmitDialog();
-                }
-              },
+              onPressed: _isSubmitting
+                  ? null
+                  : () {
+                      if (_currentPage < widget.questions.length - 1) {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeIn,
+                        );
+                      } else {
+                        // Last page, show submit dialog
+                        _showSubmitDialog();
+                      }
+                    },
               child: Text(
                 _currentPage == widget.questions.length - 1 ? 'Submit' : 'Next',
               ),
@@ -3296,7 +3805,7 @@ Future<void> _submitQuiz() async {
       ),
     );
   }
-  
+
   void _showSubmitDialog() {
     showDialog(
       context: context,
@@ -3304,7 +3813,10 @@ Future<void> _submitQuiz() async {
         title: const Text('Submit Quiz'),
         content: const Text('Are you sure you want to submit your answers?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
@@ -3360,8 +3872,6 @@ Future<void> _submitQuiz() async {
   }
 }
 
-
-
 // ---------- QUIZ RESULTS PAGE (US006-02 & US006-03) ----------
 class QuizResultsPage extends StatelessWidget {
   final QuizAttempt attempt;
@@ -3381,7 +3891,11 @@ class QuizResultsPage extends StatelessWidget {
             // --- 1. Score Summary ---
             Text(
               'Quiz Complete!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue[800]),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[800],
+              ),
             ),
             const SizedBox(height: 16),
             Text(
@@ -3389,7 +3903,7 @@ class QuizResultsPage extends StatelessWidget {
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 24),
-            
+
             // --- 2. Detailed Feedback List ---
             const Text(
               'Detailed Feedback',
@@ -3403,8 +3917,10 @@ class QuizResultsPage extends StatelessWidget {
               itemBuilder: (context, index) {
                 final q = attempt.questions[index];
                 final userAnswer = attempt.userAnswers[q.id];
-                final isCorrect = userAnswer?.toLowerCase().trim() == q.answer.toLowerCase().trim();
-                
+                final isCorrect =
+                    userAnswer?.toLowerCase().trim() ==
+                    q.answer.toLowerCase().trim();
+
                 return Card(
                   elevation: 2,
                   margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -3417,13 +3933,18 @@ class QuizResultsPage extends StatelessWidget {
                       children: [
                         Text(
                           'Q${index + 1}: ${q.questionText}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Your Answer: $userAnswer',
                           style: TextStyle(
-                            color: isCorrect ? Colors.green[800] : Colors.red[800],
+                            color: isCorrect
+                                ? Colors.green[800]
+                                : Colors.red[800],
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -3445,10 +3966,13 @@ class QuizResultsPage extends StatelessWidget {
                             color: Colors.grey[200],
                             child: Text(
                               'Explanation: ${q.explanation}',
-                              style: TextStyle(color: Colors.grey[800], fontStyle: FontStyle.italic),
+                              style: TextStyle(
+                                color: Colors.grey[800],
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                          )
-                        ]
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -3473,7 +3997,6 @@ class QuizResultsPage extends StatelessWidget {
     );
   }
 }
-
 
 // ---------- AI Chatbot ----------
 class AIChatbotPage extends StatelessWidget {
@@ -3577,19 +4100,23 @@ class _ChatBodyState extends State<_ChatBody> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment:
-            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: message.isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!message.isUser) ...[
             CircleAvatar(
               backgroundColor: Colors.lightBlue,
               radius: 16,
-              child: const Text('AI',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold)),
+              child: const Text(
+                'AI',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             const SizedBox(width: 8),
           ],
@@ -3597,8 +4124,7 @@ class _ChatBodyState extends State<_ChatBody> {
             child: Container(
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color:
-                    message.isUser ? Colors.lightBlue[50] : Colors.grey[100],
+                color: message.isUser ? Colors.lightBlue[50] : Colors.grey[100],
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(color: Colors.grey[300]!),
               ),
@@ -3613,12 +4139,18 @@ class _ChatBodyState extends State<_ChatBody> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.schedule, size: 12, color: Colors.grey),
+                        const Icon(
+                          Icons.schedule,
+                          size: 12,
+                          color: Colors.grey,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${message.responseTime}ms',
-                          style:
-                              const TextStyle(fontSize: 10, color: Colors.grey),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),
@@ -3663,7 +4195,9 @@ class _ChatBodyState extends State<_ChatBody> {
                       borderRadius: BorderRadius.circular(24.0),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16.0, vertical: 12.0),
+                      horizontal: 16.0,
+                      vertical: 12.0,
+                    ),
                   ),
                   onSubmitted: (value) => _sendMessage(controller),
                 ),
@@ -3684,13 +4218,15 @@ class _ChatBodyState extends State<_ChatBody> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
                             )
                           : const Icon(Icons.send, color: Colors.white),
-                      onPressed:
-                          isLoading ? null : () => _sendMessage(controller),
+                      onPressed: isLoading
+                          ? null
+                          : () => _sendMessage(controller),
                     ),
                   );
                 },
@@ -3721,8 +4257,9 @@ class _ChatBodyState extends State<_ChatBody> {
                         setState(() => lastRating = s);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content:
-                                Text('Thanks! You rated the bot $s star(s).'),
+                            content: Text(
+                              'Thanks! You rated the bot $s star(s).',
+                            ),
                             duration: const Duration(seconds: 2),
                           ),
                         );
@@ -3733,14 +4270,18 @@ class _ChatBodyState extends State<_ChatBody> {
 
               // --- Stop Conversation Button ---
               IconButton(
-                icon: const Icon(Icons.stop_circle, color: Colors.red, size: 32),
+                icon: const Icon(
+                  Icons.stop_circle,
+                  color: Colors.red,
+                  size: 32,
+                ),
                 tooltip: 'End Conversation',
                 onPressed: () {
                   context.read<ChatBloc>().add(ClearChatEvent());
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content:
-                            Text('Perbualan telah tamat. Memulakan semula')),
+                      content: Text('Perbualan telah tamat. Memulakan semula'),
+                    ),
                   );
                 },
               ),
@@ -3759,7 +4300,6 @@ class _ChatBodyState extends State<_ChatBody> {
     }
   }
 }
-
 
 // ========== AI CHATBOT SUPPORTING CLASSES ==========
 
@@ -3862,207 +4402,228 @@ class LoadChatHistoryEvent extends ChatEvent {}
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final List<ChatMessage> _messages = [];
   final List<Content> _conversationHistory = [];
-  late final GenerativeModel _model; 
+  late final GenerativeModel _model;
 
   ChatBloc() : super(ChatInitial()) {
     // Initialize the Gemini API
     final googleAI = FirebaseAI.googleAI();
-    
+
     // ✅ FIXED: Use _model instead of aiModel
     _model = googleAI.generativeModel(
       model: 'gemini-2.5-flash',
       systemInstruction: Content.system(
         'You are a helpful AI tutor specializing in Java programming for Malaysian students. '
         'Answer questions about Java concepts, syntax, OOP principles, and help with coding problems. '
-        'Keep responses clear, educational, and supportive. You can respond in both English and Bahasa Malaysia.'
+        'Keep responses clear, educational, and supportive. You can respond in both English and Bahasa Malaysia.',
       ),
     );
-    
+
     on<SendMessageEvent>(_onSendMessage);
     on<ClearChatEvent>(_onClearChat);
     on<LoadWelcomeEvent>(_onLoadWelcome);
     on<LoadChatHistoryEvent>(_onLoadChatHistory);
-    
+
     // Initialize with welcome message
     add(const LoadWelcomeEvent());
 
     // Load chat history on initialization
     add(LoadChatHistoryEvent());
-
   }
 
   void _onLoadWelcome(LoadWelcomeEvent event, Emitter<ChatState> emit) {
-    _messages.add(ChatMessage(
-      text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang Pengaturcaraan Java!",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ));
-    emit(ChatLoaded(messages: List.from(_messages)));
-  }
-// ✅ ADD: Load chat history from Firestore
-Future<void> _onLoadChatHistory(LoadChatHistoryEvent event, Emitter<ChatState> emit) async {
-  final user = firebase_auth.FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    emit(const ChatLoaded(messages: []));
-    return;
-  }
-  
-  try {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('chat_history')
-        .orderBy('timestamp', descending: false)
-        .get();
-    
-    final messages = snapshot.docs.map((doc) {
-      final data = doc.data();
-      return ChatMessage(
-        text: data['message'] ?? '',
-        isUser: data['isUser'] ?? false,
-        timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      );
-    }).toList();
-    
-    _messages.clear();
-    _messages.addAll(messages);
-    
-    if (_messages.isEmpty) {
-      _messages.add(ChatMessage(
-        text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang Pengaturcaraan Java!",
+    _messages.add(
+      ChatMessage(
+        text:
+            "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang Pengaturcaraan Java!",
         isUser: false,
         timestamp: DateTime.now(),
-      ));
-    }
-    
-    emit(ChatLoaded(messages: List.from(_messages)));
-  } catch (e) {
-    print('Error loading chat history: $e');
-    emit(ChatError(error: e.toString()));
-  }
-}
-
-// ✅ MODIFY _onSendMessage to save to Firestore:
-Future<void> _onSendMessage(SendMessageEvent event, Emitter<ChatState> emit) async {
-  if (event.message.trim().isEmpty) return;
-
-  final stopwatch = Stopwatch()..start();
-  final user = firebase_auth.FirebaseAuth.instance.currentUser;
-
-  try {
-    // Add user message immediately
-    _messages.add(ChatMessage(
-      text: event.message,
-      isUser: true,
-      timestamp: DateTime.now(),
-    ));
-
-    // ✅ Save user message to Firestore
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('chat_history')
-          .add({
-        'message': event.message,
-        'isUser': true,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    }
-
-    _conversationHistory.add(Content.text(event.message));
-
-    emit(const ChatLoading());
-
-    final response = await _model.generateContent(_conversationHistory);
-
-    stopwatch.stop();
-
-    final responseText = response.text ?? 
-      "Maaf, saya tidak dapat memahami pertanyaan anda. Cuba tanya dengan cara lain.";
-
-    _conversationHistory.add(Content.model([TextPart(responseText)]));
-
-    // Add bot response to messages
-    _messages.add(ChatMessage(
-      text: responseText,
-      isUser: false,
-      timestamp: DateTime.now(),
-      responseTime: stopwatch.elapsedMilliseconds,
-    ));
-
-    // ✅ Save bot response to Firestore
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('chat_history')
-          .add({
-        'message': responseText,
-        'isUser': false,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    }
-
-    emit(ChatLoaded(
-      messages: List.from(_messages),
-      responseTime: stopwatch.elapsedMilliseconds,
-    ));
-
-  } catch (e) {
-    print('Error calling Gemini API: $e');
-    
-    _messages.add(ChatMessage(
-      text: "Maaf, saya menghadapi ralat: ${e.toString()}. Sila cuba lagi.",
-      isUser: false,
-      timestamp: DateTime.now(),
-    ));
-
-    emit(ChatError(error: e.toString()));
-    
-    await Future.delayed(const Duration(milliseconds: 100));
+      ),
+    );
     emit(ChatLoaded(messages: List.from(_messages)));
   }
-}
 
-// ✅ MODIFY _onClearChat to delete from Firestore:
-void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) async {
-  final user = firebase_auth.FirebaseAuth.instance.currentUser;
-  
-  if (user != null) {
+  // ✅ ADD: Load chat history from Firestore
+  Future<void> _onLoadChatHistory(
+    LoadChatHistoryEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      emit(const ChatLoaded(messages: []));
+      return;
+    }
+
     try {
-      // Delete all chat history from Firestore
-      final batch = FirebaseFirestore.instance.batch();
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('chat_history')
+          .orderBy('timestamp', descending: false)
           .get();
-      
-      for (var doc in snapshot.docs) {
-        batch.delete(doc.reference);
+
+      final messages = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return ChatMessage(
+          text: data['message'] ?? '',
+          isUser: data['isUser'] ?? false,
+          timestamp:
+              (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        );
+      }).toList();
+
+      _messages.clear();
+      _messages.addAll(messages);
+
+      if (_messages.isEmpty) {
+        _messages.add(
+          ChatMessage(
+            text:
+                "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya tentang Pengaturcaraan Java!",
+            isUser: false,
+            timestamp: DateTime.now(),
+          ),
+        );
       }
-      
-      await batch.commit();
+
+      emit(ChatLoaded(messages: List.from(_messages)));
     } catch (e) {
-      print('Error clearing chat history: $e');
+      print('Error loading chat history: $e');
+      emit(ChatError(error: e.toString()));
     }
   }
-  
-  _messages.clear();
-  _conversationHistory.clear();
-  
-  _messages.add(ChatMessage(
-    text: "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja tentang Pengaturcaraan Java!",
-    isUser: false,
-    timestamp: DateTime.now(),
-  ));
-  emit(ChatLoaded(messages: List.from(_messages)));
+
+  // ✅ MODIFY _onSendMessage to save to Firestore:
+  Future<void> _onSendMessage(
+    SendMessageEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (event.message.trim().isEmpty) return;
+
+    final stopwatch = Stopwatch()..start();
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+
+    try {
+      // Add user message immediately
+      _messages.add(
+        ChatMessage(
+          text: event.message,
+          isUser: true,
+          timestamp: DateTime.now(),
+        ),
+      );
+
+      // ✅ Save user message to Firestore
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('chat_history')
+            .add({
+              'message': event.message,
+              'isUser': true,
+              'timestamp': FieldValue.serverTimestamp(),
+            });
+      }
+
+      _conversationHistory.add(Content.text(event.message));
+
+      emit(const ChatLoading());
+
+      final response = await _model.generateContent(_conversationHistory);
+
+      stopwatch.stop();
+
+      final responseText =
+          response.text ??
+          "Maaf, saya tidak dapat memahami pertanyaan anda. Cuba tanya dengan cara lain.";
+
+      _conversationHistory.add(Content.model([TextPart(responseText)]));
+
+      // Add bot response to messages
+      _messages.add(
+        ChatMessage(
+          text: responseText,
+          isUser: false,
+          timestamp: DateTime.now(),
+          responseTime: stopwatch.elapsedMilliseconds,
+        ),
+      );
+
+      // ✅ Save bot response to Firestore
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('chat_history')
+            .add({
+              'message': responseText,
+              'isUser': false,
+              'timestamp': FieldValue.serverTimestamp(),
+            });
+      }
+
+      emit(
+        ChatLoaded(
+          messages: List.from(_messages),
+          responseTime: stopwatch.elapsedMilliseconds,
+        ),
+      );
+    } catch (e) {
+      print('Error calling Gemini API: $e');
+
+      _messages.add(
+        ChatMessage(
+          text: "Maaf, saya menghadapi ralat: ${e.toString()}. Sila cuba lagi.",
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
+
+      emit(ChatError(error: e.toString()));
+
+      await Future.delayed(const Duration(milliseconds: 100));
+      emit(ChatLoaded(messages: List.from(_messages)));
+    }
+  }
+
+  // ✅ MODIFY _onClearChat to delete from Firestore:
+  void _onClearChat(ClearChatEvent event, Emitter<ChatState> emit) async {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      try {
+        // Delete all chat history from Firestore
+        final batch = FirebaseFirestore.instance.batch();
+        final snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('chat_history')
+            .get();
+
+        for (var doc in snapshot.docs) {
+          batch.delete(doc.reference);
+        }
+
+        await batch.commit();
+      } catch (e) {
+        print('Error clearing chat history: $e');
+      }
+    }
+
+    _messages.clear();
+    _conversationHistory.clear();
+
+    _messages.add(
+      ChatMessage(
+        text:
+            "Hello! Saya pembantu pembelajaran AI anda. Tanyalah saya apa sahaja tentang Pengaturcaraan Java!",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    );
+    emit(ChatLoaded(messages: List.from(_messages)));
+  }
 }
-
-}
-
-
 
 // Progress Page
 class ProgressPage extends StatefulWidget {
@@ -4074,7 +4635,7 @@ class ProgressPage extends StatefulWidget {
 
 class ProgressRecord {
   final String id;
-  final String student; 
+  final String student;
   final String activity;
   final double score;
   final String grade;
@@ -4135,18 +4696,20 @@ class _ProgressPageState extends State<ProgressPage> {
       // fetch only students, then filter locally by username substring (case-insensitive)
       final snapshot = await _fs
           .collection('users')
-          .where('userType', isEqualTo: 'UserType.student')
+          .where(
+            'userType',
+            isEqualTo: UserType.student.toString(),
+          ) // FIX: Use enum.toString()
           .get();
 
       final results = snapshot.docs
           .where((doc) {
-            final username = (doc.data()['username'] ?? '').toString().toLowerCase();
+            final username = (doc.data()['username'] ?? '')
+                .toString()
+                .toLowerCase();
             return username.contains(query.toLowerCase());
           })
-          .map((doc) => {
-                'id': doc.id,
-                'username': doc['username'],
-              })
+          .map((doc) => {'id': doc.id, 'username': doc['username']})
           .toList();
 
       setState(() {
@@ -4156,9 +4719,9 @@ class _ProgressPageState extends State<ProgressPage> {
     } catch (e) {
       setState(() => _isSearching = false);
       // swallow or show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('User search failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('User search failed: $e')));
     }
   }
 
@@ -4166,7 +4729,9 @@ class _ProgressPageState extends State<ProgressPage> {
   Future<void> _addProgress() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedStudentUsername == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a student first')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a student first')),
+      );
       return;
     }
 
@@ -4188,12 +4753,16 @@ class _ProgressPageState extends State<ProgressPage> {
       _gradeController.clear();
       _commentsController.clear();
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Progress added successfully'),
-        backgroundColor: Colors.green,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Progress added successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add progress: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add progress: $e')));
     }
   }
 
@@ -4203,10 +4772,18 @@ class _ProgressPageState extends State<ProgressPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm delete'),
-        content: const Text('Are you sure you want to delete this progress record? This cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to delete this progress record? This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -4214,22 +4791,34 @@ class _ProgressPageState extends State<ProgressPage> {
     if (confirmed == true) {
       try {
         await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Record deleted'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Record deleted'),
+            backgroundColor: Colors.red,
+          ),
+        );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
 
   // ---------- edit dialog ----------
   void _showEditDialog(ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(text: record.activity);
-    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
-    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
-    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
+    final TextEditingController activityCtl = TextEditingController(
+      text: record.activity,
+    );
+    final TextEditingController scoreCtl = TextEditingController(
+      text: record.score.toString(),
+    );
+    final TextEditingController gradeCtl = TextEditingController(
+      text: record.grade,
+    );
+    final TextEditingController commentsCtl = TextEditingController(
+      text: record.comments,
+    );
     final _editFormKey = GlobalKey<FormState>();
 
     showDialog(
@@ -4247,31 +4836,49 @@ class _ProgressPageState extends State<ProgressPage> {
                   alignment: Alignment.centerLeft,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Student: ${record.student}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 TextFormField(
                   controller: activityCtl,
-                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Activity',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter activity' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: scoreCtl,
-                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Score',
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter score' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: gradeCtl,
-                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Grade',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter grade' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: commentsCtl,
-                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Comments',
+                    border: OutlineInputBorder(),
+                  ),
                   maxLines: 2,
                 ),
               ],
@@ -4279,7 +4886,10 @@ class _ProgressPageState extends State<ProgressPage> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (!(_editFormKey.currentState?.validate() ?? false)) return;
@@ -4291,12 +4901,16 @@ class _ProgressPageState extends State<ProgressPage> {
                   'comments': commentsCtl.text.trim(),
                 });
                 Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Record updated'),
-                  backgroundColor: Colors.green,
-                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Record updated'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
               }
             },
             child: const Text('Save'),
@@ -4324,12 +4938,15 @@ class _ProgressPageState extends State<ProgressPage> {
         title: const Text('Student Progress'),
         actions: [
           TextButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => ProgressHistoryPage()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => ProgressHistoryPage())),
             icon: const Icon(Icons.history, color: Colors.white),
-            label: const Text('Progress History', style: TextStyle(color: Colors.white)),
-          )
+            label: const Text(
+              'Progress History',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -4350,17 +4967,23 @@ class _ProgressPageState extends State<ProgressPage> {
                       suffixIcon: _isSearching
                           ? const Padding(
                               padding: EdgeInsets.all(8),
-                              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             )
                           : (_searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchResults = []);
-                                  },
-                                )
-                              : null),
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchResults = []);
+                                    },
+                                  )
+                                : null),
                       border: const OutlineInputBorder(),
                     ),
                     onChanged: (q) => _searchUsers(q),
@@ -4394,8 +5017,14 @@ class _ProgressPageState extends State<ProgressPage> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         children: [
-                          const Text('Selected: ', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text(_selectedStudentUsername!, style: const TextStyle(color: Colors.blue)),
+                          const Text(
+                            'Selected: ',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            _selectedStudentUsername!,
+                            style: const TextStyle(color: Colors.blue),
+                          ),
                           const Spacer(),
                           TextButton(
                             onPressed: () {
@@ -4405,7 +5034,7 @@ class _ProgressPageState extends State<ProgressPage> {
                               });
                             },
                             child: const Text('Clear'),
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -4413,26 +5042,44 @@ class _ProgressPageState extends State<ProgressPage> {
                   // ---------- add fields ----------
                   TextFormField(
                     controller: _activityController,
-                    decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter an activity' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Activity',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Please enter an activity'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _scoreController,
-                    decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Score',
+                      border: OutlineInputBorder(),
+                    ),
                     keyboardType: TextInputType.number,
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a score' : null,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Please enter a score'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _gradeController,
-                    decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Please enter a grade' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Grade',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Please enter a grade'
+                        : null,
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _commentsController,
-                    decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Comments',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
@@ -4448,7 +5095,10 @@ class _ProgressPageState extends State<ProgressPage> {
             // ---------- latest 3 cards ----------
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('Latest records', style: Theme.of(context).textTheme.titleMedium),
+              child: Text(
+                'Latest records',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
             const SizedBox(height: 8),
             StreamBuilder<QuerySnapshot>(
@@ -4459,11 +5109,16 @@ class _ProgressPageState extends State<ProgressPage> {
                   .snapshots(),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(height: 80, child: Center(child: CircularProgressIndicator()));
+                  return const SizedBox(
+                    height: 80,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
                 }
                 final docs = snap.data?.docs ?? [];
                 if (docs.isEmpty) return const Text('No recent records');
-                final records = docs.map((d) => ProgressRecord.fromDoc(d)).toList();
+                final records = docs
+                    .map((d) => ProgressRecord.fromDoc(d))
+                    .toList();
 
                 return Column(
                   children: records.map((r) {
@@ -4471,7 +5126,9 @@ class _ProgressPageState extends State<ProgressPage> {
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       child: ListTile(
                         title: Text('${r.student} — ${r.activity}'),
-                        subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\n${r.comments}'),
+                        subtitle: Text(
+                          'Score: ${r.score}, Grade: ${r.grade}\n${r.comments}',
+                        ),
                         isThreeLine: true,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -4514,10 +5171,18 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm delete'),
-        content: const Text('Are you sure you want to delete this progress record?'),
+        content: const Text(
+          'Are you sure you want to delete this progress record?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -4525,18 +5190,30 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
     if (confirmed == true) {
       try {
         await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Record deleted')));
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
 
   void _showEditDialog(BuildContext context, ProgressRecord record) {
-    final TextEditingController activityCtl = TextEditingController(text: record.activity);
-    final TextEditingController scoreCtl = TextEditingController(text: record.score.toString());
-    final TextEditingController gradeCtl = TextEditingController(text: record.grade);
-    final TextEditingController commentsCtl = TextEditingController(text: record.comments);
+    final TextEditingController activityCtl = TextEditingController(
+      text: record.activity,
+    );
+    final TextEditingController scoreCtl = TextEditingController(
+      text: record.score.toString(),
+    );
+    final TextEditingController gradeCtl = TextEditingController(
+      text: record.grade,
+    );
+    final TextEditingController commentsCtl = TextEditingController(
+      text: record.comments,
+    );
     final _editFormKey = GlobalKey<FormState>();
 
     showDialog(
@@ -4553,31 +5230,49 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                   alignment: Alignment.centerLeft,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Student: ${record.student}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 TextFormField(
                   controller: activityCtl,
-                  decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter activity' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Activity',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter activity' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: scoreCtl,
-                  decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Score',
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter score' : null,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter score' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: gradeCtl,
-                  decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter grade' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Grade',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter grade' : null,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: commentsCtl,
-                  decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Comments',
+                    border: OutlineInputBorder(),
+                  ),
                   maxLines: 2,
                 ),
               ],
@@ -4585,7 +5280,10 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               if (!(_editFormKey.currentState?.validate() ?? false)) return;
@@ -4597,9 +5295,13 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                   'comments': commentsCtl.text.trim(),
                 });
                 Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Record updated')));
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Update failed: $e')));
               }
             },
             child: const Text('Save'),
@@ -4612,15 +5314,20 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progress History'),
-      ),
+      appBar: AppBar(title: const Text('Progress History')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _fs.collection('progress_records').orderBy('timestamp', descending: true).snapshots(),
+        stream: _fs
+            .collection('progress_records')
+            .orderBy('timestamp', descending: true)
+            .snapshots(),
         builder: (context, snap) {
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-          final records = snap.data!.docs.map((d) => ProgressRecord.fromDoc(d)).toList();
-          if (records.isEmpty) return const Center(child: Text('No progress records yet.'));
+          if (!snap.hasData)
+            return const Center(child: CircularProgressIndicator());
+          final records = snap.data!.docs
+              .map((d) => ProgressRecord.fromDoc(d))
+              .toList();
+          if (records.isEmpty)
+            return const Center(child: Text('No progress records yet.'));
 
           return ListView.builder(
             padding: const EdgeInsets.all(12),
@@ -4631,13 +5338,21 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                 margin: const EdgeInsets.symmetric(vertical: 6),
                 child: ListTile(
                   title: Text('${r.student} — ${r.activity}'),
-                  subtitle: Text('Score: ${r.score}, Grade: ${r.grade}\nComments: ${r.comments}'),
+                  subtitle: Text(
+                    'Score: ${r.score}, Grade: ${r.grade}\nComments: ${r.comments}',
+                  ),
                   isThreeLine: true,
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _showEditDialog(context, r)),
-                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _confirmAndDelete(context, r.id)),
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _showEditDialog(context, r),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmAndDelete(context, r.id),
+                      ),
                     ],
                   ),
                 ),
@@ -4650,9 +5365,8 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
   }
 }
 
-
 // ---------- Achievements ----------
-// ---------- Achievements (CORRECTED) ----------
+
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
 
@@ -4661,30 +5375,57 @@ class AchievementsPage extends StatefulWidget {
 }
 
 class _AchievementsPageState extends State<AchievementsPage> {
-
   // Helper function to get the correct achievement stream
-  Stream<QuerySnapshot> getAchievementStream(AppUser? user) {
-    var query = FirebaseFirestore.instance.collection('achievements').orderBy('dateEarned', descending: true);
-    
+  /* Stream<QuerySnapshot> getAchievementStream(AppUser? user) {
+    var query = FirebaseFirestore.instance
+        .collection('achievements')
+        .orderBy('dateEarned', descending: true);
+
     // Filter to show only the current user's achievements if logged in, otherwise show public feed
     if (user != null) {
       query = query.where('studentId', isEqualTo: user.id);
     } else {
       // If not logged in, show a public feed of recent achievements (limited for performance)
-      query = query.limit(30); 
+      query = query.limit(30);
     }
     return query.snapshots();
+  }*/
+
+  Stream<QuerySnapshot> getAchievementStream(AppUser? user) {
+    var query = FirebaseFirestore.instance.collection('achievements');
+
+    if (user != null && user.userType == UserType.student) {
+      // Student view: show only their achievements
+      return query.where('studentId', isEqualTo: user.id).snapshots();
+    } else if (user != null && user.userType == UserType.teacher) {
+      // Teacher view: show all achievements
+      return query.orderBy('dateEarned', descending: true).snapshots();
+    } else {
+      // Public feed with ordering (single field index is auto-created)
+      return query
+          .orderBy('dateEarned', descending: true)
+          .limit(30)
+          .snapshots();
+    }
   }
 
   // Function to delete an achievement (US012-03)
-  Future<void> _deleteAchievement(String achievementId, String achievementTitle) async {
+  Future<void> _deleteAchievement(
+    String achievementId,
+    String achievementTitle,
+  ) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Achievement'),
-        content: Text('Are you sure you want to delete the achievement: "$achievementTitle"?'),
+        content: Text(
+          'Are you sure you want to delete the achievement: "$achievementTitle"?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -4695,16 +5436,25 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
     if (confirm == true) {
       try {
-        await FirebaseFirestore.instance.collection('achievements').doc(achievementId).delete();
+        await FirebaseFirestore.instance
+            .collection('achievements')
+            .doc(achievementId)
+            .delete();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Achievement "$achievementTitle" deleted.'), backgroundColor: Colors.green),
+            SnackBar(
+              content: Text('Achievement "$achievementTitle" deleted.'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete achievement: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Failed to delete achievement: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
@@ -4712,12 +5462,23 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   // ⚠️ Function to show edit dialog (US012-02)
-  Future<void> _showEditAchievementDialog(Map<String, dynamic> achievement) async {
+  Future<void> _showEditAchievementDialog(
+    Map<String, dynamic> achievement,
+  ) async {
     final _editFormKey = GlobalKey<FormState>();
-    final TextEditingController _titleController = TextEditingController(text: achievement['title'] ?? '');
-    final TextEditingController _descriptionController = TextEditingController(text: achievement['description'] ?? '');
+    final TextEditingController _titleController = TextEditingController(
+      text: achievement['title'] ?? '',
+    );
+    final TextEditingController _descriptionController = TextEditingController(
+      text: achievement['description'] ?? '',
+    );
     String _type = achievement['type'] ?? 'Badge';
-    final List<String> _achievementTypes = ['Badge', 'Certificate', 'Milestone', 'Other'];
+    final List<String> _achievementTypes = [
+      'Badge',
+      'Certificate',
+      'Milestone',
+      'Other',
+    ];
 
     showDialog(
       context: context,
@@ -4732,26 +5493,47 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('Student: ${achievement['studentName']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        'Student: ${achievement['studentName']}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _titleController,
-                        decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          border: OutlineInputBorder(),
+                        ),
                         validator: (v) => v!.isEmpty ? 'Enter a title' : null,
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Type',
+                          border: OutlineInputBorder(),
+                        ),
                         value: _type,
-                        items: _achievementTypes.map((type) => DropdownMenuItem<String>(value: type, child: Text(type))).toList(),
-                        onChanged: (newValue) => setState(() => _type = newValue!),
+                        items: _achievementTypes
+                            .map(
+                              (type) => DropdownMenuItem<String>(
+                                value: type,
+                                child: Text(type),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (newValue) =>
+                            setState(() => _type = newValue!),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _descriptionController,
-                        decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                          border: OutlineInputBorder(),
+                        ),
                         maxLines: 3,
-                        validator: (v) => v!.isEmpty ? 'Enter a description' : null,
+                        validator: (v) =>
+                            v!.isEmpty ? 'Enter a description' : null,
                       ),
                     ],
                   ),
@@ -4760,29 +5542,41 @@ class _AchievementsPageState extends State<AchievementsPage> {
             },
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (_editFormKey.currentState!.validate()) {
                   try {
                     // Update the existing achievement record in Firestore
-                    await FirebaseFirestore.instance.collection('achievements').doc(achievement['id']).update({
-                      'title': _titleController.text.trim(),
-                      'type': _type,
-                      'description': _descriptionController.text.trim(),
-                      // Note: We are only updating the *record* here. Student profile badges (string list) remain unchanged.
-                    });
+                    await FirebaseFirestore.instance
+                        .collection('achievements')
+                        .doc(achievement['id'])
+                        .update({
+                          'title': _titleController.text.trim(),
+                          'type': _type,
+                          'description': _descriptionController.text.trim(),
+                          // Note: We are only updating the *record* here. Student profile badges (string list) remain unchanged.
+                        });
 
                     if (context.mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Achievement updated successfully.'), backgroundColor: Colors.green),
+                        const SnackBar(
+                          content: Text('Achievement updated successfully.'),
+                          backgroundColor: Colors.green,
+                        ),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to update achievement: $e'), backgroundColor: Colors.red),
+                        SnackBar(
+                          content: Text('Failed to update achievement: $e'),
+                          backgroundColor: Colors.red,
+                        ),
                       );
                     }
                   }
@@ -4795,7 +5589,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
       },
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     // Rely exclusively on live FirebaseUserState
@@ -4803,15 +5597,26 @@ class _AchievementsPageState extends State<AchievementsPage> {
     final isLoggedIn = userState.isLoggedIn;
     final user = userState.currentUser;
     final bool isTeacher = user?.userType == UserType.teacher ?? false;
+    final bool isStudent = user?.userType == UserType.student ?? false;
 
     // Page title
-    final String pageTitle = isLoggedIn ? '🏆 Your Achievements' : '🏅 Community Achievements';
-    
+    final String pageTitle = isLoggedIn
+        ? '🏆 Achievements'
+        : '🏅 Community Achievements';
+
     // If not logged in, show a simplified message (re-using old logic for non-logged-in state)
     if (!isLoggedIn) {
-       return Scaffold(
-        appBar: AppBar(title: Text(pageTitle), backgroundColor: Colors.amber, foregroundColor: Colors.white),
-        body: const Center(child: Text('Please log in to view personalized achievements or community feed.')),
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(pageTitle),
+          backgroundColor: Colors.amber,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text(
+            'Please log in to view personalized achievements or community feed.',
+          ),
+        ),
       );
     }
 
@@ -4825,28 +5630,40 @@ class _AchievementsPageState extends State<AchievementsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Logic to show the 'unlocked message'
-          if (userState.lastUnlockedMessage != null) Builder(
-            builder: (ctx) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                final msg = userState.lastUnlockedMessage;
-                if (msg != null) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text(msg), backgroundColor: Colors.green),
-                  );
-                  context.read<FirebaseUserState>().consumeLastUnlockedMessage();
-                }
-              });
-              return const SizedBox.shrink();
-            },
-          ),
-          
+          if (userState.lastUnlockedMessage != null)
+            Builder(
+              builder: (ctx) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  final msg = userState.lastUnlockedMessage;
+                  if (msg != null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(msg),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    context
+                        .read<FirebaseUserState>()
+                        .consumeLastUnlockedMessage();
+                  }
+                });
+                return const SizedBox.shrink();
+              },
+            ),
+
           Expanded(
             // Use live StreamBuilder
             child: StreamBuilder<QuerySnapshot>(
-              stream: getAchievementStream(user), // Fetch achievements for current user
+              stream: getAchievementStream(
+                user,
+              ), // Fetch achievements for current user
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error loading achievements: ${snapshot.error}'));
+                  return Center(
+                    child: Text(
+                      'Error loading achievements: ${snapshot.error}',
+                    ),
+                  );
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -4854,55 +5671,133 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
                 // Map DocumentSnapshot list to Map list, including the document ID
                 final achievements = snapshot.data!.docs
-                    .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
+                    .map(
+                      (doc) => {
+                        'id': doc.id,
+                        ...doc.data() as Map<String, dynamic>,
+                      },
+                    )
                     .toList();
 
-                return _buildAchievementListView(achievements, isLoggedIn, isTeacher, user!.id);
+                return _buildAchievementListView(
+                  achievements,
+                  isLoggedIn,
+                  isTeacher,
+                  user!.id,
+                );
               },
             ),
           ),
-          
-          // Teacher Action Buttons (Only 'Add Achievement' remains, full width)
-          if (isTeacher) Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                // 1. Add Achievement Button (now takes full width)
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // ACTION ENABLED: Navigate to AddAchievementPage
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AddAchievementPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Achievement'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+
+
+if (isStudent && user!.badges.isNotEmpty)
+  Container(
+    margin: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.amber[100]!, Colors.orange[100]!],
+      ),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.amber, width: 2),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.emoji_events, color: Colors.amber[700], size: 28),
+            const SizedBox(width: 8),
+            Text(
+              'My Badge Collection (${user.badges.length})',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.amber[900],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: user.badges.map((badge) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star, color: Colors.amber[700], size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    badge,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.amber[900],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    ),
+  ),
+          // Teacher Action Buttons (Only 'Add Achievement' remains, full width)
+          if (isTeacher)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  // 1. Add Achievement Button (now takes full width)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // ACTION ENABLED: Navigate to AddAchievementPage
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AddAchievementPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Achievement'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  // Helper method to build the list view
+  
+
   Widget _buildAchievementListView(
-    List<Map<String, dynamic>> achievements, 
-    bool isLoggedIn, 
+    List<Map<String, dynamic>> achievements,
+    bool isLoggedIn,
     bool isTeacher,
     String? currentUserId,
   ) {
-    
-    // Sort achievements manually for display
+    // Sort achievements manually by date
     achievements.sort((a, b) {
       final dateA = a['dateEarned'];
       final dateB = b['dateEarned'];
@@ -4917,13 +5812,17 @@ class _AchievementsPageState extends State<AchievementsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey[400]),
+            Icon(
+              Icons.emoji_events_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
             const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Text(
-                isLoggedIn 
-                    ? 'You have no achievements yet. Start learning and completing quizzes!' 
+                isLoggedIn
+                    ? 'You have no achievements yet. Start learning and completing quizzes!'
                     : 'No public achievements found.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
@@ -4942,39 +5841,50 @@ class _AchievementsPageState extends State<AchievementsPage> {
         final title = achievement['title'] ?? 'No Title';
         final type = achievement['type'] ?? 'General';
         final description = achievement['description'] ?? 'No Description';
-        final String? achievementId = achievement['id'] as String?; // Retrieved document ID
+        final String? achievementId = achievement['id'] as String?;
         final String studentId = achievement['studentId'] ?? '';
-        
+
         final dateEarned = achievement['dateEarned'];
         DateTime? when;
         if (dateEarned is Timestamp) when = dateEarned.toDate();
 
-        // Teachers can edit ANY achievement. 
-        final bool canEdit = isTeacher; 
-        
+        final bool canEdit = isTeacher;
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 2,
           child: ListTile(
             leading: const Icon(Icons.star, color: Colors.amber),
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(description),
                 const SizedBox(height: 4),
-                if (!isLoggedIn || studentId != currentUserId) Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text('Earned by: ${achievement['studentName'] ?? 'Unknown User'}', style: TextStyle(color: Colors.blue[700], fontSize: 12, fontWeight: FontWeight.w500)),
-                ),
+                if (!isLoggedIn || studentId != currentUserId)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      'Earned by: ${achievement['studentName'] ?? 'Unknown User'}',
+                      style: TextStyle(
+                        color: Colors.blue[700],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 Row(
                   children: [
                     Chip(label: Text(type)),
                     const SizedBox(width: 8),
-                    if (when != null) Text(
-                      'Earned: ${when.toLocal().toString().split(' ')[0]}', // Only show date
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
+                    if (when != null)
+                      Text(
+                        'Earned: ${when.toLocal().toString().split(' ')[0]}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
                   ],
                 ),
               ],
@@ -4984,13 +5894,15 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue), // Edit Icon
-                        onPressed: () => _showEditAchievementDialog(achievement),
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () =>
+                            _showEditAchievementDialog(achievement),
                         tooltip: 'Edit Achievement',
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red), // Delete Icon
-                        onPressed: () => _deleteAchievement(achievementId, title),
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () =>
+                            _deleteAchievement(achievementId, title),
                         tooltip: 'Delete Achievement',
                       ),
                     ],
@@ -5022,24 +5934,47 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
   String? _selectedStudentName;
   bool _isLoading = false; // Add loading state
 
-  final List<String> _achievementTypes = ['Badge', 'Certificate', 'Milestone', 'Other'];
+  final List<String> _achievementTypes = [
+    'Badge',
+    'Certificate',
+    'Milestone',
+    'Other',
+  ];
 
   // ⚠️ Function to fetch live student list from Firestore
   Future<List<AppUser>> _getStudentsList() async {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
-          .where('userType', isEqualTo: 'UserType.student') 
+          .where(
+            'userType',
+            isEqualTo: UserType.student.toString(),
+          ) // FIX: Use enum.toString()
           .orderBy('username')
           .get();
-      
-      return snapshot.docs.map((doc) => AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>)).toList();
+
+      return snapshot.docs
+          .map(
+            (doc) =>
+                AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>),
+          )
+          .toList();
     } catch (e) {
       print("Error fetching student list: $e");
       // Fallback list when fetching live data fails (e.g., due to rules)
       return [
-        AppUser(id: 'FALLBACK_1', username: 'LOAD_ERROR: John Doe', email: '', userType: UserType.student),
-        AppUser(id: 'FALLBACK_2', username: 'LOAD_ERROR: Jane Smith', email: '', userType: UserType.student),
+        AppUser(
+          id: 'FALLBACK_1',
+          username: 'LOAD_ERROR: John Doe',
+          email: '',
+          userType: UserType.student,
+        ),
+        AppUser(
+          id: 'FALLBACK_2',
+          username: 'LOAD_ERROR: Jane Smith',
+          email: '',
+          userType: UserType.student,
+        ),
       ];
     }
   }
@@ -5048,19 +5983,24 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
   Future<void> _submitAchievement() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      
+
       if (_selectedStudentId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a student.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Please select a student.'),
+            backgroundColor: Colors.red,
+          ),
         );
         return;
       }
-      
+
       setState(() => _isLoading = true);
 
       try {
         // Get current logged-in teacher username
-        final teacherUsername = context.read<FirebaseUserState>().currentUser?.username ?? 'System Admin';
+        final teacherUsername =
+            context.read<FirebaseUserState>().currentUser?.username ??
+            'System Admin';
 
         final achievementData = {
           'title': _title,
@@ -5073,21 +6013,28 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
         };
 
         // Live write to Firestore
-        await FirebaseFirestore.instance.collection('achievements').add(achievementData);
+        await FirebaseFirestore.instance
+            .collection('achievements')
+            .add(achievementData);
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Achievement "${_title}" manually awarded to ${_selectedStudentName}.'),
+              content: Text(
+                'Achievement "${_title}" manually awarded to ${_selectedStudentName}.',
+              ),
               backgroundColor: Colors.green,
             ),
           );
-          Navigator.pop(context); 
+          Navigator.pop(context);
         }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to award achievement: $e'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Failed to award achievement: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       } finally {
@@ -5175,15 +6122,27 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
               // 5. Submit Button
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _submitAchievement,
-                icon: _isLoading ? const SizedBox(
-                  width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                ) : const Icon(Icons.send),
-                label: Text(_isLoading ? 'Awarding...' : 'Award Achievement', style: const TextStyle(fontSize: 18)),
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.send),
+                label: Text(
+                  _isLoading ? 'Awarding...' : 'Award Achievement',
+                  style: const TextStyle(fontSize: 18),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green, 
+                  backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
@@ -5196,51 +6155,70 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
   // Builds the student selection field using LIVE Firestore data
   Widget _buildStudentSelectionField() {
     return FutureBuilder<List<AppUser>>(
-        future: _getStudentsList(),
-        builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-            }
-            
-            final studentList = snapshot.data ?? [];
-            
-            if (studentList.isEmpty) {
-                return const Text('Error loading students or no students found. Check Firestore rules and data.', style: TextStyle(color: Colors.red));
-            }
+      future: _getStudentsList(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-            final studentItems = studentList.map((user) {
-                return DropdownMenuItem<String>(
-                    value: user.id,
-                    child: Text('${user.username} (${user.id})'),
-                );
-            }).toList();
+        final studentList = snapshot.data ?? [];
 
-            return DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
-                    labelText: 'Select Student to Award',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                ),
-                value: _selectedStudentId,
-                items: studentItems,
-                hint: const Text('Choose a student'),
-                validator: (value) {
-                    if (value == null) {
-                        return 'You must select a student.';
-                    }
-                    return null;
-                },
-                onChanged: (String? newValue) {
-                    setState(() {
-                        _selectedStudentId = newValue;
-                        final selectedUser = studentList.cast<AppUser?>().firstWhere(
-                          (user) => user?.id == newValue,
-                          orElse: () => null,);
-                        _selectedStudentName = selectedUser?.username;
-                    });
-                },
-            );
-        },
+        if (studentList.isEmpty) {
+          return const Text(
+            'Error loading students or no students found. Check Firestore rules and data.',
+            style: TextStyle(color: Colors.red),
+          );
+        }
+
+        final studentItems = studentList.map((user) {
+          // Format: StudentName (FormLevel, ClassName)
+          String displayText = user.username;
+          List<String> details = [];
+  
+          if (user.formLevel != null && user.formLevel!.isNotEmpty) {
+            details.add(user.formLevel!);
+          }
+          if (user.className != null && user.className!.isNotEmpty) {
+          details.add(user.className!);
+          }
+  
+          if (details.isNotEmpty) {
+          displayText += ' (${details.join(', ')})';
+          }
+  
+          return DropdownMenuItem<String>(
+          value: user.id,
+          child: Text(displayText),
+          );
+          }).toList();
+
+        return DropdownButtonFormField<String>(
+          decoration: const InputDecoration(
+            labelText: 'Select Student to Award',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.person),
+          ),
+          value: _selectedStudentId,
+          items: studentItems,
+          hint: const Text('Choose a student'),
+          validator: (value) {
+            if (value == null) {
+              return 'You must select a student.';
+            }
+            return null;
+          },
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedStudentId = newValue;
+              final selectedUser = studentList.cast<AppUser?>().firstWhere(
+                (user) => user?.id == newValue,
+                orElse: () => null,
+              );
+              _selectedStudentName = selectedUser?.username;
+            });
+          },
+        );
+      },
     );
   }
 }
@@ -5250,319 +6228,487 @@ class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
   Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
-  final picker = ImagePicker();
-  final image = await picker.pickImage(source: ImageSource.gallery);
-  
-  if (image == null) return null;
-  
-  // Store local path (In production, upload to Firebase Storage)
-  return image.path;
-}
-  @override
-Widget build(BuildContext context) {
-  final userState = context.watch<FirebaseUserState>();
-  final user = userState.currentUser;
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
 
-  if (user == null) {
-    return const Center(child: Text('Not logged in'));
+    if (image == null) return null;
+
+    // Store local path (In production, upload to Firebase Storage)
+    return image.path;
   }
-  final isTeacher = user.userType == UserType.teacher;
 
-  return Scaffold(
-    backgroundColor: Colors.white,
-    appBar: AppBar(
-      title: const Text('👤 User Profile'),
-      backgroundColor: Colors.lightBlue,
-      foregroundColor: Colors.white,
-      actions: [
-        PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit, size: 20),
-                  SizedBox(width: 8),
-                  Text('Edit Profile'),
-                ],
+  @override
+  Widget build(BuildContext context) {
+    final userState = context.watch<FirebaseUserState>();
+    final user = userState.currentUser;
+
+    if (user == null) {
+      return const Center(child: Text('Not logged in'));
+    }
+    final isTeacher = user.userType == UserType.teacher;
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('👤 User Profile'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          PopupMenuButton(
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit, size: 20),
+                    SizedBox(width: 8),
+                    Text('Edit Profile'),
+                  ],
+                ),
               ),
-            ),
-            const PopupMenuItem(
-              value: 'password',
-              child: Row(
-                children: [
-                  Icon(Icons.lock, size: 20),
-                  SizedBox(width: 8),
-                  Text('Change Password'),
-                ],
+              const PopupMenuItem(
+                value: 'password',
+                child: Row(
+                  children: [
+                    Icon(Icons.lock, size: 20),
+                    SizedBox(width: 8),
+                    Text('Change Password'),
+                  ],
+                ),
               ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, size: 20, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Delete Account', style: TextStyle(color: Colors.red)),
-                ],
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete, size: 20, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Delete Account', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
               ),
-            ),
-          ],
-          onSelected: (value) {
-            if (value == 'edit') {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const EditProfilePage()),
-              );
-            } else if (value == 'password') {
-              _showChangePasswordDialog(context);
-            } else if (value == 'delete') {
-              _showDeleteDialog(context);
-            }
-          },
-        ),
-      ],
-    ),
-    body: Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Header Section with Profile Picture
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue[700]!, Colors.blue[300]!],
+            ],
+            onSelected: (value) {
+              if (value == 'edit') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EditProfilePage(),
+                  ),
+                );
+              } else if (value == 'password') {
+                _showChangePasswordDialog(context);
+              } else if (value == 'delete') {
+                _showDeleteDialog(context);
+              }
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Header Section with Profile Picture
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue[700]!, Colors.blue[300]!],
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Profile picture with edit button
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.white,
+                              backgroundImage:
+                                  user.profilePicture != null &&
+                                      user.profilePicture!.isNotEmpty
+                                  ? FileImage(File(user.profilePicture!))
+                                  : null,
+                              child:
+                                  user.profilePicture == null ||
+                                      user.profilePicture!.isEmpty
+                                  ? const Icon(
+                                      Icons.person,
+                                      size: 50,
+                                      color: Colors.blue,
+                                    )
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: InkWell(
+                                onTap: () async {
+                                  final picturePath =
+                                      await _pickAndUploadProfilePicture(
+                                        context,
+                                      );
+                                  if (picturePath != null && context.mounted) {
+                                    final success = await context
+                                        .read<FirebaseUserState>()
+                                        .updateUserProfile(
+                                          profilePicture: picturePath,
+                                        );
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            success
+                                                ? 'Profile picture updated!'
+                                                : 'Failed to update picture',
+                                          ),
+                                          backgroundColor: success
+                                              ? Colors.green
+                                              : Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.blue,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          user.username,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            isTeacher ? 'Teacher' : 'Student',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      // Profile picture with edit button
-                      Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.white,
-                            backgroundImage: user.profilePicture != null && user.profilePicture!.isNotEmpty
-                                ? FileImage(File(user.profilePicture!))
-                                : null,
-                            child: user.profilePicture == null || user.profilePicture!.isEmpty
-                                ? const Icon(Icons.person, size: 50, color: Colors.blue)
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: InkWell(
-                              onTap: () async {
-                                final picturePath = await _pickAndUploadProfilePicture(context);
-                                if (picturePath != null && context.mounted) {
-                                  final success = await context.read<FirebaseUserState>().updateUserProfile(
-                                    profilePicture: picturePath,
-                                  );
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(success ? 'Profile picture updated!' : 'Failed to update picture'),
-                                        backgroundColor: success ? Colors.green : Colors.red,
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: Colors.blue,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        user.username,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        // Common Info for Both Teacher and Student
+                        _buildInfoCard(
+                          icon: Icons.email,
+                          title: 'Email',
+                          value: user.email,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          isTeacher ? 'Teacher' : 'Student',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // Common Info for Both Teacher and Student
-                      _buildInfoCard(
-                        icon: Icons.email,
-                        title: 'Email',
-                        value: user.email,
-                      ),
 
-                      // STUDENT-SPECIFIC FIELDS
-                      if (!isTeacher) ...[
-                        _buildInfoCard(
-                          icon: Icons.school,
-                          title: 'Form Level',
-                          value: user.formLevel ?? 'Not set',
+                        // STUDENT-SPECIFIC FIELDS
+                        if (!isTeacher) ...[
+                          _buildInfoCard(
+                            icon: Icons.school,
+                            title: 'Form Level',
+                            value: user.formLevel ?? 'Not set',
+                          ),
+                          _buildInfoCard(
+                            icon: Icons.class_,
+                            title: 'Class',
+                            value: user.className ?? 'Not set',
+                          ),
+
+                          // Points Card (Students Only)
+                          _buildInfoCard(
+                            icon: Icons.stars,
+                            title: 'Total Points',
+                            value: user.points.toString(),
+                            color: Colors.amber,
+                          ),
+
+                          // Badges Card (Students Only)
+                          /*_buildInfoCard(
+                            icon: Icons.emoji_events,
+                            title: 'Badges Earned',
+                            value: user.badges.length.toString(),
+                            color: Colors.orange,
+                          ),*/
+                          StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                              .collection('achievements')
+                              .where('studentId', isEqualTo: user.id)
+                              .snapshots(),
+                            builder: (context, snapshot) {
+                            int totalAchievements = 0;
+                            if (snapshot.hasData) {
+                              totalAchievements = snapshot.data!.docs.length;
+                            }
+                            
+                            return _buildInfoCard(
+                            icon: Icons.emoji_events,
+                            title: 'Total Achievements',
+                            value: totalAchievements.toString(),
+                            color: Colors.orange,
+                            );
+                          },
                         ),
-                        _buildInfoCard(
-                          icon: Icons.class_,
-                          title: 'Class',
-                          value: user.className ?? 'Not set',
-                        ),
-                        
-                        // Points Card (Students Only)
-                        _buildInfoCard(
-                          icon: Icons.stars,
-                          title: 'Total Points',
-                          value: user.points.toString(),
-                          color: Colors.amber,
-                        ),
-                        
-                        // Badges Card (Students Only)
-                        _buildInfoCard(
-                          icon: Icons.emoji_events,
-                          title: 'Badges Earned',
-                          value: user.badges.length.toString(),
-                          color: Colors.orange,
-                        ),
-                        
-                        // Completion Level (Students Only)
-                        _buildInfoCard(
-                          icon: Icons.trending_up,
-                          title: 'Completion Level',
-                          value: '${(user.completionLevel * 100).toStringAsFixed(1)}%',
-                          color: Colors.green,
-                        ),
-                        if (user.badges.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Your Badges',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+
+                          /*// Completion Level (Students Only)
+                          _buildInfoCard(
+                            icon: Icons.trending_up,
+                            title: 'Completion Level',
+                            value:
+                                '${(user.completionLevel * 100).toStringAsFixed(1)}%',
+                            color: Colors.green,
+                          ),*/
+                         /* if (user.badges.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Your Badges',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: user.badges
-                                        .map(
-                                          (badge) => Chip(
-                                            label: Text(badge),
-                                            avatar: const Icon(Icons.emoji_events, size: 16),
-                                          ),
-                                        )
-                                        .toList(),
-                                  ),
-                                ],
+                                    const SizedBox(height: 12),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: user.badges
+                                          .map(
+                                            (badge) => Chip(
+                                              label: Text(badge),
+                                              avatar: const Icon(
+                                                Icons.emoji_events,
+                                                size: 16,
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // ✅ NEW: Logout button at the bottom
-        Container(
-          width: double.infinity,
+                          ],*/
+
+                          // ✅ NEW: All Achievements Display (Badges, Certificates, Milestones)
+const SizedBox(height: 16),
+StreamBuilder<QuerySnapshot>(
+  stream: FirebaseFirestore.instance
+      .collection('achievements')
+      .where('studentId', isEqualTo: user.id)
+      .orderBy('dateEarned', descending: true)
+      .snapshots(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return Card(
+        child: Padding(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.3),
-                spreadRadius: 1,
-                blurRadius: 5,
-                offset: const Offset(0, -3),
+          child: Column(
+            children: [
+              Icon(Icons.emoji_events_outlined, 
+                size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 8),
+              Text(
+                'No achievements yet',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Start completing quizzes to earn badges!',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                ),
               ),
             ],
           ),
-          child: ElevatedButton.icon(
-            onPressed: () => _handleLogout(context),
-            icon: const Icon(Icons.logout),
-            label: const Text('Logout', style: TextStyle(fontSize: 16)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        ),
+      );
+    }
+
+    final achievements = snapshot.data!.docs;
+    
+    // Group achievements by type
+    final badges = achievements.where((doc) => 
+      doc['type']?.toString().toLowerCase().contains('badge') ?? false
+    ).toList();
+    
+    final certificates = achievements.where((doc) => 
+      doc['type']?.toString().toLowerCase().contains('certificate') ?? false
+    ).toList();
+    
+    final milestones = achievements.where((doc) => 
+      doc['type']?.toString().toLowerCase().contains('milestone') ?? false
+    ).toList();
+    
+    final others = achievements.where((doc) {
+      final type = doc['type']?.toString().toLowerCase() ?? '';
+      return !type.contains('badge') && 
+             !type.contains('certificate') && 
+             !type.contains('milestone');
+    }).toList();
+
+    return Column(
+      children: [
+        // Badges Section
+        if (badges.isNotEmpty)
+          _buildAchievementSection(
+            title: '🏅 Badges (${badges.length})',
+            achievements: badges,
+            color: Colors.amber,
+            icon: Icons.star,
+          ),
+        
+        // Certificates Section
+        if (certificates.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildAchievementSection(
+            title: '📜 Certificates (${certificates.length})',
+            achievements: certificates,
+            color: Colors.blue,
+            icon: Icons.workspace_premium,
+          ),
+        ],
+        
+        // Milestones Section
+        if (milestones.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildAchievementSection(
+            title: '🎯 Milestones (${milestones.length})',
+            achievements: milestones,
+            color: Colors.purple,
+            icon: Icons.flag,
+          ),
+        ],
+        
+        // Others Section
+        if (others.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildAchievementSection(
+            title: '⭐ Other Achievements (${others.length})',
+            achievements: others,
+            color: Colors.green,
+            icon: Icons.emoji_events,
+          ),
+        ],
+      ],
+    );
+  },
+),
+
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
-}
 
-// ✅ Keep the logout handler function as is
-void _handleLogout(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Logout'),
-      content: const Text('Are you sure you want to logout?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            await context.read<FirebaseUserState>().logout();
-            if (context.mounted) {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-                (route) => false,
-              );
-            }
-          },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          child: const Text('Logout'),
-        ),
-      ],
-    ),
-  );
-}
+          // ✅ NEW: Logout button at the bottom
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 1,
+                  blurRadius: 5,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              onPressed: () => _handleLogout(context),
+              icon: const Icon(Icons.logout),
+              label: const Text('Logout', style: TextStyle(fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-   Widget _buildInfoCard({
+  // ✅ Keep the logout handler function as is
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await context.read<FirebaseUserState>().logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  (route) => false,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({
     required IconData icon,
     required String title,
     required String value,
@@ -5571,9 +6717,7 @@ void _handleLogout(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: Icon(icon, color: color ?? Colors.blue[700]),
         title: Text(title),
@@ -5611,10 +6755,9 @@ void _handleLogout(BuildContext context) {
                   labelText: 'Current Password',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value == null || value.isEmpty
-                        ? 'Please enter current password'
-                        : null,
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Please enter current password'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -5642,10 +6785,9 @@ void _handleLogout(BuildContext context) {
                   labelText: 'Confirm New Password',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value != newPasswordController.text
-                        ? 'Passwords do not match'
-                        : null,
+                validator: (value) => value != newPasswordController.text
+                    ? 'Passwords do not match'
+                    : null,
               ),
             ],
           ),
@@ -5670,7 +6812,8 @@ void _handleLogout(BuildContext context) {
                       content: Text(
                         success
                             ? 'Password changed successfully'
-                            : userState.errorMessage ?? 'Failed to change password',
+                            : userState.errorMessage ??
+                                  'Failed to change password',
                       ),
                       backgroundColor: success ? Colors.green : Colors.red,
                     ),
@@ -5718,7 +6861,9 @@ void _handleLogout(BuildContext context) {
           TextButton(
             onPressed: () async {
               final userState = context.read<FirebaseUserState>();
-              final success = await userState.deleteAccount(passwordController.text);
+              final success = await userState.deleteAccount(
+                passwordController.text,
+              );
               if (context.mounted) {
                 if (success) {
                   Navigator.of(context).pushAndRemoveUntil(
@@ -5744,6 +6889,99 @@ void _handleLogout(BuildContext context) {
       ),
     );
   }
+}
+
+// ✅ NEW: Helper method to build achievement sections
+Widget _buildAchievementSection({
+  required String title,
+  required List<QueryDocumentSnapshot> achievements,
+  required Color color,
+  required IconData icon,
+}) {
+  return Card(
+    elevation: 3,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: achievements.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final achievementTitle = data['title'] ?? 'Achievement';
+              final dateEarned = data['dateEarned'];
+              DateTime? earnedDate;
+              if (dateEarned is Timestamp) {
+                earnedDate = dateEarned.toDate();
+              }
+
+              return Tooltip(
+                message: data['description'] ?? achievementTitle,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: color.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, size: 16, color: color),
+                          const SizedBox(width: 6),
+                          Text(
+                            achievementTitle,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: color.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (earnedDate != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '${earnedDate.day}/${earnedDate.month}/${earnedDate.year}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ========== EDIT PROFILE PAGE ==========
@@ -5782,7 +7020,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final userState = context.read<FirebaseUserState>();
     final success = await userState.updateUserProfile(
       username: _usernameController.text.trim(),
-      className: _classNameController.text.trim().isEmpty ? null : _classNameController.text.trim(),
+      className: _classNameController.text.trim().isEmpty
+          ? null
+          : _classNameController.text.trim(),
       formLevel: _selectedFormLevel,
     );
 
@@ -5791,11 +7031,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (success) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Profile updated successfully'),
+          backgroundColor: Colors.green,
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(userState.errorMessage ?? 'Update failed'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(userState.errorMessage ?? 'Update failed'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -5806,7 +7052,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final userState = context.watch<FirebaseUserState>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile'), backgroundColor: Colors.lightBlue, foregroundColor: Colors.white),
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -5814,18 +7064,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Update Your Information', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const Text(
+                'Update Your Information',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _usernameController,
                 decoration: InputDecoration(
                   labelText: 'Username',
                   prefixIcon: const Icon(Icons.person),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter username';
-                  if (value.length < 3) return 'Username must be at least 3 characters';
+                  if (value == null || value.isEmpty)
+                    return 'Please enter username';
+                  if (value.length < 3)
+                    return 'Username must be at least 3 characters';
                   return null;
                 },
               ),
@@ -5836,10 +7093,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   decoration: InputDecoration(
                     labelText: 'Form Level',
                     prefixIcon: const Icon(Icons.school),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: ['Form 4', 'Form 5'].map((level) => DropdownMenuItem(value: level, child: Text(level))).toList(),
-                  onChanged: (value) => setState(() => _selectedFormLevel = value),
+                  items: ['Form 4', 'Form 5']
+                      .map(
+                        (level) =>
+                            DropdownMenuItem(value: level, child: Text(level)),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedFormLevel = value),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -5847,7 +7112,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   decoration: InputDecoration(
                     labelText: 'Class Name',
                     prefixIcon: const Icon(Icons.class_),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ],
@@ -5860,11 +7127,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: userState.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
             ],
@@ -5921,7 +7193,7 @@ class MaterialAppState extends ChangeNotifier {
 
     if (snapshot.docs.isEmpty) {
       await collectionRef.add({
-        'name': '___placeholder___', 
+        'name': '___placeholder___',
         'description': '',
         'file': '',
         'time': Timestamp.now(),
@@ -5930,20 +7202,22 @@ class MaterialAppState extends ChangeNotifier {
   }
 
   Stream<List<LearningMaterial>> getMaterialsStream() {
-    return _db.collection('materials')
+    return _db
+        .collection('materials')
         .orderBy('time', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .where((doc) => doc.data()['name'] != '___placeholder___')
-          .map((doc) {
-        final data = doc.data();
-        if (!data.containsKey('time') || data['time'] == null) {
-          data['time'] = Timestamp.now();
-        }
-        return LearningMaterial.fromMap(doc.id, data);
-      }).toList();
-    });
+          return snapshot.docs
+              .where((doc) => doc.data()['name'] != '___placeholder___')
+              .map((doc) {
+                final data = doc.data();
+                if (!data.containsKey('time') || data['time'] == null) {
+                  data['time'] = Timestamp.now();
+                }
+                return LearningMaterial.fromMap(doc.id, data);
+              })
+              .toList();
+        });
   }
 
   // Add a new material
@@ -5985,15 +7259,21 @@ class _MaterialsPageState extends State<MaterialsPage> {
   }
 
   void fetchUserType() async {
-    final uid = firebase_auth.FirebaseAuth.instance.currentUser!.uid;
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final uid = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
     if (doc.exists) {
       setState(() {
-        userType = doc['userType'] ?? 'UserType.student';
+        // Updated retrieval to be safer and match stored value (which is a string)
+        userType =
+            doc.data()?['userType'] as String? ?? UserType.student.toString();
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -6001,10 +7281,8 @@ class _MaterialsPageState extends State<MaterialsPage> {
     var theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Learning Materials'),
-      ),
-      floatingActionButton: userType == 'UserType.teacher'
+      appBar: AppBar(title: const Text('Learning Materials')),
+      floatingActionButton: userType == UserType.teacher.toString()
           ? FloatingActionButton(
               onPressed: () async {
                 final result = await Navigator.push(
@@ -6012,7 +7290,9 @@ class _MaterialsPageState extends State<MaterialsPage> {
                   MaterialPageRoute(builder: (context) => UploadPage()),
                 );
 
-                if (result != null && result['success'] == true && context.mounted) {
+                if (result != null &&
+                    result['success'] == true &&
+                    context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(result['message']),
@@ -6058,14 +7338,17 @@ class _MaterialsPageState extends State<MaterialsPage> {
                   }
 
                   final materials = snapshot.data!
-                      .where((m) =>
-                          m.name.toLowerCase().contains(searchQuery) ||
-                          m.description.toLowerCase().contains(searchQuery))
+                      .where(
+                        (m) =>
+                            m.name.toLowerCase().contains(searchQuery) ||
+                            m.description.toLowerCase().contains(searchQuery),
+                      )
                       .toList();
 
                   if (materials.isEmpty) {
                     return const Center(
-                        child: Text('No materials match your search.'));
+                      child: Text('No materials match your search.'),
+                    );
                   }
 
                   return ListView.builder(
@@ -6075,8 +7358,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
-                          leading: Icon(Icons.file_present,
-                              color: theme.colorScheme.primary),
+                          leading: Icon(
+                            Icons.file_present,
+                            color: theme.colorScheme.primary,
+                          ),
                           title: Text(material.name),
                           subtitle: Text(
                             '${material.description}\nUploaded At: ${material.time}',
@@ -6089,7 +7374,9 @@ class _MaterialsPageState extends State<MaterialsPage> {
                                 await launchUrl(url);
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Cannot open file URL.')),
+                                  const SnackBar(
+                                    content: Text('Cannot open file URL.'),
+                                  ),
                                 );
                               }
                             } else {
@@ -6097,26 +7384,31 @@ class _MaterialsPageState extends State<MaterialsPage> {
                               final result = await OpenFile.open(material.file);
                               if (result.type != ResultType.done) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Cannot open local file.')),
+                                  const SnackBar(
+                                    content: Text('Cannot open local file.'),
+                                  ),
                                 );
                               }
                             }
                           },
-                          trailing: userType == 'UserType.teacher'
+                          trailing: userType == UserType.teacher.toString()
                               ? PopupMenuButton<String>(
                                   onSelected: (value) async {
                                     if (value == 'edit') {
                                       final result = await Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) =>
-                                              UploadPage(existingMaterial: material),
+                                          builder: (context) => UploadPage(
+                                            existingMaterial: material,
+                                          ),
                                         ),
                                       );
                                       if (result != null &&
                                           result['success'] == true &&
                                           context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           SnackBar(
                                             content: Text(result['message']),
                                             backgroundColor: Colors.green,
@@ -6127,9 +7419,12 @@ class _MaterialsPageState extends State<MaterialsPage> {
                                       final confirm = await showDialog<bool>(
                                         context: context,
                                         builder: (context) => AlertDialog(
-                                          title: const Text('Delete Confirmation'),
+                                          title: const Text(
+                                            'Delete Confirmation',
+                                          ),
                                           content: const Text(
-                                              'Are you sure you want to delete this material?'),
+                                            'Are you sure you want to delete this material?',
+                                          ),
                                           actions: [
                                             TextButton(
                                               onPressed: () =>
@@ -6146,11 +7441,16 @@ class _MaterialsPageState extends State<MaterialsPage> {
                                       );
 
                                       if (confirm == true) {
-                                        await appState.deleteMaterial(material.id);
-                                        ScaffoldMessenger.of(context).showSnackBar(
+                                        await appState.deleteMaterial(
+                                          material.id,
+                                        );
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
                                           const SnackBar(
-                                            content:
-                                                Text('Material deleted successfully!'),
+                                            content: Text(
+                                              'Material deleted successfully!',
+                                            ),
                                             backgroundColor: Colors.green,
                                           ),
                                         );
@@ -6159,9 +7459,13 @@ class _MaterialsPageState extends State<MaterialsPage> {
                                   },
                                   itemBuilder: (context) => [
                                     const PopupMenuItem(
-                                        value: 'edit', child: Text('Edit')),
+                                      value: 'edit',
+                                      child: Text('Edit'),
+                                    ),
                                     const PopupMenuItem(
-                                        value: 'delete', child: Text('Delete')),
+                                      value: 'delete',
+                                      child: Text('Delete'),
+                                    ),
                                   ],
                                 )
                               : null,
@@ -6240,9 +7544,11 @@ class _UploadPageState extends State<UploadPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isEditing ? 'Edit Confirmation' : 'Upload Confirmation'),
-        content: Text(isEditing
-            ? 'Are you sure you want to update this material?'
-            : 'Are you sure you want to upload this new material?'),
+        content: Text(
+          isEditing
+              ? 'Are you sure you want to update this material?'
+              : 'Are you sure you want to upload this new material?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -6273,9 +7579,9 @@ class _UploadPageState extends State<UploadPage> {
           });
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -6286,9 +7592,10 @@ class _UploadPageState extends State<UploadPage> {
 
     return Scaffold(
       appBar: AppBar(
-          title: Text(isEditing
-              ? 'Edit Learning Material'
-              : 'Upload Learning Material')),
+        title: Text(
+          isEditing ? 'Edit Learning Material' : 'Upload Learning Material',
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -6298,7 +7605,9 @@ class _UploadPageState extends State<UploadPage> {
               TextFormField(
                 initialValue: name,
                 decoration: const InputDecoration(
-                    labelText: 'Name', border: OutlineInputBorder()),
+                  labelText: 'Name',
+                  border: OutlineInputBorder(),
+                ),
                 onSaved: (v) => name = v ?? '',
                 validator: (v) =>
                     (v == null || v.isEmpty) ? 'Enter a name' : null,
@@ -6307,7 +7616,9 @@ class _UploadPageState extends State<UploadPage> {
               TextFormField(
                 initialValue: description,
                 decoration: const InputDecoration(
-                    labelText: 'Description', border: OutlineInputBorder()),
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
                 maxLines: 3,
                 onSaved: (v) => description = v ?? '',
                 validator: (v) =>
