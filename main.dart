@@ -13,6 +13,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart'; 
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:typed_data'; // For Uint8List
+import 'package:flutter/foundation.dart'; // For kIsWeb
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
@@ -367,10 +373,12 @@ class FirebaseUserState extends ChangeNotifier {
   }) async {
     try {
       Query query = _firestore.collection('users');
-      if (className != null)
+      if (className != null) {
         query = query.where('className', isEqualTo: className);
-      if (formLevel != null)
+      }
+      if (formLevel != null) {
         query = query.where('formLevel', isEqualTo: formLevel);
+      }
 
       final snapshot = await query.get();
       return snapshot.docs
@@ -574,10 +582,12 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           validator: (value) {
-                            if (value == null || value.isEmpty)
+                            if (value == null || value.isEmpty) {
                               return 'Please enter email';
-                            if (!value.contains('@'))
+                            }
+                            if (!value.contains('@')) {
                               return 'Please enter a valid email';
+                            }
                             return null;
                           },
                         ),
@@ -753,10 +763,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter username';
-                  if (value.length < 3)
+                  }
+                  if (value.length < 3) {
                     return 'Username must be at least 3 characters';
+                  }
                   return null;
                 },
               ),
@@ -772,8 +784,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter email';
+                  }
                   if (!value.contains('@')) return 'Please enter a valid email';
                   return null;
                 },
@@ -799,10 +812,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter password';
-                  if (value.length < 6)
+                  }
+                  if (value.length < 6) {
                     return 'Password must be at least 6 characters';
+                  }
                   return null;
                 },
               ),
@@ -932,7 +947,7 @@ class InHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<FirebaseUserState>().currentUser;
 
-    void _navigateToPage(int pageIndex) {
+    void navigateToPage(int pageIndex) {
       // Find the HomePage in the widget tree and update its selectedIndex
       final homePageState = context.findAncestorStateOfType<_HomePageState>();
       if (homePageState != null) {
@@ -1000,7 +1015,7 @@ class InHomePage extends StatelessWidget {
               children: [
                 Expanded(
                   child: InkWell(
-                    onTap: () => _navigateToPage(6), // Navigate to Achievements
+                    onTap: () => navigateToPage(6), // Navigate to Achievements
                     child: _buildStatCard(
                       icon: Icons.star,
                       title: 'Points',
@@ -1012,7 +1027,7 @@ class InHomePage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: InkWell(
-                    onTap: () => _navigateToPage(6), // Navigate to Achievements
+                    onTap: () => navigateToPage(6), // Navigate to Achievements
                     child: _buildStatCard(
                       icon: Icons.emoji_events,
                       title: 'Badges',
@@ -1025,7 +1040,7 @@ class InHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => _navigateToPage(5), // Navigate to Progress
+              onTap: () => navigateToPage(5), // Navigate to Progress
               child: _buildStatCard(
                 icon: Icons.trending_up,
                 title: 'Completion',
@@ -1054,25 +1069,25 @@ class InHomePage extends StatelessWidget {
                 icon: Icons.book,
                 title: 'Courses',
                 color: Colors.blue,
-                onTap: () => _navigateToPage(1),
+                onTap: () => navigateToPage(1),
               ),
               _buildQuickActionCard(
                 icon: Icons.quiz,
                 title: 'Quizzes',
                 color: Colors.purple,
-                onTap: () => _navigateToPage(3),
+                onTap: () => navigateToPage(3),
               ),
               _buildQuickActionCard(
                 icon: Icons.chat,
                 title: 'AI Chatbot',
                 color: Colors.teal,
-                onTap: () => _navigateToPage(4),
+                onTap: () => navigateToPage(4),
               ),
               _buildQuickActionCard(
                 icon: Icons.folder,
                 title: 'Materials',
                 color: Colors.orange,
-                onTap: () => _navigateToPage(2),
+                onTap: () => navigateToPage(2),
               ),
             ],
           ),
@@ -1322,10 +1337,12 @@ class _UserSearchPageState extends State<UserSearchPage> {
 
     if (_filterClassName != null || _filterFormLevel != null) {
       results = results.where((user) {
-        if (_filterClassName != null && user.className != _filterClassName)
+        if (_filterClassName != null && user.className != _filterClassName) {
           return false;
-        if (_filterFormLevel != null && user.formLevel != _filterFormLevel)
+        }
+        if (_filterFormLevel != null && user.formLevel != _filterFormLevel) {
           return false;
+        }
         return true;
       }).toList();
     }
@@ -1374,6 +1391,63 @@ class _UserSearchPageState extends State<UserSearchPage> {
     });
     _loadAllUsers();
   }
+
+  void _showUserDetailsDialog(AppUser user) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: user.userType == UserType.student
+                ? Colors.blue[100]
+                : Colors.green[100],
+            backgroundImage: user.profilePicture != null &&
+                             user.profilePicture!.isNotEmpty &&
+                             user.profilePicture!.startsWith('http')
+                ? NetworkImage(user.profilePicture!)
+                : null,
+            child: user.profilePicture == null ||
+                   user.profilePicture!.isEmpty ||
+                   !user.profilePicture!.startsWith('http')
+                ? Icon(
+                    user.userType == UserType.student ? Icons.school : Icons.person,
+                    color: user.userType == UserType.student
+                        ? Colors.blue[700]
+                        : Colors.green[700],
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(user.username, style: const TextStyle(fontSize: 20)),
+          ),
+        ],
+      ),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildDetailRow('User Type', user.userType == UserType.student ? 'Student' : 'Teacher'),
+          _buildDetailRow('Email', user.email),
+          if (user.formLevel != null) _buildDetailRow('Form Level', user.formLevel!),
+          if (user.className != null) _buildDetailRow('Class', user.className!),
+          if (user.userType == UserType.student) ...[
+            const Divider(),
+            _buildDetailRow('Points', user.points.toString()),
+            _buildDetailRow('Badges', user.badges.length.toString()),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
 
   void _showFilterDialog() {
     String? tempClassName = _filterClassName;
@@ -1560,19 +1634,26 @@ class _UserSearchPageState extends State<UserSearchPage> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: user.userType == UserType.student
-                                ? Colors.blue[100]
-                                : Colors.green[100],
-                            child: Icon(
-                              user.userType == UserType.student
-                                  ? Icons.school
-                                  : Icons.person,
-                              color: user.userType == UserType.student
-                                  ? Colors.blue[700]
-                                  : Colors.green[700],
-                            ),
-                          ),
+                       leading: CircleAvatar(
+  backgroundColor: user.userType == UserType.student
+      ? Colors.blue[100]
+      : Colors.green[100],
+  backgroundImage: user.profilePicture != null &&
+                   user.profilePicture!.isNotEmpty &&
+                   user.profilePicture!.startsWith('http')
+      ? NetworkImage(user.profilePicture!)
+      : null,
+  child: user.profilePicture == null ||
+         user.profilePicture!.isEmpty ||
+         !user.profilePicture!.startsWith('http')
+      ? Icon(
+          user.userType == UserType.student ? Icons.school : Icons.person,
+          color: user.userType == UserType.student
+              ? Colors.blue[700]
+              : Colors.green[700],
+        )
+      : null,
+),
                           title: Row(
                             children: [
                               Text(user.username),
@@ -1644,58 +1725,6 @@ class _UserSearchPageState extends State<UserSearchPage> {
     );
   }
 
-  void _showUserDetailsDialog(AppUser user) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: user.userType == UserType.student
-                  ? Colors.blue[100]
-                  : Colors.green[100],
-              child: Icon(
-                user.userType == UserType.student ? Icons.school : Icons.person,
-                color: user.userType == UserType.student
-                    ? Colors.blue[700]
-                    : Colors.green[700],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(user.username, style: const TextStyle(fontSize: 20)),
-            ),
-          ],
-        ),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildDetailRow(
-              'User Type',
-              user.userType == UserType.student ? 'Student' : 'Teacher',
-            ),
-            _buildDetailRow('Email', user.email),
-            if (user.formLevel != null)
-              _buildDetailRow('Form Level', user.formLevel!),
-            if (user.className != null)
-              _buildDetailRow('Class', user.className!),
-            if (user.userType == UserType.student) ...[
-              const Divider(),
-              _buildDetailRow('Points', user.points.toString()),
-              _buildDetailRow('Badges', user.badges.length.toString()),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
@@ -2882,8 +2911,9 @@ class _QuizPageState extends State<QuizPage> {
                                 onSelected: (value) {
                                   if (value == 'edit') _editQuiz(quiz);
                                   if (value == 'delete') _deleteQuiz(quiz);
-                                  if (value == 'review')
+                                  if (value == 'review') {
                                     _reviewQuiz(quiz); // NEW: Handle review
+                                  }
                                 },
                                 itemBuilder: (context) => [
                                   // NEW: Only show 'Edit' if quiz is a draft
@@ -3257,7 +3287,9 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     _newQuestionTextController.clear();
     _newAnswerController.clear();
     _newExplanationController.clear();
-    for (var c in _mcqOptionControllers) c.clear();
+    for (var c in _mcqOptionControllers) {
+      c.clear();
+    }
     setState(() => _correctMcqOptionIndex = 0);
   }
 
@@ -3379,7 +3411,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                       ),
                     ),
                     DropdownButtonFormField<QuestionType>(
-                      value: _newQuestionType,
+                      initialValue: _newQuestionType,
                       items: const [
                         DropdownMenuItem(
                           value: QuestionType.mcq,
@@ -4780,14 +4812,14 @@ class _ProgressPageState extends State<ProgressPage> {
     final gradeCtl = TextEditingController(text: record.grade);
     final commentsCtl = TextEditingController(text: record.comments);
 
-    final _editFormKey = GlobalKey<FormState>();
+    final editFormKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Edit Progress'),
         content: Form(
-          key: _editFormKey,
+          key: editFormKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -4825,7 +4857,7 @@ class _ProgressPageState extends State<ProgressPage> {
           ElevatedButton(
             child: const Text('Save'),
             onPressed: () async {
-              if (!(_editFormKey.currentState?.validate() ?? false)) return;
+              if (!(editFormKey.currentState?.validate() ?? false)) return;
 
               await _fs.collection('progress_records').doc(record.id).update({
                 'activity': activityCtl.text.trim(),
@@ -5086,12 +5118,12 @@ class ProgressHistoryPage extends StatelessWidget {
       );
     }
 
-    final FirebaseFirestore _fs = FirebaseFirestore.instance;
+    final FirebaseFirestore fs = FirebaseFirestore.instance;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Progress History')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _fs.collection('progress_records').snapshots(),
+        stream: fs.collection('progress_records').snapshots(),
         builder: (_, snap) {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
 
@@ -5221,15 +5253,15 @@ class _AchievementsPageState extends State<AchievementsPage> {
   Future<void> _showEditAchievementDialog(
     Map<String, dynamic> achievement,
   ) async {
-    final _editFormKey = GlobalKey<FormState>();
-    final TextEditingController _titleController = TextEditingController(
+    final editFormKey = GlobalKey<FormState>();
+    final TextEditingController titleController = TextEditingController(
       text: achievement['title'] ?? '',
     );
-    final TextEditingController _descriptionController = TextEditingController(
+    final TextEditingController descriptionController = TextEditingController(
       text: achievement['description'] ?? '',
     );
-    String _type = achievement['type'] ?? 'Badge';
-    final List<String> _achievementTypes = [
+    String type = achievement['type'] ?? 'Badge';
+    final List<String> achievementTypes = [
       'Badge',
       'Certificate',
       'Milestone',
@@ -5245,7 +5277,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
             builder: (BuildContext context, StateSetter setState) {
               return SingleChildScrollView(
                 child: Form(
-                  key: _editFormKey,
+                  key: editFormKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -5255,7 +5287,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
-                        controller: _titleController,
+                        controller: titleController,
                         decoration: const InputDecoration(
                           labelText: 'Title',
                           border: OutlineInputBorder(),
@@ -5268,8 +5300,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
                           labelText: 'Type',
                           border: OutlineInputBorder(),
                         ),
-                        value: _type,
-                        items: _achievementTypes
+                        initialValue: type,
+                        items: achievementTypes
                             .map(
                               (type) => DropdownMenuItem<String>(
                                 value: type,
@@ -5278,11 +5310,11 @@ class _AchievementsPageState extends State<AchievementsPage> {
                             )
                             .toList(),
                         onChanged: (newValue) =>
-                            setState(() => _type = newValue!),
+                            setState(() => type = newValue!),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
-                        controller: _descriptionController,
+                        controller: descriptionController,
                         decoration: const InputDecoration(
                           labelText: 'Description',
                           border: OutlineInputBorder(),
@@ -5304,16 +5336,16 @@ class _AchievementsPageState extends State<AchievementsPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (_editFormKey.currentState!.validate()) {
+                if (editFormKey.currentState!.validate()) {
                   try {
                     // Update the existing achievement record in Firestore
                     await FirebaseFirestore.instance
                         .collection('achievements')
                         .doc(achievement['id'])
                         .update({
-                          'title': _titleController.text.trim(),
-                          'type': _type,
-                          'description': _descriptionController.text.trim(),
+                          'title': titleController.text.trim(),
+                          'type': type,
+                          'description': descriptionController.text.trim(),
                           // Note: We are only updating the *record* here. Student profile badges (string list) remain unchanged.
                         });
 
@@ -5712,7 +5744,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
       return snapshot.docs
           .map(
             (doc) =>
-                AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>),
+                AppUser.fromMap(doc.id, doc.data()),
           )
           .toList();
     } catch (e) {
@@ -5777,7 +5809,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Achievement "${_title}" manually awarded to ${_selectedStudentName}.',
+                'Achievement "$_title" manually awarded to $_selectedStudentName.',
               ),
               backgroundColor: Colors.green,
             ),
@@ -5841,7 +5873,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.category),
                 ),
-                value: _type,
+                initialValue: _type,
                 items: _achievementTypes.map((String type) {
                   return DropdownMenuItem<String>(
                     value: type,
@@ -5954,7 +5986,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.person),
           ),
-          value: _selectedStudentId,
+          initialValue: _selectedStudentId,
           items: studentItems,
           hint: const Text('Choose a student'),
           validator: (value) {
@@ -5983,15 +6015,117 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
+ // Replace the _pickAndUploadProfilePicture function in ProfilePage class
+
+Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
+  try {
     final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 75,
+    );
 
     if (image == null) return null;
 
-    // Store local path (In production, upload to Firebase Storage)
-    return image.path;
+    // Show loading dialog
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Uploading profile picture...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Get current user ID
+    final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    // Read image bytes
+    final imageBytes = await image.readAsBytes();
+    
+    // Create unique filename
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final extension = image.path.split('.').last;
+    final fileName = 'profile_$timestamp.$extension';
+
+    print('📤 Uploading profile picture...');
+    print('   User ID: $userId');
+    print('   File: $fileName');
+    print('   Size: ${imageBytes.length} bytes');
+
+    // Upload to Firebase Storage
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('profile_pictures')
+        .child(userId)
+        .child(fileName);
+
+    final metadata = SettableMetadata(
+      contentType: 'image/${extension == 'jpg' ? 'jpeg' : extension}',
+      customMetadata: {
+        'uploadedAt': DateTime.now().toIso8601String(),
+      },
+    );
+
+    final uploadTask = await storageRef.putData(imageBytes, metadata);
+
+    if (uploadTask.state != TaskState.success) {
+      throw Exception('Upload failed');
+    }
+
+    // Get download URL
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+    
+    print('✅ Profile picture uploaded successfully!');
+    print('   URL: $downloadUrl');
+
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+    }
+
+    return downloadUrl;
+
+  } on FirebaseException catch (e) {
+    print('❌ Firebase error: ${e.code} - ${e.message}');
+    
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed: ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    return null;
+    
+  } catch (e) {
+    print('❌ Upload error: $e');
+    
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    return null;
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -6085,18 +6219,16 @@ class ProfilePage extends StatelessWidget {
                               backgroundColor: Colors.white,
                               backgroundImage:
                                   user.profilePicture != null &&
-                                      user.profilePicture!.isNotEmpty
-                                  ? FileImage(File(user.profilePicture!))
+                                      user.profilePicture!.isNotEmpty &&
+                                      user.profilePicture!.startsWith('http')
+                                  ? NetworkImage(user.profilePicture!)
                                   : null,
                               child:
                                   user.profilePicture == null ||
-                                      user.profilePicture!.isEmpty
-                                  ? const Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: Colors.blue,
-                                    )
-                                  : null,
+                                      user.profilePicture!.isEmpty ||
+             !user.profilePicture!.startsWith('http')
+          ? const Icon(Icons.person, size: 50, color: Colors.blue)
+          : null,
                             ),
                             Positioned(
                               bottom: 0,
@@ -6835,10 +6967,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
+                  if (value == null || value.isEmpty) {
                     return 'Please enter username';
-                  if (value.length < 3)
+                  }
+                  if (value.length < 3) {
                     return 'Username must be at least 3 characters';
+                  }
                   return null;
                 },
               ),
@@ -6943,6 +7077,16 @@ class LearningMaterial {
 class MaterialAppState extends ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  Future<void> checkStorageConfiguration() async {
+  try {
+    final ref = FirebaseStorage.instance.ref().child('learning_materials');
+    await ref.listAll();
+    print('✅ Storage configuration OK');
+  } catch (e) {
+    print('❌ Storage error: $e');
+  }
+}
+
   Future<void> createMaterialsCollection() async {
     final collectionRef = _db.collection('materials');
     final snapshot = await collectionRef.limit(1).get();
@@ -6998,19 +7142,385 @@ class MaterialAppState extends ChangeNotifier {
 
 // ===== MATERIALS PAGE =====
 class MaterialsPage extends StatefulWidget {
+  const MaterialsPage({super.key});
+
   @override
   State<MaterialsPage> createState() => _MaterialsPageState();
 }
 
-class _MaterialsPageState extends State<MaterialsPage> {
+class 
+_MaterialsPageState extends State<MaterialsPage> {
   String searchQuery = '';
   String userType = 'UserType.student'; // default
+
+Future<void> _downloadFile(BuildContext context, LearningMaterial material) async {
+  final filePath = material.file;
+
+  // Handle local files
+  if (!filePath.startsWith('http')) {
+    try {
+      final File sourceFile = File(filePath);
+      if (!sourceFile.existsSync()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Local file not found.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      await OpenFile.open(sourceFile.path);
+      return;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+  }
+
+  // ✅ Request storage permission for Android
+  if (Platform.isAndroid) {
+    // Check Android version
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    
+    if (androidInfo.version.sdkInt >= 30) {
+      // Android 11+ (API 30+) - Request MANAGE_EXTERNAL_STORAGE
+      var status = await Permission.manageExternalStorage.status;
+      if (!status.isGranted) {
+        status = await Permission.manageExternalStorage.request();
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Storage permission is required to download files.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+    } else {
+      // Android 10 and below - Request regular storage permission
+      var status = await Permission.storage.status;
+      if (!status.isGranted) {
+        status = await Permission.storage.request();
+        if (!status.isGranted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Storage permission denied.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+    }
+  }
+
+  try {
+    // Show loading
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text('Downloading...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Get filename
+    final Uri uri = Uri.parse(filePath);
+    String fileName = uri.pathSegments.last.split('?').first;
+    fileName = Uri.decodeComponent(fileName);
+    
+    if (fileName.contains('learning_materials/')) {
+      fileName = fileName.split('learning_materials/').last;
+    }
+    if (fileName.contains('_') && int.tryParse(fileName.split('_')[0]) != null) {
+      fileName = fileName.split('_').sublist(1).join('_');
+    }
+
+    // ✅ Save to Downloads folder
+    Directory? downloadDir;
+    if (Platform.isAndroid) {
+      downloadDir = Directory('/storage/emulated/0/Download');
+      if (!downloadDir.existsSync()) {
+        downloadDir = await getExternalStorageDirectory();
+      }
+    } else {
+      downloadDir = await getApplicationDocumentsDirectory();
+    }
+
+    final String savePath = '${downloadDir!.path}/$fileName';
+    final File downloadFile = File(savePath);
+
+    // Download from Firebase
+    final ref = FirebaseStorage.instance.refFromURL(filePath);
+    await ref.writeToFile(downloadFile);
+
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Downloaded to: ${downloadDir.path}/$fileName'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'OPEN',
+            textColor: Colors.white,
+            onPressed: () => OpenFile.open(downloadFile.path),
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Download failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
+Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) async {
+  if (material.file.startsWith('http')) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('This file is already in the cloud.')),
+    );
+    return;
+  }
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Migrate to Cloud Storage'),
+      content: const Text(
+        'This will upload the local file to Firebase Storage so all users can download it.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Upload'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm != true) return;
+
+  try {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Uploading to cloud...'),
+          ],
+        ),
+      ),
+    );
+
+    final file = File(material.file);
+    
+    if (!file.existsSync()) {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Local file not found. Please re-upload this material.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+    final storageRef = FirebaseStorage.instance.ref().child('learning_materials/$fileName');
+    
+    final uploadTask = await storageRef.putFile(file);
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+    // Update Firestore with new URL
+    final updatedMaterial = LearningMaterial(
+      id: material.id,
+      name: material.name,
+      description: material.description,
+      file: downloadUrl,
+      time: material.time,
+    );
+
+    await context.read<MaterialAppState>().editMaterial(updatedMaterial);
+
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Successfully migrated to cloud storage!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Migration failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+  /*Future<void> _downloadFile(BuildContext context, LearningMaterial material) async {
+  final downloadUrl = material.file;
+
+  // ✅ Check if it's a valid URL
+  if (!downloadUrl.startsWith('http')) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Error: This file is stored locally and cannot be downloaded.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  // 1. Check/Request Permission
+  PermissionStatus status = PermissionStatus.granted;
+  if (Platform.isAndroid || Platform.isIOS) {
+    status = await Permission.storage.request();
+  }
+  
+  if (!status.isGranted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Storage permission denied. Cannot download.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  try {
+    // 2. Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Downloading...'),
+          ],
+        ),
+      ),
+    );
+
+    // 3. Get file name from URL
+    final Uri uri = Uri.parse(downloadUrl);
+    String fileName = uri.pathSegments.last.split('?').first;
+    
+    // Decode URL-encoded filename
+    fileName = Uri.decodeComponent(fileName);
+    
+    // If filename still contains path, extract just the name
+    if (fileName.contains('learning_materials%2F')) {
+      fileName = fileName.split('learning_materials%2F').last;
+    }
+    if (fileName.contains('learning_materials/')) {
+      fileName = fileName.split('learning_materials/').last;
+    }
+
+    // 4. Determine save location
+    final Directory tempDir = await getApplicationDocumentsDirectory();
+    final String savePath = '${tempDir.path}/$fileName';
+    final File downloadFile = File(savePath);
+
+    // 5. Download file from Firebase Storage
+    final ref = FirebaseStorage.instance.refFromURL(downloadUrl);
+    await ref.writeToFile(downloadFile);
+
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+    }
+
+    // 6. Confirm download and offer to open
+    if (downloadFile.existsSync()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Downloaded: $fileName'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Open',
+              textColor: Colors.white,
+              onPressed: () async {
+                final result = await OpenFile.open(downloadFile.path);
+                if (result.type != ResultType.done) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cannot open this file type'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        );
+      }
+    }
+  } on FirebaseException catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Download failed: ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Download failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}*/
 
   @override
   void initState() {
     super.initState();
     final appState = context.read<MaterialAppState>();
     appState.createMaterialsCollection();
+    appState.checkStorageConfiguration();
     fetchUserType();
   }
 
@@ -7137,7 +7647,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
                               }
                             } else {
                               // It's a local file path
-                              final result = await OpenFile.open(material.file);
+                              /*final result = await OpenFile.open(material.file);
                               if (result.type != ResultType.done) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -7145,90 +7655,101 @@ class _MaterialsPageState extends State<MaterialsPage> {
                                   ),
                                 );
                               }
+                            }*/
+
+                            final result = await OpenFile.open(material.file);
+                              if (result.type != ResultType.done) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('File not found or cannot be opened. Use the download button if it is a cloud file.'),
+                                  ),
+                                );
+                              }
                             }
                           },
-                          trailing: userType == UserType.teacher.toString()
-                              ? PopupMenuButton<String>(
-                                  onSelected: (value) async {
-                                    if (value == 'edit') {
-                                      final result = await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => UploadPage(
-                                            existingMaterial: material,
-                                          ),
-                                        ),
-                                      );
-                                      if (result != null &&
-                                          result['success'] == true &&
-                                          context.mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(result['message']),
-                                            backgroundColor: Colors.green,
-                                          ),
-                                        );
-                                      }
-                                    } else if (value == 'delete') {
-                                      final confirm = await showDialog<bool>(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text(
-                                            'Delete Confirmation',
-                                          ),
-                                          content: const Text(
-                                            'Are you sure you want to delete this material?',
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: const Text('Delete'),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-
-                                      if (confirm == true) {
-                                        await appState.deleteMaterial(
-                                          material.id,
-                                        );
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Material deleted successfully!',
-                                            ),
-                                            backgroundColor: Colors.green,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Text('Edit'),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text('Delete'),
-                                    ),
-                                  ],
-                                )
-                              : null,
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // NEW: Dedicated Download Button for all users
+                              IconButton(
+                                icon: const Icon(Icons.download, color: Colors.green),
+                                tooltip: 'Download File',
+                                onPressed: () => _downloadFile(context, material),
+                              ),
+  
+                           if (userType == UserType.teacher.toString())
+              PopupMenuButton<String>(
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UploadPage(
+                          existingMaterial: material,
+                        ),
+                      ),
+                    );
+                    if (result != null &&
+                        result['success'] == true &&
+                        context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(result['message']),
+                          backgroundColor: Colors.green,
                         ),
                       );
-                    },
-                  );
+                    }
+                  } else if (value == 'migrate') {
+        await _migrateToCloud(context, material);
+      } else if (value == 'delete') {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Confirmation'),
+                        content: const Text(
+                          'Are you sure you want to delete this material?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await appState.deleteMaterial(material.id);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Material deleted successfully!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Text('Edit'),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Delete'),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  },
+);
                 },
               ),
             ),
@@ -7254,6 +7775,447 @@ class _UploadPageState extends State<UploadPage> {
   String name = '';
   String description = '';
   String? filePath;
+  PlatformFile? _pickedFile;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingMaterial != null) {
+      name = widget.existingMaterial!.name;
+      description = widget.existingMaterial!.description;
+      filePath = widget.existingMaterial!.file;
+    }
+  }
+
+  // ✅ FIXED: Proper file picker
+  Future<void> pickFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+      
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          _pickedFile = result.files.first;
+          filePath = _pickedFile!.path; // For display purposes
+        });
+        
+        print('✅ File picked: ${_pickedFile!.name}');
+        print('   Size: ${_pickedFile!.size} bytes');
+      }
+    } catch (e) {
+      print('❌ File picker error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ✅ FIXED: Proper content type detection
+  String _getContentType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'txt':
+        return 'text/plain';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'zip':
+        return 'application/zip';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  // ✅ FIXED: Proper file upload with error handling
+  Future<void> submit(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) return;
+    
+    final isEditing = widget.existingMaterial != null;
+    
+    // Check if file is required for new uploads
+    if (!isEditing && _pickedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a file to upload.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    _formKey.currentState!.save();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEditing ? 'Update Material' : 'Upload Material'),
+        content: Text(
+          isEditing
+              ? 'Update this learning material?'
+              : 'Upload this new material? File: ${_pickedFile?.name ?? "Unknown"}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Uploading file to cloud storage...'),
+            ],
+          ),
+        ),
+      );
+
+      String downloadUrl;
+
+      // If editing and no new file selected, keep existing URL
+      if (isEditing && _pickedFile == null && widget.existingMaterial!.file.startsWith('http')) {
+        downloadUrl = widget.existingMaterial!.file;
+      } else if (_pickedFile != null) {
+        // Get file bytes
+        Uint8List? fileBytes;
+        
+        if (kIsWeb) {
+          fileBytes = _pickedFile!.bytes;
+        } else {
+          if (_pickedFile!.path != null) {
+            final file = File(_pickedFile!.path!);
+            if (!await file.exists()) {
+              throw Exception('Selected file does not exist on device');
+            }
+            fileBytes = await file.readAsBytes();
+          }
+        }
+
+        if (fileBytes == null || fileBytes.isEmpty) {
+          throw Exception('Could not read file data');
+        }
+
+        print('📤 Uploading file: ${_pickedFile!.name}');
+        print('   Size: ${fileBytes.length} bytes');
+
+        // Clean filename - remove special characters
+        String cleanFileName = _pickedFile!.name
+            .replaceAll(RegExp(r'[^\w\s\-\.]'), '_')
+            .replaceAll(RegExp(r'\s+'), '_');
+        
+        // Create unique filename with timestamp
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final fileName = '${timestamp}_$cleanFileName';
+
+        print('   Clean name: $fileName');
+        print('   Storage path: learning_materials/$fileName');
+
+        // Get storage reference - CRITICAL: Ensure correct path
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('learning_materials')
+            .child(fileName);
+
+        // Create metadata
+        final metadata = SettableMetadata(
+          contentType: _getContentType(_pickedFile!.name),
+          customMetadata: {
+            'originalName': _pickedFile!.name,
+            'uploadedBy': firebase_auth.FirebaseAuth.instance.currentUser?.email ?? 'unknown',
+            'uploadedById': firebase_auth.FirebaseAuth.instance.currentUser?.uid ?? 'unknown',
+            'uploadTimestamp': DateTime.now().toIso8601String(),
+          },
+        );
+
+        print('🚀 Starting upload...');
+
+        // Upload file
+        final uploadTask = await storageRef.putData(fileBytes, metadata);
+
+        print('   Upload state: ${uploadTask.state}');
+        print('   Bytes: ${uploadTask.bytesTransferred}/${uploadTask.totalBytes}');
+
+        if (uploadTask.state != TaskState.success) {
+          throw Exception('Upload failed with state: ${uploadTask.state}');
+        }
+
+        // Get download URL
+        downloadUrl = await uploadTask.ref.getDownloadURL();
+        print('✅ Upload successful!');
+        print('   Download URL: $downloadUrl');
+      } else {
+        throw Exception('No file selected for upload');
+      }
+
+      // Save to Firestore
+      final appState = context.read<MaterialAppState>();
+      final newMaterial = LearningMaterial(
+        id: widget.existingMaterial?.id ?? '',
+        name: name,
+        description: description,
+        file: downloadUrl,
+        time: DateTime.now(),
+      );
+
+      if (isEditing) {
+        await appState.editMaterial(newMaterial);
+      } else {
+        await appState.addMaterial(newMaterial);
+      }
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context, {
+          'success': true,
+          'message': isEditing
+              ? 'Material updated successfully!'
+              : 'Material uploaded successfully!',
+        });
+      }
+    } on FirebaseException catch (e) {
+      print('❌ Firebase error: ${e.code}');
+      print('   Message: ${e.message}');
+      print('   Plugin: ${e.plugin}');
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        String errorMessage = 'Upload failed: ${e.message ?? e.code}';
+
+        // Specific error handling
+        switch (e.code) {
+          case 'object-not-found':
+            errorMessage = '❌ Storage bucket not found.\n\n'
+                'Solutions:\n'
+                '1. Check Firebase Storage is enabled\n'
+                '2. Verify storage rules are deployed\n'
+                '3. Ensure learning_materials folder exists';
+            break;
+          case 'unauthorized':
+          case 'permission-denied':
+            errorMessage = '❌ Permission denied.\n\n'
+                'You need teacher permissions to upload files.\n'
+                'Contact admin if you should have access.';
+            break;
+          case 'unauthenticated':
+            errorMessage = '❌ Not logged in.\n\n'
+                'Please log in to upload files.';
+            break;
+          case 'quota-exceeded':
+            errorMessage = '❌ Storage quota exceeded.\n\n'
+                'Contact admin to upgrade storage plan.';
+            break;
+          case 'retry-limit-exceeded':
+            errorMessage = '❌ Upload timeout.\n\n'
+                'Check your internet connection and try again.';
+            break;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      print('❌ General upload error: $e');
+      print('Stack trace: $stackTrace');
+      
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.existingMaterial != null;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEditing ? 'Edit Material' : 'Upload Material'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              // Name field
+              TextFormField(
+                initialValue: name,
+                decoration: const InputDecoration(
+                  labelText: 'Material Name *',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.title),
+                ),
+                onSaved: (v) => name = v?.trim() ?? '',
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Description field
+              TextFormField(
+                initialValue: description,
+                decoration: const InputDecoration(
+                  labelText: 'Description *',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.description),
+                ),
+                maxLines: 3,
+                onSaved: (v) => description = v?.trim() ?? '',
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Enter a description' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // File picker
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'File ${isEditing ? "(optional)" : "*"}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: pickFile,
+                            icon: const Icon(Icons.attach_file),
+                            label: const Text('Choose File'),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _pickedFile != null
+                                  ? '✅ ${_pickedFile!.name}'
+                                  : (filePath != null && filePath!.startsWith('http'))
+                                      ? 'Current: Cloud file'
+                                      : '⚠️  No file selected',
+                              style: TextStyle(
+                                color: _pickedFile != null
+                                    ? Colors.green
+                                    : Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_pickedFile != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Size: ${(_pickedFile!.size / 1024 / 1024).toStringAsFixed(2)} MB',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Submit button
+              ElevatedButton.icon(
+                onPressed: () => submit(context),
+                icon: Icon(isEditing ? Icons.save : Icons.cloud_upload),
+                label: Text(
+                  isEditing ? 'Update Material' : 'Upload Material',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/*class _UploadPageState extends State<UploadPage> {
+  final _formKey = GlobalKey<FormState>();
+  String name = '';
+  String description = '';
+  String? filePath;
+  PlatformFile? _pickedFile;
 
   @override
   void initState() {
@@ -7273,6 +8235,336 @@ class _UploadPageState extends State<UploadPage> {
   }
 
   Future<void> submit(BuildContext context) async {
+  FocusScope.of(context).unfocus();
+
+  if (!_formKey.currentState!.validate()) return;
+  if (_pickedFile == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please select a file first.')),
+    );
+    return;
+  }
+
+  _formKey.currentState!.save();
+
+  final appState = context.read<MaterialAppState>();
+  final isEditing = widget.existingMaterial != null;
+
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(isEditing ? 'Edit Confirmation' : 'Upload Confirmation'),
+      content: Text(
+        isEditing
+            ? 'Are you sure you want to update this material?'
+            : 'Are you sure you want to upload this new material?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Yes'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm == true) {
+    try {
+      // Show loading dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text('Uploading file...'),
+              ],
+            ),
+          ),
+        );
+      }
+
+      String downloadUrl;
+      
+      // Check if we're editing and the file URL hasn't changed
+      if (isEditing && 
+          widget.existingMaterial!.file.startsWith('http') && 
+          filePath == widget.existingMaterial!.name) {
+        // If editing and file wasn't changed, keep the old URL
+        downloadUrl = widget.existingMaterial!.file;
+      } else {
+        // Get file bytes (works on both mobile and web)
+        final Uint8List? fileBytes = _pickedFile!.bytes ?? 
+            (kIsWeb ? null : await File(_pickedFile!.path!).readAsBytes());
+        
+        if (fileBytes == null) {
+          throw Exception('Could not read file data');
+        }
+        
+        print('File size: ${fileBytes.length} bytes');
+        
+        // Clean filename
+        String originalFileName = _pickedFile!.name;
+        originalFileName = originalFileName.replaceAll(RegExp(r'[^\w\s\-\.]'), '_');
+        
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_$originalFileName';
+        
+        print('Cleaned filename: $fileName');
+        print('Storage path: learning_materials/$fileName');
+        
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('learning_materials')
+            .child(fileName);
+        
+        // Upload with metadata - use putData for web compatibility  Future<void> submit(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) return;
+    if (_pickedFile == null && filePath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a file first.')),
+      );
+      return;
+    }
+
+    _formKey.currentState!.save();
+
+    final appState = context.read<MaterialAppState>();
+    final isEditing = widget.existingMaterial != null;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEditing ? 'Edit Confirmation' : 'Upload Confirmation'),
+        content: Text(
+          isEditing
+              ? 'Are you sure you want to update this material?'
+              : 'Are you sure you want to upload this new material?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        // Show loading dialog
+        if (context.mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Text('Uploading file...'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        String downloadUrl;
+
+        // Check if editing and file wasn't changed
+        if (isEditing && 
+            widget.existingMaterial!.file.startsWith('http') && 
+            _pickedFile == null) {
+          downloadUrl = widget.existingMaterial!.file;
+        } else {
+          // Get file bytes (works on both mobile and web)
+          Uint8List? fileBytes;
+          
+          if (kIsWeb) {
+            // Web: use bytes directly from PlatformFile
+            fileBytes = _pickedFile!.bytes;
+          } else {
+            // Mobile: read from file path
+            if (_pickedFile!.path != null) {
+              final file = File(_pickedFile!.path!);
+              if (!await file.exists()) {
+                throw Exception('Selected file does not exist');
+              }
+              fileBytes = await file.readAsBytes();
+            }
+          }
+
+          if (fileBytes == null) {
+            throw Exception('Could not read file data');
+          }
+
+          print('File size: ${fileBytes.length} bytes');
+
+          // Clean filename
+          String originalFileName = _pickedFile!.name;
+          originalFileName = originalFileName.replaceAll(RegExp(r'[^\w\s\-\.]'), '_');
+
+          final fileName = '${DateTime.now().millisecondsSinceEpoch}_$originalFileName';
+
+          print('Cleaned filename: $fileName');
+          print('Storage path: learning_materials/$fileName');
+
+          // Get storage reference
+          final storageRef = FirebaseStorage.instance
+              .ref()
+              .child('learning_materials')
+              .child(fileName);
+
+          // Upload with metadata - use putData for web compatibility
+          final metadata = SettableMetadata(
+            contentType: _getContentType(_pickedFile!.name),
+            customMetadata: {
+              'originalName': originalFileName,
+              'uploadedBy': firebase_auth.FirebaseAuth.instance.currentUser?.email ?? 'unknown',
+              'uploadTimestamp': DateTime.now().toIso8601String(),
+            },
+          );
+
+          print('Starting upload...');
+
+          // Use putData instead of putFile for web compatibility
+          final TaskSnapshot uploadSnapshot = await storageRef.putData(fileBytes, metadata);
+
+          print('Upload state: ${uploadSnapshot.state}');
+          print('Bytes transferred: ${uploadSnapshot.bytesTransferred}/${uploadSnapshot.totalBytes}');
+
+          if (uploadSnapshot.state == TaskState.success) {
+            downloadUrl = await uploadSnapshot.ref.getDownloadURL();
+            print('Upload successful! Download URL: $downloadUrl');
+          } else {
+            throw Exception('Upload did not complete successfully. State: ${uploadSnapshot.state}');
+          }
+        }
+
+        // Create material object with Firebase Storage URL
+        final newMaterial = LearningMaterial(
+          id: widget.existingMaterial?.id ?? '',
+          name: name,
+          description: description,
+          file: downloadUrl,
+          time: DateTime.now(),
+        );
+
+        if (isEditing) {
+          await appState.editMaterial(newMaterial);
+        } else {
+          await appState.addMaterial(newMaterial);
+        }
+
+        if (context.mounted) {
+          Navigator.pop(context); // Close loading dialog
+          Navigator.pop(context, {
+            'success': true,
+            'message': isEditing
+                ? 'Material updated successfully!'
+                : 'Material uploaded successfully!',
+          });
+        }
+      } on FirebaseException catch (e) {
+        print('Firebase error code: ${e.code}');
+        print('Firebase error message: ${e.message}');
+        print('Firebase error plugin: ${e.plugin}');
+
+        if (context.mounted) {
+          Navigator.pop(context); // Close loading dialog
+
+          String errorMessage = 'Upload failed: ${e.message ?? e.code}';
+
+          if (e.code == 'object-not-found') {
+            errorMessage = 'Upload failed: Please check your Firebase Storage rules.\n\nError: ${e.message}';
+          } else if (e.code == 'unauthorized') {
+            errorMessage = 'Upload failed: You do not have permission to upload files.';
+          } else if (e.code == 'unauthenticated') {
+            errorMessage = 'Upload failed: You must be logged in to upload files.';
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 7),
+            ),
+          );
+        }
+      } catch (e, stackTrace) {
+        print('General upload error: $e');
+        print('Stack trace: $stackTrace');
+        if (context.mounted) {
+          Navigator.pop(context); // Close loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Upload failed: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 7),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+// Helper method to determine content type
+String _getContentType(String filePath) {
+  final extension = filePath.split('.').last.toLowerCase();
+  switch (extension) {
+    case 'pdf':
+      return 'application/pdf';
+    case 'doc':
+      return 'application/msword';
+    case 'docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'ppt':
+      return 'application/vnd.ms-powerpoint';
+    case 'pptx':
+      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case 'xls':
+      return 'application/vnd.ms-excel';
+    case 'xlsx':
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'txt':
+      return 'text/plain';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    default:
+      return 'application/octet-stream';
+  }
+}
+    
+    /*catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}*/
+
+  /*Future<void> submit(BuildContext context) async {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
@@ -7340,7 +8632,7 @@ class _UploadPageState extends State<UploadPage> {
         ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {
@@ -7381,7 +8673,7 @@ class _UploadPageState extends State<UploadPage> {
                     (v == null || v.isEmpty) ? 'Enter a description' : null,
               ),
               const SizedBox(height: 15),
-              Row(
+              /*Row(
                 children: [
                   ElevatedButton.icon(
                     onPressed: pickFile,
@@ -7398,7 +8690,27 @@ class _UploadPageState extends State<UploadPage> {
                     ),
                   ),
                 ],
-              ),
+              ),*/
+              Row(
+  children: [
+    ElevatedButton.icon(
+      onPressed: pickFile,
+      icon: const Icon(Icons.attach_file),
+      label: const Text('Choose File'),
+    ),
+    const SizedBox(width: 10),
+    Expanded(
+      child: Text(
+        filePath != null
+            ? (filePath!.startsWith('http') 
+                ? 'Cloud file (click to change)' 
+                : filePath!.split('/').last)
+            : 'No file selected',
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+  ],
+),
               const SizedBox(height: 25),
               Builder(
                 builder: (context) => ElevatedButton.icon(
@@ -7413,4 +8725,4 @@ class _UploadPageState extends State<UploadPage> {
       ),
     );
   }
-}
+}*/
