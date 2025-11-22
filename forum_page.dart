@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
-// ------------------ ForumPage ------------------
 class ForumPage extends StatefulWidget {
   const ForumPage({super.key});
 
@@ -12,54 +12,84 @@ class ForumPage extends StatefulWidget {
 }
 
 class _ForumPageState extends State<ForumPage> {
-  final _db = FirebaseFirestore.instance;
-  final _auth = FirebaseAuth.instance;
+  // Firestore / Auth
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Controllers
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
+  // Filters
   String searchKeyword = '';
   String selectedTag = 'All';
   DateTime? selectedDate;
-  String? _userRole; // 'student' or 'teacher'
-  String? _userId;
-  String? _userName; // optional display name
 
-  final List<String> _tags = ['All', 'Java', 'OOP', 'Algorithm', 'Flutter', 'General'];
+  // Current user info (loaded from FirebaseAuth + users collection)
+  String? _currentUid;
+  String? _currentUserName;
+  String? _currentUserRole; // 'student' or 'teacher' or null while loading
+  bool _isLoadingUser = true;
+
+  // Tags list
+  final List<String> tags = [
+    'All',
+    'Java',
+    'OOP',
+    'Algorithm',
+    'Programming',
+    'Assignment',
+    'General'
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentUser();
+    _initCurrentUser();
   }
 
-  Future<void> _loadCurrentUser() async {
-    final u = _auth.currentUser;
-    if (u == null) {
-      // Not logged in — for demo you might redirect to login or continue as guest
+  Future<void> _initCurrentUser() async {
+    setState(() => _isLoadingUser = true);
+
+    final user = _auth.currentUser;
+    if (user == null) {
       setState(() {
-        _userId = null;
-        _userRole = 'student'; // fallback
-        _userName = 'Anonymous';
+        _currentUid = null;
+        _currentUserName = 'Anonymous';
+        _currentUserRole = 'student';
+        _isLoadingUser = false;
       });
       return;
     }
 
-    _userId = u.uid;
-    _userName = u.displayName ?? u.email ?? u.uid;
+    // set uid & name immediately
+    setState(() {
+      _currentUid = user.uid;
+      _currentUserName = user.displayName ?? user.email ?? user.uid;
+    });
 
-    // Try to load role from 'users' collection (document id = uid, field 'role')
     try {
-      final doc = await _db.collection('users').doc(_userId).get();
-      if (doc.exists && doc.data() != null && doc.data()!.containsKey('role')) {
-        setState(() => _userRole = doc.data()!['role'] as String? ?? 'student');
+      final doc = await _db.collection('users').doc(_currentUid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final loadedRole = (data['role'] ?? 'student').toString().toLowerCase();
+        setState(() {
+          _currentUserRole = loadedRole;
+          _isLoadingUser = false;
+        });
       } else {
-        // default to student
-        setState(() => _userRole = 'student');
+        setState(() {
+          _currentUserRole = 'student';
+          _isLoadingUser = false;
+        });
       }
     } catch (e) {
-      setState(() => _userRole = 'student');
+      // fallback to student role if anything fails
+      setState(() {
+        _currentUserRole = 'student';
+        _isLoadingUser = false;
+      });
     }
   }
 
@@ -71,174 +101,139 @@ class _ForumPageState extends State<ForumPage> {
     super.dispose();
   }
 
-  // Create notification (simple broadcast)
-  Future<void> _createNotification(String title, String message, String topicId) async {
-    await _db.collection('notifications').add({
-      'title': title,
-      'message': message,
-      'topicId': topicId,
-      'broadcast': true,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  void _showToast(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+
+  /// Helper to convert Firestore Timestamp or DateTime to DateTime
+  DateTime? _toDateTime(dynamic ts) {
+    if (ts == null) return null;
+    if (ts is Timestamp) return ts.toDate();
+    if (ts is DateTime) return ts;
+    return null;
   }
 
-  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingUser) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('📚 Forum Discussion'),
+        title: const Text('💬 Forum Discussion'),
         actions: [
           IconButton(
+            tooltip: 'Filter topics',
+            icon: const Icon(Icons.filter_list),
+            onPressed: _openFilterOptions,
+          ),
+          IconButton(
+            tooltip: 'Create new topic',
             icon: const Icon(Icons.add_comment_rounded),
-            tooltip: 'Create Topic',
             onPressed: _showCreateTopicDialog,
+          ),
+          IconButton(
+            tooltip: 'FAQ & Help',
+            icon: const Icon(Icons.help_outline),
+            onPressed: _showHelpDialog,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Search + Filter row
+          // Search
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Column(children: [
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: 'Cari topik forum...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
-                  filled: true,
-                  fillColor: Colors.grey[100],
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search forum topics...',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                filled: true,
+                fillColor: Colors.grey[100],
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  tooltip: 'Clear search',
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => searchKeyword = '');
+                  },
                 ),
-                onChanged: (v) => setState(() => searchKeyword = v.trim().toLowerCase()),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  DropdownButton<String>(
-                    value: selectedTag,
-                    items: _tags.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (v) => setState(() => selectedTag = v ?? 'All'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: _pickDate,
-                    icon: const Icon(Icons.calendar_today, size: 16),
-                    label: Text(selectedDate == null ? 'Filter Tarikh' : _formatDate(selectedDate!)),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(onPressed: _clearFilters, child: const Text('Clear All')),
-                ],
-              ),
-            ]),
+              onChanged: (v) => setState(() => searchKeyword = v.trim().toLowerCase()),
+            ),
           ),
 
-          // Stream: pinned first, then recent (we order by pinned desc + timestamp desc)
+          // Topics list (safe mapping + local filtering & sorting)
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _db
-                  .collection('forumTopics')
-                  
-                  .orderBy('timestamp', descending: true)
-
-                  .snapshots(),
+              // IMPORTANT: order by createdAt (client timestamp) so ordering won't break when serverTimestamp is null
+              stream: _db.collection('forumTopics').orderBy('createdAt', descending: true).snapshots(),
               builder: (context, snap) {
-                if (snap.hasError) return const Center(child: Text('Ralat memuat topik.'));
+                if (snap.hasError) {
+                  return Center(child: Text('Ralat memuat topik: ${snap.error}'));
+                }
                 if (!snap.hasData) return const Center(child: CircularProgressIndicator());
 
-                final docs = snap.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final title = (data['title'] ?? '').toString().toLowerCase();
-                  final desc = (data['description'] ?? '').toString().toLowerCase();
-                  final tag = (data['tag'] ?? 'General').toString();
-                  final ts = data['timestamp'] as Timestamp?;
-                  final created = ts?.toDate();
+                // Convert docs -> safe maps
+                final docs = snap.data!.docs.map((d) {
+                  final m = (d.data() as Map<String, dynamic>?) ?? {};
+                  final createdAt = _toDateTime(m['createdAt']);
+                  final serverTs = _toDateTime(m['serverTs']);
+                  // prefer serverTs when available, else createdAt
+                  final timestamp = serverTs ?? createdAt;
+                  return {
+                    'id': d.id,
+                    'title': (m['title'] ?? '').toString(),
+                    'description': (m['description'] ?? '').toString(),
+                    'tag': (m['tag'] ?? 'General').toString(),
+                    'pinned': m['pinned'] == true,
+                    'edited': m['edited'] == true,
+                    'editedAt': _toDateTime(m['editedAt']),
+                    'timestamp': timestamp,
+                    'creatorId': (m['creatorId'] ?? '').toString(),
+                    'creatorName': (m['creatorName'] ?? '').toString(),
+                  };
+                }).toList();
+
+                // Local filter by search/tag/date
+                final filtered = docs.where((m) {
+                  final title = (m['title'] as String).toLowerCase();
+                  final desc = (m['description'] as String).toLowerCase();
+                  final tag = (m['tag'] as String);
+                  final ts = m['timestamp'] as DateTime?;
                   final searchMatch = title.contains(searchKeyword) || desc.contains(searchKeyword);
-                  final tagMatch = (selectedTag == 'All') ? true : (tag.toLowerCase() == selectedTag.toLowerCase());
-                  final dateMatch = selectedDate == null
-                      ? true
-                      : (created != null &&
-                          created.year == selectedDate!.year &&
-                          created.month == selectedDate!.month &&
-                          created.day == selectedDate!.day);
+                  final tagMatch = selectedTag == 'All' ? true : (tag.toLowerCase() == selectedTag.toLowerCase());
+                  bool dateMatch = true;
+                  if (selectedDate != null) {
+                    if (ts == null) dateMatch = false;
+                    else dateMatch = _isSameDay(ts, selectedDate!);
+                  }
                   return searchMatch && tagMatch && dateMatch;
                 }).toList();
 
-                if (docs.isEmpty) return const Center(child: Text('Tiada topik ditemui.'));
+                // Sort: pinned first, then by timestamp desc (null-safe)
+                filtered.sort((a, b) {
+                  final aPinned = a['pinned'] as bool;
+                  final bPinned = b['pinned'] as bool;
+                  if (aPinned && !bPinned) return -1;
+                  if (!aPinned && bPinned) return 1;
+                  final aTs = a['timestamp'] as DateTime?;
+                  final bTs = b['timestamp'] as DateTime?;
+                  if (aTs == null && bTs == null) return 0;
+                  if (aTs == null) return 1;
+                  if (bTs == null) return -1;
+                  return bTs.compareTo(aTs);
+                });
+
+                if (filtered.isEmpty) return const Center(child: Text('Tiada topik ditemui.'));
 
                 return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (ctx, i) {
-                    final doc = docs[i];
-                    final data = doc.data() as Map<String, dynamic>;
-                    final isEdited = data['edited'] == true;
-                    final isPinned = data['pinned'] == true;
-                    final creatorName = data['creatorName'] ?? 'Anonymous';
-                    final creatorId = data['creatorId'] ?? '';
-                    final tag = data['tag'] ?? 'General';
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      color: isPinned ? Colors.yellow[50] : null,
-                      child: ListTile(
-                        title: Row(children: [
-                          Expanded(child: Text(data['title'] ?? 'No title')),
-                          if (isPinned)
-                            Container(
-                              margin: const EdgeInsets.only(left: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.orange,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text('PIN', style: TextStyle(color: Colors.white, fontSize: 12)),
-                            ),
-                        ]),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              data['description'] ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Chip(label: Text(tag)),
-                                const SizedBox(width: 8),
-                                Text('By $creatorName'),
-                                if (isEdited) const Padding(
-                                  padding: EdgeInsets.only(left: 8.0),
-                                  child: Text('(Edited)', style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: PopupMenuButton<String>(
-                          onSelected: (value) async {
-                            if (value == 'open') _openPostDetails(doc);
-                            else if (value == 'edit') await _tryEditTopic(doc);
-                            else if (value == 'delete') await _tryDeleteTopic(doc);
-                            else if (value == 'pin') await _togglePin(doc);
-                          },
-                          itemBuilder: (ctx) {
-                            final canEditOrDelete = _userId != null && (_userId == creatorId || _userRole == 'teacher');
-                            final canPin = _userRole == 'teacher';
-                            return <PopupMenuEntry<String>>[
-                              const PopupMenuItem(value: 'open', child: Text('Open')),
-                              if (canEditOrDelete) const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                              if (canEditOrDelete) const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: Colors.red))),
-                              if (canPin) const PopupMenuItem(value: 'pin', child: Text('Pin/Unpin')),
-                            ];
-                          },
-                        ),
-                        onTap: () => _openPostDetails(doc),
-                      ),
-                    );
-                  },
+                  itemCount: filtered.length,
+                  itemBuilder: (context, i) => _buildPostCardFromMap(filtered[i]),
                 );
               },
             ),
@@ -248,53 +243,96 @@ class _ForumPageState extends State<ForumPage> {
     );
   }
 
-  // ---------- Helpers: date picker & formatting ----------
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDate: selectedDate ?? DateTime.now(),
+  Widget _buildPostCardFromMap(Map<String, dynamic> m) {
+    final id = m['id'] as String;
+    final title = m['title'] as String;
+    final description = m['description'] as String;
+    final tag = m['tag'] as String;
+    final pinned = m['pinned'] as bool;
+    final edited = m['edited'] as bool;
+    final timestamp = m['timestamp'] as DateTime?;
+    final creatorId = m['creatorId'] as String;
+    final creatorName = (m['creatorName'] as String).isNotEmpty ? m['creatorName'] as String : 'Anonymous';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: pinned ? Colors.yellow[50] : null,
+      child: ListTile(
+        title: Row(
+          children: [
+            Expanded(child: Text(title)),
+            if (pinned)
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(6)),
+                child: const Text('PIN', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ),
+            if (edited)
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.blueGrey, borderRadius: BorderRadius.circular(6)),
+                child: const Text('Edited', style: TextStyle(color: Colors.white, fontSize: 10)),
+              ),
+          ],
+        ),
+        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(description, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 6),
+          Row(children: [
+            Chip(label: Text(tag)),
+            const SizedBox(width: 8),
+            Text('By $creatorName'),
+            const SizedBox(width: 8),
+            if (timestamp != null)
+              Text('· ${DateFormat('dd/MM/yyyy').format(timestamp)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          ]),
+        ]),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          Tooltip(message: 'Buka topik', child: IconButton(icon: const Icon(Icons.open_in_new, size: 22), onPressed: () => _openPostDetailsById(id))),
+          // Edit/Delete only for owner or teacher
+          if (_currentUid != null && (_currentUid == creatorId || _currentUserRole == 'teacher')) ...[
+            Tooltip(message: 'Edit topik', child: IconButton(icon: const Icon(Icons.edit, size: 22, color: Colors.blue), onPressed: () => _editTopicById(id))),
+            Tooltip(message: 'Padam topik', child: IconButton(icon: const Icon(Icons.delete_forever, size: 22, color: Colors.red), onPressed: () => _tryDeleteTopicById(id))),
+          ],
+          // Pin only for teacher
+          if (_currentUserRole == 'teacher')
+            Tooltip(
+              message: pinned ? 'Unpin topik' : 'Pin topik',
+              child: IconButton(icon: Icon(pinned ? Icons.push_pin : Icons.push_pin_outlined, color: Colors.orange), onPressed: () => _togglePinById(id, pinned)),
+            ),
+          const SizedBox(width: 6),
+          const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+        ]),
+        onTap: () => _openPostDetailsById(id),
+      ),
     );
-    if (picked != null) setState(() => selectedDate = picked);
   }
 
-  String _formatDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  void _clearFilters() {
-    setState(() {
-      _searchController.clear();
-      searchKeyword = '';
-      selectedTag = 'All';
-      selectedDate = null;
-    });
-  }
-
-  // ---------- Create Topic ----------
+  // Create dialog
   void _showCreateTopicDialog() {
-    String tag = _tags.length > 1 ? _tags[1] : 'General';
+    String selectedCreateTag = tags.length > 1 ? tags[1] : 'General';
     _titleController.clear();
     _descController.clear();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text('Create New Discussion'),
         content: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
-              const SizedBox(height: 8),
-              TextField(controller: _descController, maxLines: 4, decoration: const InputDecoration(labelText: 'Description')),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: tag,
-                items: _tags.where((t) => t != 'All').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: (v) => tag = v ?? tag,
-                decoration: const InputDecoration(labelText: 'Tag'),
-              ),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+            const SizedBox(height: 8),
+            TextField(controller: _descController, maxLines: 4, decoration: const InputDecoration(labelText: 'Description')),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: selectedCreateTag,
+              items: tags.where((t) => t != 'All').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              onChanged: (v) => selectedCreateTag = v ?? selectedCreateTag,
+              decoration: const InputDecoration(labelText: 'Tag'),
+            ),
+          ]),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -304,21 +342,36 @@ class _ForumPageState extends State<ForumPage> {
               final desc = _descController.text.trim();
               if (title.isEmpty || desc.isEmpty) return;
 
+              final creatorId = _currentUid ?? '';
+              final creatorName = _currentUserName ?? '';
+
+              // ensure non-null client-side createdAt so ordering works immediately
+              final clientCreatedAt = DateTime.now();
+
               final docRef = await _db.collection('forumTopics').add({
                 'title': title,
                 'description': desc,
-                'tag': tag,
-                'creatorId': _userId ?? '',
-                'creatorName': _userName ?? '',
-                'timestamp': FieldValue.serverTimestamp(),
+                'tag': selectedCreateTag,
+                'creatorId': creatorId,
+                'creatorName': creatorName,
+                'createdAt': clientCreatedAt,
+                'serverTs': FieldValue.serverTimestamp(), // canonical time
                 'edited': false,
                 'pinned': false,
               });
 
-              // create simple notification (broadcast)
-              await _createNotification('New forum topic', '$title', docRef.id);
+              // simple broadcast notification doc (optional)
+              await _db.collection('notifications').add({
+                'title': 'New forum topic',
+                'message': title,
+                'topicId': docRef.id,
+                'broadcast': true,
+                'timestamp': FieldValue.serverTimestamp(),
+              });
 
-              Navigator.pop(context);
+              _titleController.clear();
+              _descController.clear();
+              if (mounted) Navigator.pop(context);
             },
             child: const Text('Submit'),
           ),
@@ -327,46 +380,32 @@ class _ForumPageState extends State<ForumPage> {
     );
   }
 
-  // ---------- Try Edit (check permission) ----------
-  Future<void> _tryEditTopic(QueryDocumentSnapshot doc) async {
-    final data = doc.data() as Map<String, dynamic>;
-    final creatorId = data['creatorId'] ?? '';
-    if (_userId == null) {
-      _showToast('Sila log masuk untuk mengedit topik.');
-      return;
-    }
-    if (_userId != creatorId && _userRole != 'teacher') {
-      _showToast('Anda tidak dibenarkan mengedit topik ini.');
-      return;
-    }
-    _editTopic(doc);
-  }
-
-  Future<void> _editTopic(QueryDocumentSnapshot doc) async {
-    final data = doc.data() as Map<String, dynamic>;
-    _titleController.text = data['title'] ?? '';
-    _descController.text = data['description'] ?? '';
-    String tag = data['tag'] ?? _tags[1];
+  // Edit helpers
+  Future<void> _editTopicById(String docId) async {
+    final doc = await _db.collection('forumTopics').doc(docId).get();
+    if (!doc.exists) return;
+    final data = doc.data() ?? {};
+    _titleController.text = (data['title'] ?? '').toString();
+    _descController.text = (data['description'] ?? '').toString();
+    String tag = (data['tag'] ?? (tags.length > 1 ? tags[1] : 'General')).toString();
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text('Edit Topic'),
         content: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
-              const SizedBox(height: 8),
-              TextField(controller: _descController, maxLines: 4, decoration: const InputDecoration(labelText: 'Description')),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: tag,
-                items: _tags.where((t) => t != 'All').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: (v) => tag = v ?? tag,
-                decoration: const InputDecoration(labelText: 'Tag'),
-              ),
-            ],
-          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+            const SizedBox(height: 8),
+            TextField(controller: _descController, maxLines: 4, decoration: const InputDecoration(labelText: 'Description')),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: tag,
+              items: tags.where((t) => t != 'All').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              onChanged: (v) => tag = v ?? tag,
+              decoration: const InputDecoration(labelText: 'Tag'),
+            ),
+          ]),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -375,8 +414,7 @@ class _ForumPageState extends State<ForumPage> {
               final newTitle = _titleController.text.trim();
               final newDesc = _descController.text.trim();
               if (newTitle.isEmpty || newDesc.isEmpty) return;
-
-              await _db.collection('forumTopics').doc(doc.id).update({
+              await _db.collection('forumTopics').doc(docId).update({
                 'title': newTitle,
                 'description': newDesc,
                 'tag': tag,
@@ -384,10 +422,16 @@ class _ForumPageState extends State<ForumPage> {
                 'editedAt': FieldValue.serverTimestamp(),
               });
 
-              // notification for edit
-              await _createNotification('Topik dikemaskini', newTitle, doc.id);
+              // optional notification
+              await _db.collection('notifications').add({
+                'title': 'Topik dikemaskini',
+                'message': newTitle,
+                'topicId': docId,
+                'broadcast': true,
+                'timestamp': FieldValue.serverTimestamp(),
+              });
 
-              Navigator.pop(context);
+              if (mounted) Navigator.pop(context);
             },
             child: const Text('Save'),
           ),
@@ -396,75 +440,144 @@ class _ForumPageState extends State<ForumPage> {
     );
   }
 
-  // ---------- Try Delete ----------
-  Future<void> _tryDeleteTopic(QueryDocumentSnapshot doc) async {
-    final data = doc.data() as Map<String, dynamic>;
-    final creatorId = data['creatorId'] ?? '';
-    if (_userId == null) {
-      _showToast('Sila log masuk untuk memadam topik.');
-      return;
-    }
-    if (_userId != creatorId && _userRole != 'teacher') {
+  // Delete helpers - deletes comments batch too
+  Future<void> _tryDeleteTopicById(String docId) async {
+    final doc = await _db.collection('forumTopics').doc(docId).get();
+    if (!doc.exists) return;
+    final data = doc.data() ?? {};
+    final ownerId = (data['creatorId'] ?? '').toString();
+    if (_currentUid == null || (_currentUid != ownerId && _currentUserRole != 'teacher')) {
       _showToast('Anda tidak dibenarkan memadam topik ini.');
       return;
     }
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (c) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text('Confirm Deletion'),
         content: const Text('Adakah anda pasti mahu memadam topik ini?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(c, true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
         ],
       ),
     );
 
     if (confirm == true) {
-      await _db.collection('forumTopics').doc(doc.id).delete();
-      // optional: delete subcollection comments (not implemented here)
+      // delete comments then topic using batch
+      final commentsSnap = await _db.collection('forumTopics').doc(docId).collection('comments').get();
+      final batch = _db.batch();
+      for (final c in commentsSnap.docs) {
+        batch.delete(c.reference);
+      }
+      batch.delete(_db.collection('forumTopics').doc(docId));
+      await batch.commit();
       _showToast('Topik dipadamkan.');
     }
   }
 
-  // ---------- Pin / Unpin (teacher only) ----------
-  Future<void> _togglePin(QueryDocumentSnapshot doc) async {
-    if (_userRole != 'teacher') {
+  // Pin helpers
+  Future<void> _togglePinById(String docId, bool currentlyPinned) async {
+    if (_currentUserRole != 'teacher') {
       _showToast('Hanya teacher boleh pin/unpin topik.');
       return;
     }
-    final data = doc.data() as Map<String, dynamic>;
-    final isPinned = data['pinned'] == true;
-    await _db.collection('forumTopics').doc(doc.id).update({'pinned': !isPinned});
-    _showToast(isPinned ? 'Topik unpinned.' : 'Topik pinned.');
+    await _db.collection('forumTopics').doc(docId).update({'pinned': !currentlyPinned});
+    _showToast(currentlyPinned ? 'Topik unpinned.' : 'Topik pinned.');
   }
 
-  // ---------- Open detail page (with comments) ----------
-  void _openPostDetails(QueryDocumentSnapshot post) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => ForumDetailPage(post: post, currentUserId: _userId ?? '')));
+  // Open detail
+  void _openPostDetailsById(String docId) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ForumDetailPage(topicId: docId)));
   }
 
-  // ---------- Small helper ----------
-  void _showToast(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  // Filter dialog
+  void _openFilterOptions() {
+    String tempTag = selectedTag;
+    DateTime? tempDate = selectedDate;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Filter Topics'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          DropdownButtonFormField<String>(
+            value: tempTag,
+            decoration: const InputDecoration(labelText: 'Filter by Tag'),
+            items: tags.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+            onChanged: (v) => tempTag = v ?? 'All',
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            child: Text(
+  tempDate == null
+      ? 'Filter by Date'
+      : 'Selected: ${DateFormat('dd/MM/yyyy').format(tempDate!)}',
+),
+
+            onPressed: () async {
+              final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+              if (picked != null) {
+                setState(() => tempDate = picked);
+              }
+            },
+          )
+        ]),
+        actions: [
+          TextButton(onPressed: () {
+            setState(() {
+              selectedTag = 'All';
+              selectedDate = null;
+              _searchController.clear();
+              searchKeyword = '';
+            });
+            Navigator.pop(context);
+          }, child: const Text('Clear All')),
+          ElevatedButton(onPressed: () {
+            setState(() {
+              selectedTag = tempTag;
+              selectedDate = tempDate;
+            });
+            Navigator.pop(context);
+          }, child: const Text('Apply')),
+        ],
+      ),
+    );
+  }
+
+  // Help / FAQ
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('FAQ & Help'),
+        content: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: const [
+            Text('FAQ (singkat):'),
+            SizedBox(height: 8),
+            Text('- Cipta Topik: Tekan ikon + di atas kanan.'),
+            Text('- Edit/Padam: Hanya pemilik topik atau teacher.'),
+            Text('- Pin: Hanya teacher.'),
+            SizedBox(height: 12),
+            Text('Tooltips: Sentuh ikon untuk melihat fungsi.'),
+          ]),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      ),
+    );
+  }
 }
 
-// ------------------ Forum Detail Page (simple comments) ------------------
+// Detail page with comments
 class ForumDetailPage extends StatefulWidget {
-  final QueryDocumentSnapshot post;
-  final String currentUserId;
-  const ForumDetailPage({super.key, required this.post, required this.currentUserId});
+  final String topicId;
+  const ForumDetailPage({super.key, required this.topicId});
 
   @override
   State<ForumDetailPage> createState() => _ForumDetailPageState();
 }
 
 class _ForumDetailPageState extends State<ForumDetailPage> {
-  final _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
   final TextEditingController _commentCtrl = TextEditingController();
 
   @override
@@ -476,60 +589,75 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
   Future<void> _addComment() async {
     final text = _commentCtrl.text.trim();
     if (text.isEmpty) return;
-    final topicId = widget.post.id;
 
-    await _db.collection('forumTopics').doc(topicId).collection('comments').add({
+    final user = FirebaseAuth.instance.currentUser;
+    final creatorId = user?.uid ?? '';
+    final creatorName = user?.displayName ?? user?.email ?? 'Anonymous';
+
+    await _db.collection('forumTopics').doc(widget.topicId).collection('comments').add({
       'text': text,
-      'authorId': widget.currentUserId,
+      'creatorId': creatorId,
+      'creatorName': creatorName,
       'timestamp': FieldValue.serverTimestamp(),
+      'createdAt': DateTime.now(),
     });
-
-    // Create a broadcast notification for demo (in real app target subscribers)
-    await _db.collection('notifications').add({
-      'title': 'New reply',
-      'message': 'A new reply was posted in "${widget.post['title']}"',
-      'topicId': topicId,
-      'broadcast': true,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
     _commentCtrl.clear();
+  }
+
+  DateTime? _toDateTime(dynamic ts) {
+    if (ts == null) return null;
+    if (ts is Timestamp) return ts.toDate();
+    if (ts is DateTime) return ts;
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = widget.post.data() as Map<String, dynamic>;
-    final title = data['title'] ?? '';
-    final desc = data['description'] ?? '';
-    final tag = data['tag'] ?? 'General';
-    final isEdited = data['edited'] == true;
-    final editedAt = (data['editedAt'] as Timestamp?)?.toDate();
-
+    final topicRef = _db.collection('forumTopics').doc(widget.topicId);
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: const Text('Topic')),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(
-                children: [
-                  Chip(label: Text(tag)),
-                  const SizedBox(width: 8),
-                  if (isEdited) const Text('(Edited)', style: TextStyle(color: Colors.red)),
-                  if (editedAt != null) const SizedBox(width: 8),
-                  if (editedAt != null) Text('Edited: ${editedAt.toLocal()}'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(desc),
-            ]),
+          StreamBuilder<DocumentSnapshot>(
+            stream: topicRef.snapshots(),
+            builder: (context, snap) {
+              if (snap.hasError) return const SizedBox();
+              if (!snap.hasData) return const SizedBox();
+              final data = (snap.data!.data() as Map<String, dynamic>?) ?? {};
+              final title = data['title'] ?? 'Topic';
+              final desc = data['description'] ?? '';
+              final tag = data['tag'] ?? 'General';
+              final edited = data['edited'] == true;
+              final editedAt = _toDateTime(data['editedAt']);
+
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                    if (edited)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.blueGrey, borderRadius: BorderRadius.circular(6)),
+                        child: const Text('Edited', style: TextStyle(color: Colors.white, fontSize: 10)),
+                      ),
+                  ]),
+                  const SizedBox(height: 8),
+                  Text(desc),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8.0, children: [Chip(label: Text(tag))]),
+                  if (editedAt != null) Text('Edited: ${DateFormat('dd/MM/yyyy HH:mm').format(editedAt)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                ]),
+              );
+            },
           ),
           const Divider(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _db.collection('forumTopics').doc(widget.post.id).collection('comments').orderBy('timestamp', descending: false).snapshots(),
+              // order comments by createdAt then fallback to timestamp
+              stream: _db.collection('forumTopics').doc(widget.topicId).collection('comments').orderBy('createdAt', descending: false).snapshots(),
               builder: (context, snap) {
+                if (snap.hasError) return const Center(child: Text('Error loading comments.'));
                 if (!snap.hasData) return const Center(child: CircularProgressIndicator());
                 final docs = snap.data!.docs;
                 if (docs.isEmpty) return const Center(child: Text('No replies yet.'));
@@ -538,11 +666,14 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                   itemBuilder: (ctx, i) {
                     final c = docs[i].data() as Map<String, dynamic>;
                     final text = c['text'] ?? '';
-                    final author = c['authorId'] ?? 'unknown';
-                    final t = (c['timestamp'] as Timestamp?)?.toDate();
+                    final ts = _toDateTime(c['timestamp'] ?? c['createdAt']);
+                    final creatorName = (c['creatorName'] ?? '').toString().isNotEmpty ? c['creatorName'] as String : 'Anonymous';
                     return ListTile(
                       title: Text(text),
-                      subtitle: Text('By $author ${t != null ? '· ${t.toLocal()}' : ''}'),
+                      subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        if (ts != null) Text(DateFormat('dd/MM/yyyy HH:mm').format(ts)),
+                        Text('By: $creatorName', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                      ]),
                     );
                   },
                 );
@@ -552,12 +683,10 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-              child: Row(
-                children: [
-                  Expanded(child: TextField(controller: _commentCtrl, decoration: const InputDecoration(hintText: 'Write a reply...'))),
-                  IconButton(icon: const Icon(Icons.send), onPressed: _addComment),
-                ],
-              ),
+              child: Row(children: [
+                Expanded(child: TextField(controller: _commentCtrl, decoration: const InputDecoration(hintText: 'Write a reply...'))),
+                IconButton(icon: const Icon(Icons.send), onPressed: _addComment),
+              ]),
             ),
           ),
         ],
