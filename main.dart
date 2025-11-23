@@ -19,6 +19,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:typed_data'; // For Uint8List
 import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:intl/intl.dart';
+
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
@@ -41,6 +44,7 @@ void main() async {
 // ========== USER MODEL ==========
 enum UserType { student, teacher }
 
+// ========== APP USER ==========
 class AppUser {
   final String id;
   final String username;
@@ -130,10 +134,9 @@ class FirebaseUserState extends ChangeNotifier {
   AppUser? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
-
   String? _lastUnlockedMessage;
-  String? get lastUnlockedMessage => _lastUnlockedMessage;
 
+  String? get lastUnlockedMessage => _lastUnlockedMessage;
   AppUser? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
@@ -150,6 +153,7 @@ class FirebaseUserState extends ChangeNotifier {
     });
   }
 
+  // ----- loadUserData -----
   Future<void> _loadUserData(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -163,6 +167,7 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
+  // ----- registerUser -----
   Future<bool> registerUser({
     required String username,
     required String email,
@@ -222,6 +227,7 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
+  // ----- login -----
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = null;
@@ -245,12 +251,14 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
+  // ----- logout -----
   Future<void> logout() async {
     await _auth.signOut();
     _currentUser = null;
     notifyListeners();
   }
 
+  // ----- updateUserProfile -----
   Future<bool> updateUserProfile({
     String? username,
     String? profilePicture,
@@ -306,6 +314,7 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
+  // ----- changePassword -----
   Future<bool> changePassword(
     String currentPassword,
     String newPassword,
@@ -329,6 +338,7 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
+  // ----- deleteAccount -----
   Future<bool> deleteAccount(String password) async {
     if (_currentUser == null) return false;
 
@@ -367,6 +377,7 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
+  // ----- filterUsers -----
   Future<List<AppUser>> filterUsers({
     String? className,
     String? formLevel,
@@ -392,6 +403,7 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
+  // ----- addPoints -----
   Future<void> addPoints(int points) async {
     if (_currentUser == null) return;
     final newPoints = _currentUser!.points + points;
@@ -402,6 +414,7 @@ class FirebaseUserState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ----- awardBadge -----
   Future<void> awardBadge({
     required String name,
     required String description,
@@ -456,7 +469,7 @@ class CodingBahasa extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CodingBahasa',
+      title: '< > CodingBahasa',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -473,7 +486,6 @@ class CodingBahasa extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-
           return userState.isLoggedIn ? const HomePage() : const LoginPage();
         },
       ),
@@ -490,6 +502,7 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+// ========== LOGIN PAGE STATE ==========
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -503,6 +516,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // ----- handleLogin -----
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -672,6 +686,7 @@ class RegisterPage extends StatefulWidget {
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
+// ========== REGISTER PAGE STATE ==========
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
@@ -694,6 +709,7 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
+  // ----- handleRegister -----
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -724,7 +740,7 @@ class _RegisterPageState extends State<RegisterPage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(userState.errorMessage ?? 'Registration failed'),
+          content: Text(userState.errorMessage ?? 'Registration failed!'),
           backgroundColor: Colors.red,
         ),
       );
@@ -939,7 +955,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-// ✅ NEW: Interactive Homepage with Logo
+// ========== IN HOME PAGE ==========
 class InHomePage extends StatelessWidget {
   const InHomePage({super.key});
 
@@ -947,8 +963,8 @@ class InHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<FirebaseUserState>().currentUser;
 
+    // ----- navigateToPage -----
     void navigateToPage(int pageIndex) {
-      // Find the HomePage in the widget tree and update its selectedIndex
       final homePageState = context.findAncestorStateOfType<_HomePageState>();
       if (homePageState != null) {
         homePageState.setState(() {
@@ -975,7 +991,7 @@ class InHomePage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                // App Logo (using icon since we can't load images in this environment)
+                // App Logo 
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -1009,13 +1025,13 @@ class InHomePage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Stats Cards (for students only)
+          // Stats Cards (Students Only)
           if (user?.userType == UserType.student) ...[
             Row(
               children: [
                 Expanded(
                   child: InkWell(
-                    onTap: () => navigateToPage(6), // Navigate to Achievements
+                    onTap: () => navigateToPage(8), // Navigate to Achievements
                     child: _buildStatCard(
                       icon: Icons.star,
                       title: 'Points',
@@ -1027,7 +1043,7 @@ class InHomePage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: InkWell(
-                    onTap: () => navigateToPage(6), // Navigate to Achievements
+                    onTap: () => navigateToPage(8), // Navigate to Achievements
                     child: _buildStatCard(
                       icon: Icons.emoji_events,
                       title: 'Badges',
@@ -1040,7 +1056,7 @@ class InHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => navigateToPage(5), // Navigate to Progress
+              onTap: () => navigateToPage(7), // Navigate to Progress
               child: _buildStatCard(
                 icon: Icons.trending_up,
                 title: 'Completion',
@@ -1067,27 +1083,27 @@ class InHomePage extends StatelessWidget {
             children: [
               _buildQuickActionCard(
                 icon: Icons.book,
-                title: 'Courses',
+                title: 'Course',
                 color: Colors.blue,
-                onTap: () => navigateToPage(1),
+                onTap: () => navigateToPage(2),
+              ),
+              _buildQuickActionCard(
+                icon: Icons.folder,
+                title: 'Material',
+                color: Colors.orange,
+                onTap: () => navigateToPage(3),
               ),
               _buildQuickActionCard(
                 icon: Icons.quiz,
-                title: 'Quizzes',
+                title: 'Quiz',
                 color: Colors.purple,
-                onTap: () => navigateToPage(3),
+                onTap: () => navigateToPage(4),
               ),
               _buildQuickActionCard(
                 icon: Icons.chat,
                 title: 'AI Chatbot',
                 color: Colors.teal,
-                onTap: () => navigateToPage(4),
-              ),
-              _buildQuickActionCard(
-                icon: Icons.folder,
-                title: 'Materials',
-                color: Colors.orange,
-                onTap: () => navigateToPage(2),
+                onTap: () => navigateToPage(6),
               ),
             ],
           ),
@@ -1177,6 +1193,7 @@ class InHomePage extends StatelessWidget {
   }
 }
 
+// ========== HOME PAGE STATE ==========
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
@@ -1186,31 +1203,24 @@ class _HomePageState extends State<HomePage> {
     switch (selectedIndex) {
       case 0:
         page = const InHomePage();
-      /*Center(
-          child: Text(
-            'Welcome to CodingBahasa!',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-        );*/
       case 1:
-        page = const CoursePage();
+        page = const UserSearchPage(); 
       case 2:
-        page = MaterialsPage();
+        page = CoursePage(); 
       case 3:
-        page = const QuizPage();
+        page = const MaterialsPage();
       case 4:
-        page = const AIChatbotPage();
+        page = const QuizPage(); 
       case 5:
-        page = const ProgressPage();
+        page = const ForumPage();  
       case 6:
-        page = const AchievementsPage();
+        page = const AIChatbotPage(); 
       case 7:
-        page = const ProfilePage();
+        page = const ProgressPage(); 
       case 8:
-        page = const UserSearchPage();
+        page = const AchievementsPage();
       case 9:
-        page = const ForumPage();
-
+        page = const ProfilePage();
       default:
         page = const Center(child: Text('Page not found'));
     }
@@ -1231,7 +1241,7 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.account_circle, size: 32),
             tooltip: 'Profile',
-            onPressed: () => setState(() => selectedIndex = 7),
+            onPressed: () => setState(() => selectedIndex = 9),
           ),
           const SizedBox(width: 10),
         ],
@@ -1248,14 +1258,14 @@ class _HomePageState extends State<HomePage> {
               child: Row(
                 children: [
                   _buildMenuButton('Home', 0),
-                  _buildMenuButton('Courses', 1),
-                  _buildMenuButton('Materials', 2),
-                  _buildMenuButton('Quiz', 3),
-                  _buildMenuButton('AI Chatbot', 4),
-                  _buildMenuButton('Progress', 5),
-                  _buildMenuButton('Achievements', 6),
-                  _buildMenuButton('Users', 8),
-                  _buildMenuButton('Forum', 9),
+                  _buildMenuButton('User', 1),
+                  _buildMenuButton('Course', 2),
+                  _buildMenuButton('Material', 3),
+                  _buildMenuButton('Quiz', 4),
+                  _buildMenuButton('Forum', 5),
+                  _buildMenuButton('AI Chatbot', 6),
+                  _buildMenuButton('Progress', 7),
+                  _buildMenuButton('Achievement', 8),
                 ],
               ),
             ),
@@ -1301,6 +1311,7 @@ class UserSearchPage extends StatefulWidget {
   State<UserSearchPage> createState() => _UserSearchPageState();
 }
 
+// ========== USER SEARCH PAGE STATE ==========
 class _UserSearchPageState extends State<UserSearchPage> {
   final _searchController = TextEditingController();
   List<AppUser> _displayedUsers = [];
@@ -1320,6 +1331,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
     super.dispose();
   }
 
+  // ----- loadAllUsers -----
   Future<void> _loadAllUsers() async {
     setState(() => _isLoading = true);
     final userState = context.read<FirebaseUserState>();
@@ -1330,6 +1342,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
     });
   }
 
+  // ----- searchUsers -----
   Future<void> _searchUsers(String query) async {
     setState(() => _isLoading = true);
     final userState = context.read<FirebaseUserState>();
@@ -1353,6 +1366,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
     });
   }
 
+  // ----- applyFilters -----
   Future<void> _applyFilters() async {
     setState(() => _isLoading = true);
     final userState = context.read<FirebaseUserState>();
@@ -1376,13 +1390,12 @@ class _UserSearchPageState extends State<UserSearchPage> {
             )
             .toList();
       }
-
       _displayedUsers = results;
     }
-
     setState(() => _isLoading = false);
   }
 
+  // ----- clearFilters -----
   void _clearFilters() {
     setState(() {
       _filterClassName = null;
@@ -1392,6 +1405,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
     _loadAllUsers();
   }
 
+  // ----- showUserDetailsDialog -----
   void _showUserDetailsDialog(AppUser user) {
   showDialog(
     context: context,
@@ -1449,6 +1463,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
   );
 }
 
+  // ----- showFilterDialog -----
   void _showFilterDialog() {
     String? tempClassName = _filterClassName;
     String? tempFormLevel = _filterFormLevel;
@@ -1521,7 +1536,7 @@ class _UserSearchPageState extends State<UserSearchPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('🔍 Search Users'),
+        title: const Text('🔍 Search User'),
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         actions: [
@@ -1745,33 +1760,37 @@ class _UserSearchPageState extends State<UserSearchPage> {
   }
 }
 
-// ---------- Course ----------
-// ---------- Course ----------
+// ========== COURSE PAGE ==========
 class CoursePage extends StatelessWidget {
   const CoursePage({super.key});
 
   final List<Map<String, String>> topics = const [
     {
       "title": "1.1 Strategi Penyelesaian Masalah",
-      "note": """MASALAH:
-Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang 
-\n🤔(4) MENGAPAKAH PERLUNYA STRATEGI DALAM PENYELESAIAN MASALAH?
+      "note": """MASALAH
+Keraguan, situasi yang tidak diingini, cabaran & peluang yang dihadapi dalam kehidupan seseorang. 
+
+🤔 (4) MENGAPAKAH PERLUNYA STRATEGI DALAM PENYELESAIAN MASALAH?
 • Meningkatkan kemahiran berfikir
 • Membantu pengembangan sesuatu konsep
 • Mewujudkan komunikasi dua hala
 • Menggalakkan pembelajaran kendir
-\nPENYELESAIAN MASALAH:
-Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian
-\n🧠(4) TEKNIK PEMIKIRAN KOMPUTASIONAL
-• Leraian – Memecahkan masalah kepada bahagian yang lebih kecil & terkawal
+
+🛠️ PENYELESAIAN MASALAH
+Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian.
+
+🧠 (4) TEKNIK PEMIKIRAN KOMPUTASIONAL
+• Leraian – Memecahkan masalah kepada bahagian yang lebih kecil
 • Pengecaman corak – Mencari persamaan antara masalah & dalam masalah
 • Peniskalaan – Menjana penyelesaian yang tepat kepada masalah yang dihadapi
 • Algoritma – Membangunkan penyelesaian langkah demi langkah terhadap masalah yang dihadapi
-\n✅(3) CIRI PENYELESAIAN MASALAH BERKESAN 
-• Kos 
-• Masa
-• Sumber
-\n📋(8) PROSES PENYELESAIAN MASALAH
+
+✅ (3) CIRI PENYELESAIAN MASALAH BERKESAN 
+• Kos - Harga yang perlu dibayar untuk memperoleh, mengeluarkan & menyenggara
+• Masa - Sesuatu projek yang disiapkan mengikut masa yang telah ditetapkan
+• Sumber - Stok / wang, bahan-bahan mentah, staf & aset lain
+
+📋 (8) PROSES PENYELESAIAN MASALAH
 1. Mengumpulkan & menganalisis data
 2. Menentukan masalah
 3. Menjana idea
@@ -1779,145 +1798,226 @@ Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian
 5. Menentukan tindakan
 6. Melaksanakan penyelesaian
 7. Membuat penilaian
-8. Membuat penambahbaikan""",
+8. Membuat penambahbaikan
+""",
+      "video": "https://youtu.be/Z7oPHbRlgfs?si=WmLMRmpssL31GH9x"
     },
+
     {
       "title": "1.2 Algoritma",
-      "note": """ALGORITMA
-      Satu set arahan untuk menyelesaikan masalah 
-\n✅(3) CIRI ALGORITMA
+      "note": """✏️ ALGORITMA
+Satu set arahan untuk menyelesaikan masalah. 
+
+✅ (3) CIRI ALGORITMA
 • Butiran jelas
 • Boleh dilaksanakan
 • Mempunyai batasan
-\n----------------------
-INPUT➡️PROSES➡️OUTPUT
-----------------------
-\nPSEUDOKOD
-Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan
+
+-------------------------------------------------
+INPUT ➡️ PROSES ➡️ OUTPUT
+-------------------------------------------------
+
+1️⃣ PSEUDOKOD
+Senarai struktur kawalan komputer yang ditulis dalam bahasa pertuturan manusia & mempunyai nombor turutan.
 1. Tulis kenyataan MULA
 2. Baca INPUT
 3. Proses data menggunakan ungkapan logik / matematik
 4. Papar OUTPUT
 5. Tulis kenyataan TAMAT
-\nCARTA ALIR
-Alternatif kepada pseudokod menggunakan simbol grafik untuk mewakili arahanarahan penyelesaian
+
+2️⃣ CARTA ALIR
+Alternatif kepada pseudokod menggunakan simbol grafik untuk mewakili arahan-arahan penyelesaian.
 1. Lukis nod terminal Mula
 2. Lukis garis penghubung
 3. Lukis nod input
 4. Lukis garis penghubung
 5. Lukis nod proses
 6. Lukis garis penghubung
-7. Sekiranya perlu, lukis nod proses / nod input lain-lain 
+7. Sekiranya perlu, lukis nod proses / nod input lain-lain yang diperlukan
 8. Sekiranya tiada, lukis nod terminal Tamat
-\n🧑‍💻(3) STRUKTUR KAWALAN DALAM PENGATURCARAAN
-• Struktur Kawalan Urutan - Melaksanakan arahan komputer satu per satu
-• Struktur Kawalan Pilihan - Membuat keputusan berasaskan syarat yang ditentukan
-• Struktur Kawalan Pengulangan - Mengulang arahan komputer dalam blok
-\n------------------------------------------------------------
-Tulis Algortima➡️Uji ALgortima➡️Pembetulan➡️Pengaturcaraan
-------------------------------------------------------------
-\n✅(4) CIRI ALGORITMA YANG TELAH DIUJI 
+
+🧑‍💻 (3) STRUKTUR KAWALAN DALAM PENGATURCARAAN
+• Urutan
+• Pilihan
+• Pengulangan
+
+-----------------------------------------------------------------
+Tulis Algoritma ➡️ Uji ➡️ Pembetulan ➡️ Pengaturcaraan
+-----------------------------------------------------------------
+
+✅ (4) CIRI ALGORITMA YANG TELAH DIUJI
 • Mudah difahami
 • Lengkap
 • Efisien
 • Memenuhi kriteria reka bentuk
-\n❌(3) RALAT
-• Ralat Sintaks - Tidak wujud dalam algoritma
-• Ralat Logik - Tidak menjalankan fungsi-fungsi yang sepatutnya
-• Ralat Masa Larian -  Timbul apabila atur cara dijalankan
-\n📋(4) LANGKAH PENGUJIAN ALGORITMA
+
+❌ (3) RALAT
+• Sintaks
+• Logik
+• Masa Larian
+
+📋 (4) LANGKAH PENGUJIAN ALGORITMA
 1. Kenal pasti "Output Dijangka"
 2. Kenal pasti "Output Diperoleh"
 3. Bandingkan "Output Diperoleh" dengan "Output Dijangka"
 4. Analisis & baiki algoritma
 """,
+      "video": "https://youtu.be/NL9c25tu6VU?si=724Ke4pZ-AokWaDJ"
     },
+
     {
-      "title": "1.3 Pemboleh Ubah, Pemalar dan Jenis Data",
-      "note": """PEMBOLEH UBAH
-Ruang simpanan sementara untuk nombor, teks & objek
-\nPEMALAR
-Tetap & tidak akan berubah
-\n(6) JENIS DATA
-• Integer [26]
-• float [17.9]
-• double [11.5]
-• char [z]
-• String [hello world]
-• Boolean [true, false]
-\nPEMBOLEH UBAH SEJAGAT (GLOBAL)
-Hanya berfungsi dalam atur cara sahaja
-\nPEMBOLEH UBAH SETEMPAT (LOCAL)
-Hanya berfungsi dalam subatur cara yang diisytiharkan
+      "title": "1.3 Pemboleh Ubah, Pemalar & Jenis Data",
+      "note": """📝 PEMBOLEH UBAH
+Ruang simpanan sementara untuk nombor, teks & objek.
+Cth : float panjang
+
+🔒 PEMALAR
+Tetap & tidak akan berubah.
+Cth : final double pi = 3.142
+
+🗃️ (6) JENIS DATA
+• Integer [Cth : 26]
+• Float [Cth : 17.9]
+• Double [Cth : 11.5]
+• Char [Cth : z]
+• String [Cth : hello world]
+• Boolean [Cth : true, false]
+
+PEMBOLEH UBAH SEJAGAT 🆚 SETEMPAT
+1️⃣ Sejagat 
+• Pengisytiharan dilakukan di luar mana-mana fungsi
+• Boleh diakses di mana-mana fungsi
+• Boleh digunakan hingga ke akhir program
+
+2️⃣ Setempat
+• Pemboleh ubah yang diisytiharkan dalam sebuah fungsi 
+• Tidak boleh diakses di luar fungsi itu
+• Hanya boleh digunakan untuk fungsi yang diisi
 """,
+      "video": "https://youtu.be/SwJKIcVwIDc?si=z_kZD_s_HxDJnbp8"
     },
+
     {
       "title": "1.4 Struktur Kawalan",
-      "note": """✅(3) STRUKTUR KAWALAN 
-• Kawalan Urutan - Tidak bervariasi
-• Kawalan Pilihan - If-else-if, Switch-case
-• Kawalan Pengulangan - For, While, Do-while
-\n(6) OPERATOR HUBUNGAN
+      "note": """🧑‍💻 (3) STRUKTUR KAWALAN 
+• Urutan (Tidak bervariasi)
+• Pilihan (if-else-if, switch)
+• Pengulangan (for, while, do-while)
+
+⚙️ (6) OPERATOR HUBUNGAN
 • Sama dengan (==)
-• Tidak sama dengan (!=)
-• Lebih besar daripada (>)
-• Lebih besar / sama dengan (>=)
+• Tidak sama dengan (!=) 
+• Lebih besar daripada (>) 
+• Lebih besar daripada / sama dengan (>=) 
 • Kurang daripada (<)
-• Kurang / sama dengan (<=)
-\n✅(3) OPERATOR LOGICAL
-• AND - ✅ jika semua betul
-• OR - ✅ jika salah satu betul
-• NOT - Menukarkan status kepada lawannya
+• Kurang daripada / sama dengan (<=) 
+
+💡 (3) OPERATOR LOGIC
+• AND (Cth : Markah >=0 && Markah <= 100)
+• OR (Cth : if (malam || hujan))
+• NOT (Cth : if(!lulus))
+
+while (<syarat boolean>){
+  <Blok kenyataan berulang>
+  <kemas kini nilai dalam syarat>
+}
+i+=1 🟰 i = i + 1
+
+while (<syarat boolean>){
+  <Blok kenyataan berulang>
+  <kemas kini nilai dalam syarat>
+}
+i-=1 🟰 i = i – 1
 """,
+      "video": "https://youtu.be/FJ25cfsrufg?si=bs5PSK-bWDlLNd3X"
     },
+
     {
       "title": "1.5 Amalan Terbaik Pengaturcaraan",
-      "note": """AMALAN TERBAIK PENGATURCARAAN
-Apabila pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghasilkan
-atur cara yang baik
-\n🧑‍💻(4) FAKTOR MEMPENGARUHI KEBOLEHBACAAN KOD
+      "note": """😆 AMALAN TERBAIK PENGATURCARAAN
+Pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghasilkan atur cara yang baik.
+
+🔎 (4) FAKTOR KEBOLEHBACAAN
 • Inden yang konsisten
+• Nama pemboleh ubah yang bermakna
+• Komen [// @ /* */ @ /** */]
 • Jenis data
-• Pemboleh ubah yang bermakna
-• Komen
-\nRALAT SINTAKS
-• Kesalahan tatabahasa
-• Penggunaan objek / aksara yang tidak dikenali
-\nRALAT MASA LARIAN
-• Pengiraan data bukan berangka
-• Pembahagian dengan digit 0
-• Mencari punca kuasa dua bagi nombor negatif
-\nRALAT MASA LARIAN
-• Atur cara tidak berfungsi seperti yang diingini
-• Tidak dapat dikesan
+
+❌ (3) JENIS RALAT
+1. Sintaks
+   • Kesalahan tatabahasa 
+   • Penggunaan aksara yang tidak dikenali
+2. Masa Larian 
+   • Pengiraan data bukan berangka
+   • Pembahagian dengan digit 0
+   • Mencari punca kuasa dua bagi nombor negatif
+3. Logik
+   • Atur cara tidak berfungsi seperti yang diingini
 """,
+      "video": "https://youtu.be/E0i_O5RXqtM?si=W4BkFsV43DNSPb_N"
     },
+
     {
       "title": "1.6 Struktur Data dan Modular",
-      "note": """TATASUSUNAN
-Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks
-\n--------------------------------------------------
-jenisData [] namaTatasusunan;
-namaTatasusunan = new jenisData [saizTatasusunan];
---------------------------------------------------
-\n👍(5) KELEBIHAN MENGGUNAKAN STRUKTUR MODUL
-• Lebih mudah untuk digunakan semula
-• Lebih mudah untuk diuji, dinyah pijat & dibaiki
-• Projek kompleks menjadi lebiringkas
-• Lebih mudah untuk menangani projek komputer
-• Membolehkan tugasan pengaturcaraan dibahagikan kepada ahli kumpulan yang berbeza
+      "note": """🔢 TATASUSUNAN
+Pemboleh ubah yang membolehkan koleksi beberapa nilai data dalam satu-satu masa dengan menyimpan setiap elemen dalam ruang memori berindeks.
+Cth : 
+int [] senaraiMarkah;
+senaraiMarkah = new int[3];
+senaraiMarkah[0] = 34;
+senaraiMarkah[1] = 56;
+senaraiMarkah[2] = 78;
+
+👍 (5) KELEBIHAN STRUKTUR MODULAR
+• Mudah diguna semula
+• Mudah diuji, dinyah pijat & dibaiki
+• Memudahkan projek kompleks
+• Tugasan boleh dibahagi
+• Proses lebih teratur
+
+KATA KUNCI KHAS - (static) 
+• Letak di hadapan nama subatur cara. Tanpa "static", subatur cara tidak dapat digunakan secara langsung. 
+
+JENIS DATA PULANGAN
+• Bergantung kepada jenis data yang ingin dipulangkan oleh "badan". Jika tidak memulangkan data, gunakan kata kunci "void".
+
+NAMA SUBATUR CARA
+• Mesti bermula dengan huruf & boleh mengandungi angka tetapi bukan simbol.
+
+BEKAS PARAMETER 
+• Dikepil oleh tanda kurung "(" & ")". Jika bekas parameter adalah kosong, "()" digunakan. Jika bekas menerima parameter, maka jenis data & nama parameter akan dikepilkan.
+
+Cth : public static void main(String[] args){ }
+• Kata kunci khas : public static
+• Jenis data pulangan : void
+• Nama wajib : main
+• Parameter wajib : (String[] args) 
+• Badan : {}
+• Pengepala : public static void main(String[] args)
+
+PARAMETER
+• Pemboleh ubah yang membolehkan subatur cara menerima nilai daripada pemanggil.
+• parameter rasmi (formal parameter) - Merujuk parameter bagi subatur cara
+• parameter sebenar (actual parameter) - Merujuk pemboleh ubah di dalam subatur cara pemanggil
+• Cth : 
+  Tiada parameter : static void subAtur01 (){}
+  Menerima parameter : static void subAtur01 (int x){}
 """,
+      "video": "https://youtu.be/1kw_OQmxU5c?si=JfuQ2-Z-GFL7-B_9"
     },
+
     {
-      "title": "1.7 Pembagunan Aplikasi",
-      "note": """KITARAN HAYAT PEMBANGUNAN SISTEM (SDLC)
-Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu aplikasi / perisian
-\n1. Analisis masalah
-2. Reka bentuk penyelesaian - Logikal, Fizikal
-3. Laksana penyelesaian
-4. Uji & nyah ralat
-5. Dokumentasi
+      "title": "1.7 Pembangunan Aplikasi",
+      "note": """🔄 SDLC (Kitaran Hayat Pembangunan Sistem)
+Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
+
+1. Analisis masalah - Dapatan data, analisis masalah, penyataan masalah
+2. Reka bentuk penyelesaian - Disediakan daripada analisis masalah
+3. Laksana penyelesaian - Kerja dibahagikan dalam sub modul
+4. Uji & nyah ralat - Pelbagai jenis pengujian, menyah ralat, membaiki ralat & penambahbaikan dijalankan
+5. Dokumentasi - Disediakan di setiap fasa
 """,
+      "video": "https://youtu.be/PQU16kOnQRk?si=1dCReplwhLzder9c"
     },
   ];
 
@@ -1926,7 +2026,7 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('📘 Courses'),
+        title: const Text('📖 Course'),
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
@@ -1936,32 +2036,36 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
           itemCount: topics.length,
           itemBuilder: (context, index) {
             final topic = topics[index];
+
             return Card(
               elevation: 2,
-              color: Colors.grey[100],
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               margin: const EdgeInsets.symmetric(vertical: 8),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Topic title
-                    Text(
-                      topic["title"]!,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.lightBlue,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DetailsPage(
+                        title: topic["title"]!,
+                        note: topic["note"]!,
+                        videoUrl: topic["video"]!,
                       ),
                     ),
-                    const SizedBox(height: 10),
-
-                    // Pre-written note (read-only)
-                    Text(topic["note"]!, style: const TextStyle(fontSize: 16)),
-                  ],
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    topic["title"]!,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                  ),
                 ),
               ),
             );
@@ -1972,12 +2076,70 @@ Menjelaskan proses merancang, mereka bentuk, menguji & mengimplementasi sesuatu 
   }
 }
 
-// ---------- Quiz ----------
-enum QuestionType { mcq, shortAnswer }
+// ========== DETAILS PAGE ==========
+class DetailsPage extends StatefulWidget {
+  final String title, note, videoUrl;
 
+  const DetailsPage({
+    super.key,
+    required this.title,
+    required this.note,
+    required this.videoUrl,
+  });
+
+  @override
+  State<DetailsPage> createState() => _DetailsPageState();
+}
+
+// ========== DETAILS PAGE STATE ==========
+class _DetailsPageState extends State<DetailsPage> {
+  late YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final videoId = YoutubePlayer.convertUrlToId(widget.videoUrl) ?? "";
+
+    _controller = YoutubePlayerController(
+      initialVideoId: videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: false,
+        mute: false,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        backgroundColor: Colors.lightBlue,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ListView(
+          children: [
+            YoutubePlayer(controller: _controller),
+            const SizedBox(height: 20),
+            Text(
+              widget.note,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+// ========== QUIZ ==========
+enum QuestionType { mcq, shortAnswer }
 enum QuizStatus { draft, published }
 
-/// Model for a single question
+// ========== QUESTION ========== (Model for single question)
 class Question {
   final String id; // Unique ID for each question
   final String questionText;
@@ -1995,7 +2157,7 @@ class Question {
     this.explanation,
   });
 
-  // NEW: Convert Question object to a Map for Firestore
+  // Convert Question object to a Map for Firestore
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -2007,7 +2169,7 @@ class Question {
     };
   }
 
-  // NEW: Create a Question object from a Map (e.g., from Firestore)
+  // Create Question object from a Map 
   factory Question.fromMap(Map<String, dynamic> map) {
     return Question(
       id: map['id'] as String,
@@ -2024,7 +2186,7 @@ class Question {
   }
 }
 
-/// Model for a Quiz (created by a teacher)
+// ========== QUIZ ========== (Model for Quiz (Created by teacher))
 class Quiz {
   final String id; // Unique ID for the quiz
   String title;
@@ -2077,7 +2239,7 @@ class Quiz {
   }
 }
 
-/// Model to store a student's quiz attempt and results (US006-02)
+// ========== QUIZ ATTEMPT ========== (Model to store student's quiz attempt and results (US006-02))
 class QuizAttempt {
   final String quizTitle;
   final List<Question> questions;
@@ -2096,11 +2258,11 @@ class QuizAttempt {
   });
 }
 
-// ----------System Quiz ----------
-///Dummy list for storing student quiz history (US006-02)
+// ========== SYSTEM QUIZ ==========
+// Dummy list for storing student quiz history (US006-02)
 List<QuizAttempt> userQuizAttempts = [];
 
-/// System-Generated Quiz Data (US-System)
+// System-Generated Quiz Data (US-System)
 final Map<String, List<Question>> systemQuizData = {
   "1.1 Strategi Penyelesaian Masalah": [
     Question(
@@ -2486,7 +2648,7 @@ final Map<String, List<Question>> systemQuizData = {
   ],
 };
 
-/// System-Generated Summative Test (US-System)
+// System-Generated Summative Test (US-System)
 final List<Question> summativeTestQuestions = [
   Question(
     id: 'sum-1',
@@ -2680,7 +2842,7 @@ final List<Question> summativeTestQuestions = [
   ),
 ];
 
-// ---------- Quiz Page ----------
+// ========== QUIZ PAGE ==========
 class QuizPage extends StatefulWidget {
   const QuizPage({super.key});
 
@@ -2688,8 +2850,9 @@ class QuizPage extends StatefulWidget {
   State<QuizPage> createState() => _QuizPageState();
 }
 
+// ========== QUIZ PAGE STATE ==========
 class _QuizPageState extends State<QuizPage> {
-  // Helper function to navigate to the quiz-taking page
+  // ----- startQuiz ----- (Helper function to navigate to the quiz-taking page)
   void _startQuiz(
     BuildContext context,
     String title,
@@ -2707,14 +2870,14 @@ class _QuizPageState extends State<QuizPage> {
     });
   }
 
-  // Helper function to delete a quiz from Firestore
+  // ----- deleteQuiz ----- (Helper function to delete a quiz from Firestore)
   void _deleteQuiz(Quiz quiz) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Quiz'),
+        title: const Text('Delete Confirmation'),
         content: Text(
-          'Are you sure you want to delete "${quiz.title}"? This action cannot be undone.',
+          'Are you sure you want to delete "${quiz.title}"?',
         ),
         actions: [
           TextButton(
@@ -2723,7 +2886,7 @@ class _QuizPageState extends State<QuizPage> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -2738,8 +2901,8 @@ class _QuizPageState extends State<QuizPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Quiz deleted'),
-              backgroundColor: Colors.red,
+              content: Text('Quiz deleted successfully!'),
+              backgroundColor: Colors.green,
             ),
           );
         }
@@ -2756,7 +2919,7 @@ class _QuizPageState extends State<QuizPage> {
     }
   }
 
-  // Helper function to edit a quiz (US005-02)
+  // ----- editQuiz ----- (Helper function to edit quiz (US005-02))
   void _editQuiz(Quiz quiz) {
     Navigator.push(
       context,
@@ -2767,7 +2930,7 @@ class _QuizPageState extends State<QuizPage> {
     });
   }
 
-  // Helper function to review a quiz
+  // ----- reviewQuiz ----- (Helper function to review quiz)
   void _reviewQuiz(Quiz quiz) {
     Navigator.push(
       context,
@@ -2786,8 +2949,8 @@ class _QuizPageState extends State<QuizPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🎯 Quizzes'),
-        backgroundColor: Colors.blueGrey,
+        title: const Text('🎯 Quiz'),
+        backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         actions: [
           if (isTeacher)
@@ -2835,7 +2998,6 @@ class _QuizPageState extends State<QuizPage> {
             const SizedBox(height: 10),
             Card(
               elevation: 2,
-              color: Colors.blue[50],
               child: ListTile(
                 leading: const Icon(Icons.quiz, color: Colors.blue),
                 title: const Text('Summative Test (Bab 1)'),
@@ -2939,7 +3101,7 @@ class _QuizPageState extends State<QuizPage> {
                             : const Icon(Icons.play_arrow),
                         onTap: () {
                           if (isTeacher) {
-                            // NEW: Default tap action for teacher is 'review'
+                            // Default tap action for teacher is 'review'
                             _reviewQuiz(quiz);
                           } else if (quiz.status == QuizStatus.published) {
                             // Student tap action is 'start quiz'
@@ -3020,7 +3182,7 @@ class _QuizPageState extends State<QuizPage> {
   }
 }
 
-// ---------- System Quiz List Page ----------
+// ========== SYSTEM QUIZ LIST PAGE ==========
 class SystemQuizListPage extends StatelessWidget {
   const SystemQuizListPage({super.key});
 
@@ -3077,7 +3239,7 @@ class SystemQuizListPage extends StatelessWidget {
   }
 }
 
-// ---------- REVIEW QUIZ PAGE (FOR TEACHERS) ----------
+// ========== REVIEW QUIZ PAGE (FOR TEACHERS) ==========
 class ReviewQuizPage extends StatelessWidget {
   final String quizTitle;
   final List<Question> questions;
@@ -3181,7 +3343,7 @@ class ReviewQuizPage extends StatelessWidget {
   }
 }
 
-// ---------- Quiz Creation / EDIT Page (US005-01 & US005-02) ----------
+// ========== Quiz Creation / EDIT Page (US005-01 & US005-02) ==========
 class CreateQuizPage extends StatefulWidget {
   final Quiz? quizToEdit; // If not null, we are in "Edit" mode
   const CreateQuizPage({super.key, this.quizToEdit});
@@ -3190,6 +3352,7 @@ class CreateQuizPage extends StatefulWidget {
   State<CreateQuizPage> createState() => _CreateQuizPageState();
 }
 
+// ========== CREATE QUIZ PAGE STATE ==========
 class _CreateQuizPageState extends State<CreateQuizPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
@@ -3198,17 +3361,19 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   bool _isEditing = false;
   bool _isLoading = false;
 
-  // Controllers for adding a new question
+  // Controllers for adding new question
   final _newQuestionTextController = TextEditingController();
   final _newAnswerController = TextEditingController();
   final _newExplanationController = TextEditingController(); // For feedback
   QuestionType _newQuestionType = QuestionType.mcq;
+
   final List<TextEditingController> _mcqOptionControllers = [
     TextEditingController(),
     TextEditingController(),
     TextEditingController(),
     TextEditingController(),
   ];
+
   int _correctMcqOptionIndex = 0; // Index of the correct option
 
   @override
@@ -3383,9 +3548,9 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                   children: <Widget>[
                     TextFormField(
                       controller: _titleController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Quiz Title',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                       ),
                       validator: (v) =>
                           v!.isEmpty ? 'Please enter a title' : null,
@@ -3393,9 +3558,9 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _topicController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Topic (e.g., 1.1)',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                       ),
                       validator: (v) =>
                           v!.isEmpty ? 'Please enter a topic' : null,
@@ -3435,12 +3600,12 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               ),*/
                     TextFormField(
                       controller: _newQuestionTextController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Question Text',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                         hintText: 'Enter your question here...',
                       ),
-                      maxLines: 5, // ✅ Allow multiple lines
+                      maxLines: 5, // Allow multiple lines
                       minLines: 3,
                     ),
                     const SizedBox(height: 10),
@@ -3479,7 +3644,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                           border: OutlineInputBorder(),
                           hintText: 'Enter the correct answer...',
                         ),
-                        maxLines: 3, // ✅ Allow multiple lines
+                        maxLines: 3, // Allow multiple lines
                         minLines: 2,
                       ),
                       /*TextFormField(
@@ -3491,12 +3656,12 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _newExplanationController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Explanation (Optional)',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                         hintText: 'Provide detailed feedback...',
                       ),
-                      maxLines: 5, // ✅ Allow multiple lines
+                      maxLines: 5, // Allow multiple lines
                       minLines: 3,
                     ),
 
@@ -3575,7 +3740,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   }
 }
 
-// ---------- TAKE QUIZ PAGE (US006-01) ----------
+// ========== TAKE QUIZ PAGE (US006-01) ==========
 class TakeQuizPage extends StatefulWidget {
   final String quizTitle;
   final List<Question> questions;
@@ -3590,6 +3755,7 @@ class TakeQuizPage extends StatefulWidget {
   State<TakeQuizPage> createState() => _TakeQuizPageState();
 }
 
+// ========== TAKE QUIZ PAGE STATE ==========
 class _TakeQuizPageState extends State<TakeQuizPage> {
   final PageController _pageController = PageController();
   final Map<String, String> _userAnswers = {}; // Map<QuestionID, UserAnswer>
@@ -3597,7 +3763,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
   int _currentPage = 0;
   bool _isSubmitting = false; // NEW: Loading state for AI marking
 
-  // NEW: AI Model for marking
+  // AI Model for marking
   late final GenerativeModel _markingModel;
 
   @override
@@ -3610,7 +3776,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
       }
     }
 
-    // NEW: Initialize AI model for marking
+    // Initialize AI model for marking
     final googleAI = FirebaseAI.googleAI();
     _markingModel = googleAI.generativeModel(
       model: 'gemini-2.5-flash',
@@ -3633,6 +3799,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     super.dispose();
   }
 
+  // ----- saveQuizScoreToDatabase -----
   Future<void> _saveQuizScoreToDatabase(int score, int total) async {
     final userState = context.read<FirebaseUserState>();
     final user = userState.currentUser;
@@ -3689,7 +3856,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     }
   }
 
-  // NEW: Updated submit quiz with AI Marking
+  // ----- submitQuiz ----- (Updated submit quiz with AI Marking)
   Future<void> _submitQuiz() async {
     if (!mounted) return; // Add this check
 
@@ -3838,6 +4005,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     );
   }
 
+  // ----- showSubmitDialog -----
   void _showSubmitDialog() {
     showDialog(
       context: context,
@@ -3904,7 +4072,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
   }
 }
 
-// ---------- QUIZ RESULTS PAGE (US006-02 & US006-03) ----------
+// ========== QUIZ RESULTS PAGE (US006-02 & US006-03) ==========
 class QuizResultsPage extends StatelessWidget {
   final QuizAttempt attempt;
   const QuizResultsPage({super.key, required this.attempt});
@@ -4030,7 +4198,7 @@ class QuizResultsPage extends StatelessWidget {
   }
 }
 
-// ---------- AI Chatbot ----------
+// ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
 
@@ -4052,6 +4220,7 @@ class AIChatbotPage extends StatelessWidget {
   }
 }
 
+// ========== CHATBODY ==========
 class _ChatBody extends StatefulWidget {
   const _ChatBody();
 
@@ -4059,6 +4228,7 @@ class _ChatBody extends StatefulWidget {
   State<_ChatBody> createState() => _ChatBodyState();
 }
 
+// ========== CHATBODY STATE ==========
 class _ChatBodyState extends State<_ChatBody> {
   int lastRating = 0;
 
@@ -4224,7 +4394,7 @@ class _ChatBodyState extends State<_ChatBody> {
                   decoration: InputDecoration(
                     hintText: 'Tanyalah saya tentang: Pengaturcaraan Java...',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24.0),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16.0,
@@ -4334,7 +4504,6 @@ class _ChatBodyState extends State<_ChatBody> {
 }
 
 // ========== AI CHATBOT SUPPORTING CLASSES ==========
-
 // Chat Message Model
 class ChatMessage {
   final String text;
@@ -4787,7 +4956,7 @@ class _ProgressPageState extends State<ProgressPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirm delete'),
+        title: const Text('Delete Confirmation'),
         content: const Text('Are you sure you want to delete this record?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -4799,7 +4968,7 @@ class _ProgressPageState extends State<ProgressPage> {
     if (confirmed == true) {
       try {
         await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted successfully!')));
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
@@ -4827,26 +4996,26 @@ class _ProgressPageState extends State<ProgressPage> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: activityCtl,
-                decoration: const InputDecoration(labelText: 'Activity', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'Activity', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
                 validator: (v) => v!.isEmpty ? 'Enter activity' : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: scoreCtl,
-                decoration: const InputDecoration(labelText: 'Score', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'Score', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
                 keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? 'Enter score' : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: gradeCtl,
-                decoration: const InputDecoration(labelText: 'Grade', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'Grade', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
                 validator: (v) => v!.isEmpty ? 'Enter grade' : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: commentsCtl,
-                decoration: const InputDecoration(labelText: 'Comments', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'Comments', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
                 maxLines: 2,
               ),
             ],
@@ -4884,7 +5053,9 @@ class _ProgressPageState extends State<ProgressPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Student Progress'),
+        title: const Text('📈 Student Progress'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
         actions: [
           if (isTeacher)
             TextButton.icon(
@@ -4910,10 +5081,10 @@ class _ProgressPageState extends State<ProgressPage> {
                   children: [
                     TextFormField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
-                        labelText: 'Search student (username)',
+                      decoration: InputDecoration(
+                        labelText: 'Search by username...',
                         prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                       ),
                       onChanged: _searchUsers,
                     ),
@@ -4965,9 +5136,9 @@ class _ProgressPageState extends State<ProgressPage> {
 
                     TextFormField(
                       controller: _activityController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Activity',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                       ),
                       validator: (v) => v!.isEmpty ? 'Please enter activity' : null,
                     ),
@@ -4975,9 +5146,9 @@ class _ProgressPageState extends State<ProgressPage> {
 
                     TextFormField(
                       controller: _scoreController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Score',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                       ),
                       keyboardType: TextInputType.number,
                       validator: (v) => v!.isEmpty ? 'Please enter score' : null,
@@ -4986,9 +5157,9 @@ class _ProgressPageState extends State<ProgressPage> {
 
                     TextFormField(
                       controller: _gradeController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Grade',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                       ),
                       validator: (v) => v!.isEmpty ? 'Please enter grade' : null,
                     ),
@@ -4996,9 +5167,9 @@ class _ProgressPageState extends State<ProgressPage> {
 
                     TextFormField(
                       controller: _commentsController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Comments',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -5205,7 +5376,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Achievement'),
+        title: const Text('Delete Confirmation'),
         content: Text(
           'Are you sure you want to delete the achievement: "$achievementTitle"?',
         ),
@@ -5216,7 +5387,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -5231,7 +5402,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Achievement "$achievementTitle" deleted.'),
+              content: Text('Achievement "$achievementTitle" deleted successfully!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -5353,7 +5524,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Achievement updated successfully.'),
+                          content: Text('Achievement updated successfully!'),
                           backgroundColor: Colors.green,
                         ),
                       );
@@ -5389,8 +5560,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
     // Page title
     final String pageTitle = isLoggedIn
-        ? '🏆 Achievements'
-        : '🏅 Community Achievements';
+        ? '🏆 Achievement'
+        : '🏅 Community Achievement';
 
     // If not logged in, show a simplified message (re-using old logic for non-logged-in state)
     if (!isLoggedIn) {
@@ -5411,8 +5582,34 @@ class _AchievementsPageState extends State<AchievementsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(pageTitle),
-        backgroundColor: Colors.amber,
+        backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
+        actions: [
+    if (isTeacher)
+      IconButton(
+        icon: const Icon(Icons.add_box),
+        tooltip: 'Add Achievement',
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddAchievementPage(),
+            ),
+          );
+
+          if (result != null &&
+              result['success'] == true &&
+              context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message']),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
+      ),
+  ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5544,34 +5741,6 @@ if (isStudent && user!.badges.isNotEmpty)
       ],
     ),
   ),
-          // Teacher Action Buttons (Only 'Add Achievement' remains, full width)
-          if (isTeacher)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  // 1. Add Achievement Button (now takes full width)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        // ACTION ENABLED: Navigate to AddAchievementPage
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AddAchievementPage(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Achievement'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -5851,9 +6020,9 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 
               // 2. Title Input
               TextFormField(
-                decoration: const InputDecoration(
+                decoration:  InputDecoration(
                   labelText: 'Achievement Title',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                   prefixIcon: Icon(Icons.star),
                 ),
                 validator: (value) {
@@ -5868,9 +6037,9 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 
               // 3. Type Dropdown
               DropdownButtonFormField<String>(
-                decoration: const InputDecoration(
+                decoration:  InputDecoration(
                   labelText: 'Achievement Type',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                   prefixIcon: Icon(Icons.category),
                 ),
                 initialValue: _type,
@@ -5891,9 +6060,9 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
 
               // 4. Description Input
               TextFormField(
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                   prefixIcon: Icon(Icons.description),
                 ),
                 maxLines: 3,
@@ -5981,9 +6150,9 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
           }).toList();
 
         return DropdownButtonFormField<String>(
-          decoration: const InputDecoration(
+          decoration:  InputDecoration(
             labelText: 'Select Student to Award',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
             prefixIcon: Icon(Icons.person),
           ),
           initialValue: _selectedStudentId,
@@ -7037,12 +7206,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 }
 
-// ---------- LEARNING MATERIAL ----------
+// ========== LEARNING MATERIAL ==========
 class LearningMaterial {
-  final String id;
-  final String name;
-  final String description;
-  final String file;
+  final String id, name, description, file;
   final DateTime time;
 
   LearningMaterial({
@@ -7073,20 +7239,22 @@ class LearningMaterial {
   }
 }
 
-// ===== FIREBASE STATE =====
+// ========== MATERIAL APP STATE ==========
 class MaterialAppState extends ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // ----- checkStorageConfiguration -----
   Future<void> checkStorageConfiguration() async {
-  try {
-    final ref = FirebaseStorage.instance.ref().child('learning_materials');
-    await ref.listAll();
-    print('✅ Storage configuration OK');
-  } catch (e) {
-    print('❌ Storage error: $e');
+    try {
+      final ref = FirebaseStorage.instance.ref().child('learning_materials');
+      await ref.listAll();
+      print('✅ Storage configuration OK');
+    } catch (e) {
+      print('❌ Storage error: $e');
+    }
   }
-}
 
+  // ----- createMaterialsCollection -----
   Future<void> createMaterialsCollection() async {
     final collectionRef = _db.collection('materials');
     final snapshot = await collectionRef.limit(1).get();
@@ -7120,27 +7288,37 @@ class MaterialAppState extends ChangeNotifier {
         });
   }
 
-  // Add a new material
+  // ----- addMaterial -----
   Future<void> addMaterial(LearningMaterial material) async {
     final map = material.toMap();
     map['time'] ??= Timestamp.now();
     await _db.collection('materials').add(map);
   }
 
-  // Edit existing material
+  // ----- ditMaterial -----
   Future<void> editMaterial(LearningMaterial material) async {
     final map = material.toMap();
     map['time'] ??= Timestamp.now();
     await _db.collection('materials').doc(material.id).update(map);
   }
 
-  // Delete material
-  Future<void> deleteMaterial(String id) async {
-    await _db.collection('materials').doc(id).delete();
+  // ----- deleteMaterial -----
+  Future<void> deleteMaterial(LearningMaterial material) async {
+    await _db.collection('materials').doc(material.id).delete();
+
+    if (material.file.startsWith('http')) {
+      try {
+        final ref = FirebaseStorage.instance.refFromURL(material.file);
+        await ref.delete();
+        print('✅ File deleted from storage');
+      } catch (e) {
+        print('❌ Error deleting file from storage: $e');
+      }
+    }
   }
 }
 
-// ===== MATERIALS PAGE =====
+// ========== MATERIALS PAGE ==========
 class MaterialsPage extends StatefulWidget {
   const MaterialsPage({super.key});
 
@@ -7148,11 +7326,12 @@ class MaterialsPage extends StatefulWidget {
   State<MaterialsPage> createState() => _MaterialsPageState();
 }
 
-class 
-_MaterialsPageState extends State<MaterialsPage> {
+// ========== MATERIALS PAGE STATE ==========
+class _MaterialsPageState extends State<MaterialsPage> {
   String searchQuery = '';
-  String userType = 'UserType.student'; // default
+  String userType = 'UserType.student'; 
 
+// ----- downloadFile -----
 Future<void> _downloadFile(BuildContext context, LearningMaterial material) async {
   final filePath = material.file;
 
@@ -7179,7 +7358,7 @@ Future<void> _downloadFile(BuildContext context, LearningMaterial material) asyn
     }
   }
 
-  // ✅ Request storage permission for Android
+  // Request storage permission 
   if (Platform.isAndroid) {
     // Check Android version
     final androidInfo = await DeviceInfoPlugin().androidInfo;
@@ -7247,7 +7426,7 @@ Future<void> _downloadFile(BuildContext context, LearningMaterial material) asyn
       fileName = fileName.split('_').sublist(1).join('_');
     }
 
-    // ✅ Save to Downloads folder
+    // Save to Downloads folder
     Directory? downloadDir;
     if (Platform.isAndroid) {
       downloadDir = Directory('/storage/emulated/0/Download');
@@ -7269,7 +7448,7 @@ Future<void> _downloadFile(BuildContext context, LearningMaterial material) asyn
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Downloaded to: ${downloadDir.path}/$fileName'),
+          content: Text('Material downloaded successfully!'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
@@ -7293,6 +7472,7 @@ Future<void> _downloadFile(BuildContext context, LearningMaterial material) asyn
   }
 }
 
+// ----- migrateToCloud -----
 Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) async {
   if (material.file.startsWith('http')) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -7306,7 +7486,7 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
     builder: (context) => AlertDialog(
       title: const Text('Migrate to Cloud Storage'),
       content: const Text(
-        'This will upload the local file to Firebase Storage so all users can download it.',
+        'This will upload the local file to Firebase Storage.',
       ),
       actions: [
         TextButton(
@@ -7355,7 +7535,6 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
 
     final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
     final storageRef = FirebaseStorage.instance.ref().child('learning_materials/$fileName');
-    
     final uploadTask = await storageRef.putFile(file);
     final downloadUrl = await uploadTask.ref.getDownloadURL();
 
@@ -7391,129 +7570,6 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
     }
   }
 }
-  /*Future<void> _downloadFile(BuildContext context, LearningMaterial material) async {
-  final downloadUrl = material.file;
-
-  // ✅ Check if it's a valid URL
-  if (!downloadUrl.startsWith('http')) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Error: This file is stored locally and cannot be downloaded.'),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
-
-  // 1. Check/Request Permission
-  PermissionStatus status = PermissionStatus.granted;
-  if (Platform.isAndroid || Platform.isIOS) {
-    status = await Permission.storage.request();
-  }
-  
-  if (!status.isGranted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Storage permission denied. Cannot download.'),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
-
-  try {
-    // 2. Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Downloading...'),
-          ],
-        ),
-      ),
-    );
-
-    // 3. Get file name from URL
-    final Uri uri = Uri.parse(downloadUrl);
-    String fileName = uri.pathSegments.last.split('?').first;
-    
-    // Decode URL-encoded filename
-    fileName = Uri.decodeComponent(fileName);
-    
-    // If filename still contains path, extract just the name
-    if (fileName.contains('learning_materials%2F')) {
-      fileName = fileName.split('learning_materials%2F').last;
-    }
-    if (fileName.contains('learning_materials/')) {
-      fileName = fileName.split('learning_materials/').last;
-    }
-
-    // 4. Determine save location
-    final Directory tempDir = await getApplicationDocumentsDirectory();
-    final String savePath = '${tempDir.path}/$fileName';
-    final File downloadFile = File(savePath);
-
-    // 5. Download file from Firebase Storage
-    final ref = FirebaseStorage.instance.refFromURL(downloadUrl);
-    await ref.writeToFile(downloadFile);
-
-    if (context.mounted) {
-      Navigator.pop(context); // Close loading dialog
-    }
-
-    // 6. Confirm download and offer to open
-    if (downloadFile.existsSync()) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Downloaded: $fileName'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Open',
-              textColor: Colors.white,
-              onPressed: () async {
-                final result = await OpenFile.open(downloadFile.path);
-                if (result.type != ResultType.done) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Cannot open this file type'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                }
-              },
-            ),
-          ),
-        );
-      }
-    }
-  } on FirebaseException catch (e) {
-    if (context.mounted) {
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download failed: ${e.message}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  } catch (e) {
-    if (context.mounted) {
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-}*/
 
   @override
   void initState() {
@@ -7534,7 +7590,6 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
         .get();
     if (doc.exists) {
       setState(() {
-        // Updated retrieval to be safer and match stored value (which is a string)
         userType =
             doc.data()?['userType'] as String? ?? UserType.student.toString();
       });
@@ -7547,18 +7602,23 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
     var theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Learning Materials')),
-      floatingActionButton: userType == UserType.teacher.toString()
-          ? FloatingActionButton(
+      appBar: AppBar(title: const Text('📚 Material'),
+      backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          if (userType == UserType.teacher.toString())
+            IconButton(
+              icon: const Icon(Icons.add_box),
+              tooltip: 'Upload material',
               onPressed: () async {
+                // Open UploadPage and wait for result
                 final result = await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => UploadPage()),
+                  MaterialPageRoute(builder: (context) => const UploadPage()),
                 );
 
-                if (result != null &&
-                    result['success'] == true &&
-                    context.mounted) {
+                // Show success message if available
+                if (result != null && result['success'] == true && context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(result['message']),
@@ -7567,22 +7627,22 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
                   );
                 }
               },
-              tooltip: 'Add',
-              child: const Icon(Icons.add),
-            )
-          : null,
+            ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Search materials...',
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              onChanged: (value) =>
-                  setState(() => searchQuery = value.toLowerCase()),
+              onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -7596,7 +7656,7 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Center(
                       child: Text(
-                        'No learning materials uploaded yet.\nClick "+" to add learning materials.',
+                        'No materials uploaded yet.\nClick "+" to add materials.',
                         style: TextStyle(fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
@@ -7622,19 +7682,45 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
                     itemBuilder: (context, index) {
                       final material = materials[index];
                       return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           leading: Icon(
                             Icons.file_present,
                             color: theme.colorScheme.primary,
+                            size: 32,
                           ),
-                          title: Text(material.name),
-                          subtitle: Text(
-                            '${material.description}\nUploaded At: ${material.time}',
+                          title: Text(
+                            material.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (material.description.isNotEmpty)
+                                Text(
+                                  material.description,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Uploaded: ${DateFormat.yMMMd().add_jm().format(material.time)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
                           onTap: () async {
                             if (material.file.startsWith('http')) {
-                              // It's a URL
                               final url = Uri.parse(material.file);
                               if (await canLaunchUrl(url)) {
                                 await launchUrl(url);
@@ -7646,22 +7732,12 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
                                 );
                               }
                             } else {
-                              // It's a local file path
-                              /*final result = await OpenFile.open(material.file);
+                              final result = await OpenFile.open(material.file);
                               if (result.type != ResultType.done) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Cannot open local file.'),
-                                  ),
-                                );
-                              }
-                            }*/
-
-                            final result = await OpenFile.open(material.file);
-                              if (result.type != ResultType.done) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('File not found or cannot be opened. Use the download button if it is a cloud file.'),
+                                    content: Text(
+                                        'File not found or cannot be opened. Use the download button if it is a cloud file.'),
                                   ),
                                 );
                               }
@@ -7670,86 +7746,80 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // NEW: Dedicated Download Button for all users
+                              // Download button (all users)
                               IconButton(
                                 icon: const Icon(Icons.download, color: Colors.green),
                                 tooltip: 'Download File',
                                 onPressed: () => _downloadFile(context, material),
                               ),
-  
-                           if (userType == UserType.teacher.toString())
-              PopupMenuButton<String>(
-                onSelected: (value) async {
-                  if (value == 'edit') {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => UploadPage(
-                          existingMaterial: material,
-                        ),
-                      ),
-                    );
-                    if (result != null &&
-                        result['success'] == true &&
-                        context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(result['message']),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-                  } else if (value == 'migrate') {
-        await _migrateToCloud(context, material);
-      } else if (value == 'delete') {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete Confirmation'),
-                        content: const Text(
-                          'Are you sure you want to delete this material?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
 
-                    if (confirm == true) {
-                      await appState.deleteMaterial(material.id);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Material deleted successfully!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-                  }
+                              // Edit button (teachers only)
+                              if (userType == UserType.teacher.toString())
+                                IconButton(
+                                  icon: const Icon(Icons.edit, color: Colors.blue),
+                                  tooltip: 'Edit Material',
+                                  onPressed: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => UploadPage(
+                                          existingMaterial: material,
+                                        ),
+                                      ),
+                                    );
+
+                                    if (result != null && result['success'] == true && context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(result['message']),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+
+                              // Delete button (teachers only)
+                              if (userType == UserType.teacher.toString())
+                                IconButton(
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  tooltip: 'Delete Material',
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Delete Confirmation'),
+                                        content: const Text('Are you sure you want to delete this material?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: const Text('Cancel'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.pop(context, true),
+                                            child: const Text('Confirm'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true) {
+                                      await appState.deleteMaterial(material);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Material deleted successfully!'),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                            ],
+                          ),
+                    ),
+                  );
                 },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Text('Edit'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete'),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  },
-);
+              );
                 },
               ),
             ),
@@ -7760,16 +7830,16 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
   }
 }
 
-// ===== UPLOAD PAGE =====
+// ========== UPLOAD PAGE ==========
 class UploadPage extends StatefulWidget {
   final LearningMaterial? existingMaterial;
-
   const UploadPage({super.key, this.existingMaterial});
 
   @override
   State<UploadPage> createState() => _UploadPageState();
 }
 
+// ========== UPLOAD PAGE STATE ==========
 class _UploadPageState extends State<UploadPage> {
   final _formKey = GlobalKey<FormState>();
   String name = '';
@@ -7787,7 +7857,7 @@ class _UploadPageState extends State<UploadPage> {
     }
   }
 
-  // ✅ FIXED: Proper file picker
+  // ----- pickFile -----
   Future<void> pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -7817,7 +7887,7 @@ class _UploadPageState extends State<UploadPage> {
     }
   }
 
-  // ✅ FIXED: Proper content type detection
+  // ----- getContentType -----
   String _getContentType(String fileName) {
     final extension = fileName.split('.').last.toLowerCase();
     switch (extension) {
@@ -7849,7 +7919,7 @@ class _UploadPageState extends State<UploadPage> {
     }
   }
 
-  // ✅ FIXED: Proper file upload with error handling
+  // ----- submit -----
   Future<void> submit(BuildContext context) async {
     FocusScope.of(context).unfocus();
 
@@ -7857,12 +7927,11 @@ class _UploadPageState extends State<UploadPage> {
     
     final isEditing = widget.existingMaterial != null;
     
-    // Check if file is required for new uploads
     if (!isEditing && _pickedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a file to upload.'),
-          backgroundColor: Colors.orange,
+          backgroundColor: Colors.red,
         ),
       );
       return;
@@ -7876,8 +7945,8 @@ class _UploadPageState extends State<UploadPage> {
         title: Text(isEditing ? 'Update Material' : 'Upload Material'),
         content: Text(
           isEditing
-              ? 'Update this learning material?'
-              : 'Upload this new material? File: ${_pickedFile?.name ?? "Unknown"}',
+              ? 'Are you sure you want to update this material?'
+              : 'Are you sure you want to upload this material?',
         ),
         actions: [
           TextButton(
@@ -8101,9 +8170,9 @@ class _UploadPageState extends State<UploadPage> {
               // Name field
               TextFormField(
                 initialValue: name,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Material Name *',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                   prefixIcon: Icon(Icons.title),
                 ),
                 onSaved: (v) => name = v?.trim() ?? '',
@@ -8115,9 +8184,9 @@ class _UploadPageState extends State<UploadPage> {
               // Description field
               TextFormField(
                 initialValue: description,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Description *',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
                   prefixIcon: Icon(Icons.description),
                 ),
                 maxLines: 3,
@@ -8209,520 +8278,3 @@ class _UploadPageState extends State<UploadPage> {
     );
   }
 }
-
-/*class _UploadPageState extends State<UploadPage> {
-  final _formKey = GlobalKey<FormState>();
-  String name = '';
-  String description = '';
-  String? filePath;
-  PlatformFile? _pickedFile;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.existingMaterial != null) {
-      name = widget.existingMaterial!.name;
-      description = widget.existingMaterial!.description;
-      filePath = widget.existingMaterial!.file;
-    }
-  }
-
-  void pickFile() async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result != null && result.files.single.path != null) {
-      setState(() => filePath = result.files.single.path!);
-    }
-  }
-
-  Future<void> submit(BuildContext context) async {
-  FocusScope.of(context).unfocus();
-
-  if (!_formKey.currentState!.validate()) return;
-  if (_pickedFile == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please select a file first.')),
-    );
-    return;
-  }
-
-  _formKey.currentState!.save();
-
-  final appState = context.read<MaterialAppState>();
-  final isEditing = widget.existingMaterial != null;
-
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(isEditing ? 'Edit Confirmation' : 'Upload Confirmation'),
-      content: Text(
-        isEditing
-            ? 'Are you sure you want to update this material?'
-            : 'Are you sure you want to upload this new material?',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Yes'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm == true) {
-    try {
-      // Show loading dialog
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const AlertDialog(
-            content: Row(
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 20),
-                Text('Uploading file...'),
-              ],
-            ),
-          ),
-        );
-      }
-
-      String downloadUrl;
-      
-      // Check if we're editing and the file URL hasn't changed
-      if (isEditing && 
-          widget.existingMaterial!.file.startsWith('http') && 
-          filePath == widget.existingMaterial!.name) {
-        // If editing and file wasn't changed, keep the old URL
-        downloadUrl = widget.existingMaterial!.file;
-      } else {
-        // Get file bytes (works on both mobile and web)
-        final Uint8List? fileBytes = _pickedFile!.bytes ?? 
-            (kIsWeb ? null : await File(_pickedFile!.path!).readAsBytes());
-        
-        if (fileBytes == null) {
-          throw Exception('Could not read file data');
-        }
-        
-        print('File size: ${fileBytes.length} bytes');
-        
-        // Clean filename
-        String originalFileName = _pickedFile!.name;
-        originalFileName = originalFileName.replaceAll(RegExp(r'[^\w\s\-\.]'), '_');
-        
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_$originalFileName';
-        
-        print('Cleaned filename: $fileName');
-        print('Storage path: learning_materials/$fileName');
-        
-        final storageRef = FirebaseStorage.instance
-            .ref()
-            .child('learning_materials')
-            .child(fileName);
-        
-        // Upload with metadata - use putData for web compatibility  Future<void> submit(BuildContext context) async {
-    FocusScope.of(context).unfocus();
-
-    if (!_formKey.currentState!.validate()) return;
-    if (_pickedFile == null && filePath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a file first.')),
-      );
-      return;
-    }
-
-    _formKey.currentState!.save();
-
-    final appState = context.read<MaterialAppState>();
-    final isEditing = widget.existingMaterial != null;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isEditing ? 'Edit Confirmation' : 'Upload Confirmation'),
-        content: Text(
-          isEditing
-              ? 'Are you sure you want to update this material?'
-              : 'Are you sure you want to upload this new material?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        // Show loading dialog
-        if (context.mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => const AlertDialog(
-              content: Row(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(width: 20),
-                  Text('Uploading file...'),
-                ],
-              ),
-            ),
-          );
-        }
-
-        String downloadUrl;
-
-        // Check if editing and file wasn't changed
-        if (isEditing && 
-            widget.existingMaterial!.file.startsWith('http') && 
-            _pickedFile == null) {
-          downloadUrl = widget.existingMaterial!.file;
-        } else {
-          // Get file bytes (works on both mobile and web)
-          Uint8List? fileBytes;
-          
-          if (kIsWeb) {
-            // Web: use bytes directly from PlatformFile
-            fileBytes = _pickedFile!.bytes;
-          } else {
-            // Mobile: read from file path
-            if (_pickedFile!.path != null) {
-              final file = File(_pickedFile!.path!);
-              if (!await file.exists()) {
-                throw Exception('Selected file does not exist');
-              }
-              fileBytes = await file.readAsBytes();
-            }
-          }
-
-          if (fileBytes == null) {
-            throw Exception('Could not read file data');
-          }
-
-          print('File size: ${fileBytes.length} bytes');
-
-          // Clean filename
-          String originalFileName = _pickedFile!.name;
-          originalFileName = originalFileName.replaceAll(RegExp(r'[^\w\s\-\.]'), '_');
-
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_$originalFileName';
-
-          print('Cleaned filename: $fileName');
-          print('Storage path: learning_materials/$fileName');
-
-          // Get storage reference
-          final storageRef = FirebaseStorage.instance
-              .ref()
-              .child('learning_materials')
-              .child(fileName);
-
-          // Upload with metadata - use putData for web compatibility
-          final metadata = SettableMetadata(
-            contentType: _getContentType(_pickedFile!.name),
-            customMetadata: {
-              'originalName': originalFileName,
-              'uploadedBy': firebase_auth.FirebaseAuth.instance.currentUser?.email ?? 'unknown',
-              'uploadTimestamp': DateTime.now().toIso8601String(),
-            },
-          );
-
-          print('Starting upload...');
-
-          // Use putData instead of putFile for web compatibility
-          final TaskSnapshot uploadSnapshot = await storageRef.putData(fileBytes, metadata);
-
-          print('Upload state: ${uploadSnapshot.state}');
-          print('Bytes transferred: ${uploadSnapshot.bytesTransferred}/${uploadSnapshot.totalBytes}');
-
-          if (uploadSnapshot.state == TaskState.success) {
-            downloadUrl = await uploadSnapshot.ref.getDownloadURL();
-            print('Upload successful! Download URL: $downloadUrl');
-          } else {
-            throw Exception('Upload did not complete successfully. State: ${uploadSnapshot.state}');
-          }
-        }
-
-        // Create material object with Firebase Storage URL
-        final newMaterial = LearningMaterial(
-          id: widget.existingMaterial?.id ?? '',
-          name: name,
-          description: description,
-          file: downloadUrl,
-          time: DateTime.now(),
-        );
-
-        if (isEditing) {
-          await appState.editMaterial(newMaterial);
-        } else {
-          await appState.addMaterial(newMaterial);
-        }
-
-        if (context.mounted) {
-          Navigator.pop(context); // Close loading dialog
-          Navigator.pop(context, {
-            'success': true,
-            'message': isEditing
-                ? 'Material updated successfully!'
-                : 'Material uploaded successfully!',
-          });
-        }
-      } on FirebaseException catch (e) {
-        print('Firebase error code: ${e.code}');
-        print('Firebase error message: ${e.message}');
-        print('Firebase error plugin: ${e.plugin}');
-
-        if (context.mounted) {
-          Navigator.pop(context); // Close loading dialog
-
-          String errorMessage = 'Upload failed: ${e.message ?? e.code}';
-
-          if (e.code == 'object-not-found') {
-            errorMessage = 'Upload failed: Please check your Firebase Storage rules.\n\nError: ${e.message}';
-          } else if (e.code == 'unauthorized') {
-            errorMessage = 'Upload failed: You do not have permission to upload files.';
-          } else if (e.code == 'unauthenticated') {
-            errorMessage = 'Upload failed: You must be logged in to upload files.';
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 7),
-            ),
-          );
-        }
-      } catch (e, stackTrace) {
-        print('General upload error: $e');
-        print('Stack trace: $stackTrace');
-        if (context.mounted) {
-          Navigator.pop(context); // Close loading dialog
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Upload failed: $e'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 7),
-            ),
-          );
-        }
-      }
-    }
-  }
-
-// Helper method to determine content type
-String _getContentType(String filePath) {
-  final extension = filePath.split('.').last.toLowerCase();
-  switch (extension) {
-    case 'pdf':
-      return 'application/pdf';
-    case 'doc':
-      return 'application/msword';
-    case 'docx':
-      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    case 'ppt':
-      return 'application/vnd.ms-powerpoint';
-    case 'pptx':
-      return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-    case 'xls':
-      return 'application/vnd.ms-excel';
-    case 'xlsx':
-      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-    case 'txt':
-      return 'text/plain';
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
-    case 'png':
-      return 'image/png';
-    default:
-      return 'application/octet-stream';
-  }
-}
-    
-    /*catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Upload failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-}*/
-
-  /*Future<void> submit(BuildContext context) async {
-    FocusScope.of(context).unfocus();
-
-    if (!_formKey.currentState!.validate()) return;
-    if (filePath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a file first.')),
-      );
-      return;
-    }
-
-    _formKey.currentState!.save();
-
-    final appState = context.read<MaterialAppState>();
-    final isEditing = widget.existingMaterial != null;
-
-    final newMaterial = LearningMaterial(
-      id: widget.existingMaterial?.id ?? '',
-      name: name,
-      description: description,
-      file: filePath!,
-      time: DateTime.now(),
-    );
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(isEditing ? 'Edit Confirmation' : 'Upload Confirmation'),
-        content: Text(
-          isEditing
-              ? 'Are you sure you want to update this material?'
-              : 'Are you sure you want to upload this new material?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        if (isEditing) {
-          await appState.editMaterial(newMaterial);
-        } else {
-          await appState.addMaterial(newMaterial);
-        }
-
-        if (context.mounted) {
-          Navigator.pop(context, {
-            'success': true,
-            'message': isEditing
-                ? 'Material updated successfully!'
-                : 'Material uploaded successfully!',
-          });
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
-  }*/
-
-  @override
-  Widget build(BuildContext context) {
-    final isEditing = widget.existingMaterial != null;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          isEditing ? 'Edit Learning Material' : 'Upload Learning Material',
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                initialValue: name,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                ),
-                onSaved: (v) => name = v ?? '',
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Enter a name' : null,
-              ),
-              const SizedBox(height: 15),
-              TextFormField(
-                initialValue: description,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-                onSaved: (v) => description = v ?? '',
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Enter a description' : null,
-              ),
-              const SizedBox(height: 15),
-              /*Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: pickFile,
-                    icon: const Icon(Icons.attach_file),
-                    label: const Text('Choose File'),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      filePath != null
-                          ? filePath!.split('/').last
-                          : 'No file selected',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),*/
-              Row(
-  children: [
-    ElevatedButton.icon(
-      onPressed: pickFile,
-      icon: const Icon(Icons.attach_file),
-      label: const Text('Choose File'),
-    ),
-    const SizedBox(width: 10),
-    Expanded(
-      child: Text(
-        filePath != null
-            ? (filePath!.startsWith('http') 
-                ? 'Cloud file (click to change)' 
-                : filePath!.split('/').last)
-            : 'No file selected',
-        overflow: TextOverflow.ellipsis,
-      ),
-    ),
-  ],
-),
-              const SizedBox(height: 25),
-              Builder(
-                builder: (context) => ElevatedButton.icon(
-                  onPressed: () => submit(context),
-                  icon: const Icon(Icons.cloud_upload),
-                  label: Text(isEditing ? 'Update' : 'Upload'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}*/
