@@ -131,7 +131,7 @@ class _ForumPageState extends State<ForumPage> {
           ),
           IconButton(
             tooltip: 'Create new topic',
-            icon: const Icon(Icons.add_comment_rounded),
+            icon: const Icon(Icons.add_box),
             onPressed: _showCreateTopicDialog,
           ),
           IconButton(
@@ -151,7 +151,7 @@ class _ForumPageState extends State<ForumPage> {
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
                 hintText: 'Search forum topics...',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: Colors.grey[100],
                 suffixIcon: IconButton(
@@ -294,7 +294,7 @@ class _ForumPageState extends State<ForumPage> {
           // Edit/Delete only for owner or teacher
           if (_currentUid != null && (_currentUid == creatorId || _currentUserRole == 'teacher')) ...[
             Tooltip(message: 'Edit topik', child: IconButton(icon: const Icon(Icons.edit, size: 22, color: Colors.blue), onPressed: () => _editTopicById(id))),
-            Tooltip(message: 'Padam topik', child: IconButton(icon: const Icon(Icons.delete_forever, size: 22, color: Colors.red), onPressed: () => _tryDeleteTopicById(id))),
+            Tooltip(message: 'Padam topik', child: IconButton(icon: const Icon(Icons.delete, size: 22, color: Colors.red), onPressed: () => _tryDeleteTopicById(id))),
           ],
           // Pin only for teacher
           if (_currentUserRole == 'teacher')
@@ -684,8 +684,29 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               child: Row(children: [
-                Expanded(child: TextField(controller: _commentCtrl, decoration: const InputDecoration(hintText: 'Write a reply...'))),
-                IconButton(icon: const Icon(Icons.send), onPressed: _addComment),
+                Expanded(
+                  child: TextField(
+                    controller: _commentCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Write a reply...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _addComment,
+                  icon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.lightBlue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.send, color: Colors.white, size: 20),
+                  ),
+                ),
               ]),
             ),
           ),
