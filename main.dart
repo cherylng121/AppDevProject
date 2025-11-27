@@ -5459,6 +5459,10 @@ Future<void> _addProgress() async {
         return b.timestamp!.compareTo(a.timestamp!);
       });
 
+       // ✅ LIMIT TO LATEST 3 RECORDS
+      final limitedRecords = records.take(3).toList();
+      final totalRecords = records.length;
+
       // Show "No students found" if empty after filtering
       if (records.isEmpty) {
         return Card(
@@ -5517,8 +5521,42 @@ Future<void> _addProgress() async {
             ),
           const SizedBox(height: 8),
 
-          // Display filtered records
-          ...records.map((r) {
+          // ✅ INFO BANNER: Showing latest 3 only
+          if (totalRecords > 3)
+            Card(
+              color: Colors.blue[50],
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info, color: Colors.blue, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Showing latest 3 of ${totalRecords} records. View all in Progress History.',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ProgressHistoryPage(),
+                        ),
+                      ),
+                      child: const Text('View All'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+
+          // Display filtered records (LATEST 3 ONLY)
+          ...limitedRecords.map((r) {
             return Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
@@ -5641,74 +5679,521 @@ if (!isTeacher)
 }
 
 
-// PROGRESS HISTORY PAGE
-class ProgressHistoryPage extends StatelessWidget {
+// PROGRESS HISTORY PAGE - WITH EDIT & DELETE
+class ProgressHistoryPage extends StatefulWidget {
   const ProgressHistoryPage({super.key});
+
+  @override
+  State<ProgressHistoryPage> createState() => _ProgressHistoryPageState();
+}
+
+class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
+  final FirebaseFirestore _fs = FirebaseFirestore.instance;
+
+  // Search and filter state
+  String _searchQuery = '';
+  String? _selectedActivityFilter;
+  List<String> _availableActivities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableActivities();
+  }
+
+  Future<void> _loadAvailableActivities() async {
+    try {
+      final snapshot = await _fs.collection('progress_records').get();
+      final activities = snapshot.docs
+          .map((doc) => doc['activity'] as String)
+          .toSet()
+          .toList();
+
+      setState(() {
+        _availableActivities = activities..sort();
+      });
+    } catch (e) {
+      print('Error loading activities: $e');
+    }
+  }
+
+  Future<void> _confirmAndDelete(String docId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Confirmation'),
+        content: const Text('Are you sure you want to delete this record?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _fs.collection('progress_records').doc(docId).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Record deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Delete failed: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showEditDialog(ProgressRecord record) {
+    final activityCtl = TextEditingController(text: record.activity);
+    final scoreCtl = TextEditingController(text: record.score.toString());
+    final gradeCtl = TextEditingController(text: record.grade);
+    final commentsCtl = TextEditingController(text: record.comments);
+
+    final editFormKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Progress Record'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: editFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Student: ${record.student}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: activityCtl,
+                  decoration: InputDecoration(
+                    labelText: 'Activity',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.assignment),
+                  ),
+                  validator: (v) => v!.isEmpty ? 'Enter activity' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: scoreCtl,
+                  decoration: InputDecoration(
+                    labelText: 'Score',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.score),
+                    suffixText: '%',
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v!.isEmpty) return 'Enter score';
+                    final score = double.tryParse(v);
+                    if (score == null || score < 0 || score > 100) {
+                      return 'Enter valid score (0-100)';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: gradeCtl,
+                  decoration: InputDecoration(
+                    labelText: 'Grade',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.grade),
+                  ),
+                  validator: (v) => v!.isEmpty ? 'Enter grade' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: commentsCtl,
+                  decoration: InputDecoration(
+                    labelText: 'Comments (Optional)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.comment),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Save Changes'),
+            onPressed: () async {
+              if (!(editFormKey.currentState?.validate() ?? false)) return;
+
+              try {
+                await _fs.collection('progress_records').doc(record.id).update({
+                  'activity': activityCtl.text.trim(),
+                  'score': double.tryParse(scoreCtl.text) ?? 0,
+                  'grade': gradeCtl.text.trim(),
+                  'comments': commentsCtl.text.trim(),
+                });
+
+                Navigator.pop(ctx);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Record updated successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Update failed: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final userState = context.watch<FirebaseUserState>();
     final currentUser = userState.currentUser;
     final isTeacher = currentUser?.userType == UserType.teacher;
-  
 
     if (!isTeacher) {
-      return const Scaffold(
-        body: Center(child: Text('You are not allowed to view this page')),
+      return Scaffold(
+        appBar: AppBar(title: const Text('Access Denied')),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock, size: 64, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'You are not allowed to view this page',
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    final FirebaseFirestore fs = FirebaseFirestore.instance;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Progress History')),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: fs.collection('progress_records').snapshots(),
-        builder: (_, snap) {
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-
-          final records = snap.data!.docs.map((d) => ProgressRecord.fromDoc(d)).toList();
-          if (records.isEmpty) {
-            return const Center(child: Text('No progress records found.'));
-          } 
-          
-return ListView.builder(
-  padding: const EdgeInsets.all(12),
-  itemCount: records.length,
-  itemBuilder: (_, i) {
-    final r = records[i];
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: Icon(
-          r.isAutoGenerated ? Icons.auto_awesome : Icons.edit, 
-          color: r.isAutoGenerated ? Colors.purple : Colors.blue,
-        ),
-        title: Text('${r.student} — ${r.activity}'),
-        subtitle: Column( 
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Score: ${r.score.toStringAsFixed(1)}%, Grade: ${r.grade}'), 
-            if (r.comments.isNotEmpty) Text(r.comments),
-            if (r.isAutoGenerated) 
-              const Text(
-                '🤖 Auto-generated from quiz',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.purple,
+      appBar: AppBar(
+        title: const Text('📜 Progress History'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: Column(
+        children: [
+          // Search and Filter Section
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.grey[100],
+            child: Column(
+              children: [
+                // Search Bar
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Search by student name or activity...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  onChanged: (value) {
+                    setState(() => _searchQuery = value.toLowerCase());
+                  },
                 ),
-              ),
-          ],
-        ),
-        isThreeLine: true,
+                const SizedBox(height: 12),
+
+                // Activity Filter Dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedActivityFilter,
+                  decoration: InputDecoration(
+                    labelText: 'Filter by Activity',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.filter_list),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  hint: const Text('All Activities'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('All Activities'),
+                    ),
+                    ..._availableActivities.map(
+                      (activity) => DropdownMenuItem(
+                        value: activity,
+                        child: Text(activity),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedActivityFilter = value);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Records List
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _fs.collection('progress_records').snapshots(),
+              builder: (_, snap) {
+                if (!snap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                var records = snap.data!.docs
+                    .map((d) => ProgressRecord.fromDoc(d))
+                    .toList();
+
+                // Apply search filter
+                if (_searchQuery.isNotEmpty) {
+                  records = records.where((r) {
+                    return r.student.toLowerCase().contains(_searchQuery) ||
+                        r.activity.toLowerCase().contains(_searchQuery);
+                  }).toList();
+                }
+
+                // Apply activity filter
+                if (_selectedActivityFilter != null) {
+                  records = records
+                      .where((r) => r.activity == _selectedActivityFilter)
+                      .toList();
+                }
+
+                // Sort by timestamp (newest first)
+                records.sort((a, b) {
+                  if (a.timestamp == null) return 1;
+                  if (b.timestamp == null) return -1;
+                  return b.timestamp!.compareTo(a.timestamp!);
+                });
+
+                if (records.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isNotEmpty || _selectedActivityFilter != null
+                              ? 'No records match your filters'
+                              : 'No progress records found.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: records.length,
+                  itemBuilder: (_, i) {
+                    final r = records[i];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      elevation: 2,
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: r.isAutoGenerated
+                              ? Colors.purple[100]
+                              : Colors.blue[100],
+                          child: Icon(
+                            r.isAutoGenerated ? Icons.auto_awesome : Icons.edit,
+                            color: r.isAutoGenerated ? Colors.purple : Colors.blue,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          '${r.student} — ${r.activity}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getGradeColor(r.grade),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Grade: ${r.grade}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Score: ${r.score.toStringAsFixed(1)}%',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                            if (r.comments.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                r.comments,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                            if (r.timestamp != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat.yMMMd().add_jm().format(
+                                      r.timestamp!.toDate(),
+                                    ),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                            if (r.isAutoGenerated)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 4),
+                                child: Text(
+                                  '🤖 Auto-generated from quiz',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.purple,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        isThreeLine: true,
+                        trailing: !r.isAutoGenerated
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    tooltip: 'Edit Record',
+                                    onPressed: () => _showEditDialog(r),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    tooltip: 'Delete Record',
+                                    onPressed: () => _confirmAndDelete(r.id),
+                                  ),
+                                ],
+                              )
+                            : Tooltip(
+                                message: 'Auto-generated records cannot be edited',
+                                child: Icon(
+                                  Icons.lock,
+                                  color: Colors.grey[400],
+                                  size: 20,
+                                ),
+                              ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
-  },
-);
-        },
-      ),
-    );
+  }
+
+  Color _getGradeColor(String grade) {
+    switch (grade.toUpperCase()) {
+      case 'A':
+        return Colors.green;
+      case 'B':
+        return Colors.lightGreen;
+      case 'C':
+        return Colors.orange;
+      case 'D':
+        return Colors.deepOrange;
+      case 'F':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
 }
 // Dashbord Page within Progress Page
