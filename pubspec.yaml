@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  fl_chart: ^0.68.0
 
   # State management
   provider: ^6.1.2
