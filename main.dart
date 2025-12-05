@@ -1530,16 +1530,19 @@ class _UserSearchPageState extends State<UserSearchPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final currentUser = context.watch<FirebaseUserState>().currentUser;
+  @override
+Widget build(BuildContext context) {
+  final currentUser = context.watch<FirebaseUserState>().currentUser;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('🔍 Search User'),
-        backgroundColor: Colors.lightBlue,
-        foregroundColor: Colors.white,
-        actions: [
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: AppBar(
+      title: const Text('🔍 Search User'),
+      backgroundColor: Colors.lightBlue,
+      foregroundColor: Colors.white,
+      actions: [
+        // ✅ FIXED: Only teachers can see filter options
+        if (currentUser?.userType == UserType.teacher) ...[
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
@@ -1552,193 +1555,202 @@ class _UserSearchPageState extends State<UserSearchPage> {
               tooltip: 'Clear Filters',
             ),
         ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by username...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _searchUsers('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+      ],
+    ),
+    body: Column(
+      children: [
+        // ✅ Search bar - ACCESSIBLE TO EVERYONE
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search by username...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        _searchUsers('');
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-              onChanged: _searchUsers,
             ),
+            onChanged: _searchUsers,
           ),
-          if (_filterClassName != null || _filterFormLevel != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  const Text('Filters: '),
-                  if (_filterFormLevel != null)
-                    Chip(
-                      label: Text(_filterFormLevel!),
-                      onDeleted: () => setState(() {
-                        _filterFormLevel = null;
-                        _applyFilters();
-                      }),
-                    ),
-                  if (_filterClassName != null) ...[
-                    const SizedBox(width: 8),
-                    Chip(
-                      label: Text(_filterClassName!),
-                      onDeleted: () => setState(() {
-                        _filterClassName = null;
-                        _applyFilters();
-                      }),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${_displayedUsers.length} user(s) found',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _displayedUsers.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.person_off,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No users found',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _displayedUsers.length,
-                    itemBuilder: (context, index) {
-                      final user = _displayedUsers[index];
-                      final isCurrentUser = user.id == currentUser?.id;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                       leading: CircleAvatar(
-  backgroundColor: user.userType == UserType.student
-      ? Colors.blue[100]
-      : Colors.green[100],
-  backgroundImage: user.profilePicture != null &&
-                   user.profilePicture!.isNotEmpty &&
-                   user.profilePicture!.startsWith('http')
-      ? NetworkImage(user.profilePicture!)
-      : null,
-  child: user.profilePicture == null ||
-         user.profilePicture!.isEmpty ||
-         !user.profilePicture!.startsWith('http')
-      ? Icon(
-          user.userType == UserType.student ? Icons.school : Icons.person,
-          color: user.userType == UserType.student
-              ? Colors.blue[700]
-              : Colors.green[700],
-        )
-      : null,
-),
-                          title: Row(
-                            children: [
-                              Text(user.username),
-                              if (isCurrentUser) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue[100],
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    'You',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.blue[700],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user.userType == UserType.student
-                                    ? 'Student'
-                                    : 'Teacher',
-                                style: TextStyle(
-                                  color: user.userType == UserType.student
-                                      ? Colors.blue[700]
-                                      : Colors.green[700],
-                                ),
-                              ),
-                              if (user.formLevel != null)
-                                Text('Form: ${user.formLevel}'),
-                              if (user.className != null)
-                                Text('Class: ${user.className}'),
-                            ],
-                          ),
-                          trailing: user.userType == UserType.student
-                              ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.star,
-                                      size: 16,
-                                      color: Colors.amber,
-                                    ),
-                                    Text(
-                                      '${user.points}',
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                )
-                              : null,
-                          onTap: () => _showUserDetailsDialog(user),
-                        ),
-                      );
-                    },
+        ),
+        
+        // ✅ FIXED: Filter chips only visible to teachers
+        if (currentUser?.userType == UserType.teacher && 
+            (_filterClassName != null || _filterFormLevel != null))
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Text('Filters: '),
+                if (_filterFormLevel != null)
+                  Chip(
+                    label: Text(_filterFormLevel!),
+                    onDeleted: () => setState(() {
+                      _filterFormLevel = null;
+                      _applyFilters();
+                    }),
                   ),
+                if (_filterClassName != null) ...[
+                  const SizedBox(width: 8),
+                  Chip(
+                    label: Text(_filterClassName!),
+                    onDeleted: () => setState(() {
+                      _filterClassName = null;
+                      _applyFilters();
+                    }),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ],
-      ),
-    );
-  }
+        
+        // Results count - everyone can see
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${_displayedUsers.length} user(s) found',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ),
+        ),
+        
+        // User list - everyone can see
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _displayedUsers.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.person_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No users found',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _displayedUsers.length,
+                      itemBuilder: (context, index) {
+                        final user = _displayedUsers[index];
+                        final isCurrentUser = user.id == currentUser?.id;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: user.userType == UserType.student
+                                  ? Colors.blue[100]
+                                  : Colors.green[100],
+                              backgroundImage: user.profilePicture != null &&
+                                             user.profilePicture!.isNotEmpty &&
+                                             user.profilePicture!.startsWith('http')
+                                  ? NetworkImage(user.profilePicture!)
+                                  : null,
+                              child: user.profilePicture == null ||
+                                     user.profilePicture!.isEmpty ||
+                                     !user.profilePicture!.startsWith('http')
+                                  ? Icon(
+                                      user.userType == UserType.student ? Icons.school : Icons.person,
+                                      color: user.userType == UserType.student
+                                          ? Colors.blue[700]
+                                          : Colors.green[700],
+                                    )
+                                  : null,
+                            ),
+                            title: Row(
+                              children: [
+                                Text(user.username),
+                                if (isCurrentUser) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[100],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      'You',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user.userType == UserType.student
+                                      ? 'Student'
+                                      : 'Teacher',
+                                  style: TextStyle(
+                                    color: user.userType == UserType.student
+                                        ? Colors.blue[700]
+                                        : Colors.green[700],
+                                  ),
+                                ),
+                                if (user.formLevel != null)
+                                  Text('Form: ${user.formLevel}'),
+                                if (user.className != null)
+                                  Text('Class: ${user.className}'),
+                              ],
+                            ),
+                            trailing: user.userType == UserType.student
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.star,
+                                        size: 16,
+                                        color: Colors.amber,
+                                      ),
+                                      Text(
+                                        '${user.points}',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  )
+                                : null,
+                            onTap: () => _showUserDetailsDialog(user),
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    ),
+  );
+}
 
 
   Widget _buildDetailRow(String label, String value) {
