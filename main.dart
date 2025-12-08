@@ -7826,15 +7826,77 @@ class _AchievementsPageState extends State<AchievementsPage> {
     }
   }
 
-  // Function to delete an achievement (Skipping internal body as it was correct)
-  Future<void> _deleteAchievement(String achievementId, String achievementTitle) async {
-    // ... (Keep the existing delete logic here)
+  // Function to delete an achievement 
+  Future<void> _deleteAchievement(
+    String achievementId,
+    String achievementTitle,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Achievement'),
+        content: Text('Are you sure you want to delete the achievement "$achievementTitle"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('achievements')
+            .doc(achievementId)
+            .delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Achievement deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete achievement: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
-  // ⚠️ Function to show edit dialog (Skipping internal body as it was correct)
-  Future<void> _showEditAchievementDialog(Map<String, dynamic> achievement) async {
-    // ... (Keep the existing edit logic here)
+  // ⚠️ Function to show edit dialog 
+  Future<void> _showEditAchievementDialog(
+  Map<String, dynamic> achievement,
+) async {
+  // Navigate to the new EditAchievementPage
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => EditAchievementPage(achievement: achievement),
+    ),
+  );
+  
+  // Check for success message from EditAchievementPage
+  if (result != null && result['success'] == true && mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result['message']),
+        backgroundColor: Colors.green,
+      ),
+    );
+    // StreamBuilder handles the UI refresh automatically
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -8419,6 +8481,236 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
           },
         );
       },
+    );
+  }
+}
+
+// ========== EDIT ACHIEVEMENT PAGE ==========
+class EditAchievementPage extends StatefulWidget {
+  final Map<String, dynamic> achievement;
+  const EditAchievementPage({super.key, required this.achievement});
+
+  @override
+  State<EditAchievementPage> createState() => _EditAchievementPageState();
+}
+
+class _EditAchievementPageState extends State<EditAchievementPage> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late String _currentType;
+  bool _isLoading = false;
+
+  final List<String> _achievementTypes = [
+    'Badge',
+    'Certificate',
+    'Milestone',
+    'Other',
+    'Badge (Auto)',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.achievement['title'] ?? '');
+    _descriptionController = TextEditingController(text: widget.achievement['description'] ?? '');
+    _currentType = widget.achievement['type'] ?? 'Badge';
+
+    // Ensure the current type is available in the dropdown if it's a special type
+    if (!_achievementTypes.contains(_currentType)) {
+      _achievementTypes.add(_currentType);
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
+      setState(() => _isLoading = true);
+
+      try {
+        final achievementId = widget.achievement['id'] as String;
+
+        final achievementData = {
+          'title': _titleController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'type': _currentType,
+          'editedAt': FieldValue.serverTimestamp(),
+          // Student details are not updated, only content fields
+        };
+
+        await FirebaseFirestore.instance
+            .collection('achievements')
+            .doc(achievementId)
+            .update(achievementData);
+
+        if (context.mounted) {
+          Navigator.pop(context, {
+            'success': true,
+            'message': 'Achievement "${_titleController.text.trim()}" updated successfully.',
+          });
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update achievement: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final studentName = widget.achievement['studentName'] ?? 'Unknown Student';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Achievement'),
+        backgroundColor: Colors.amber, // Matches the Add page's AppBar color
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              // Display Student Name (Replaces the student selector from AddAchievementPage)
+              Card(
+                color: Colors.blue[50],
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person, color: Colors.blue),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Student Awarded:',
+                              style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                            ),
+                            Text(
+                              studentName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // 1. Title Input
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Achievement Title',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: const Icon(Icons.star),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a title.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // 2. Type Dropdown
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Achievement Type',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: const Icon(Icons.category),
+                ),
+                value: _currentType,
+                items: _achievementTypes.map((String type) {
+                  return DropdownMenuItem<String>(
+                    value: type,
+                    child: Text(type),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _currentType = newValue!;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // 3. Description Input
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: const Icon(Icons.description),
+                ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 30),
+
+              // 4. Save Button (Styled like the Add button)
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _handleSave,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(
+                  _isLoading ? 'Saving...' : 'Save Changes',
+                  style: const TextStyle(fontSize: 18),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green, // Use green for consistency with save/award
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
