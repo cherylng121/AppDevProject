@@ -5972,9 +5972,9 @@ Future<void> _addProgress() async {
               ),
               ),
             // Progress History Button
-            TextButton.icon(
+            IconButton(
               icon: const Icon(Icons.history, color: Colors.white),
-              label: const Text('Progress History', style: TextStyle(color: Colors.white)),
+              tooltip: 'Progress History',
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const ProgressHistoryPage()),
@@ -6330,7 +6330,7 @@ Future<void> _addProgress() async {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Showing latest 3 of ${totalRecords} records. View all in Progress History.',
+                        'Showing latest 3 of ${totalRecords} records. View all in History.',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Colors.blue,
@@ -7003,7 +7003,7 @@ class ClassDashboardPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('📊 Class Performance Dashboard'),
+        title: const Text('📊 Class Performance'),
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
