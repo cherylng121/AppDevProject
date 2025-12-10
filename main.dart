@@ -5767,11 +5767,10 @@ Future<void> _searchUsers(String query) async {
   setState(() => _isSearching = true);
 
   try {
-    // ✅ FIX: Add explicit limit to satisfy security rules
     final snapshot = await _fs
         .collection('users')
         .where('userType', isEqualTo: 'UserType.student')
-        .limit(50)  // ✅ Added explicit limit
+        .limit(50)  
         .get();
 
     // Filter results locally
@@ -6001,6 +6000,8 @@ Future<void> _addProgress() async {
             onExpansionChanged: (expanded) {
               setState(() => _showFilterOptions = expanded);
             },
+             tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+             childrenPadding: EdgeInsets.zero, 
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -6016,8 +6017,13 @@ Future<void> _addProgress() async {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         prefixIcon: const Icon(Icons.quiz),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
                       hint: const Text('All Quizzes'),
+                      isExpanded: true, 
                       items: [
                         const DropdownMenuItem(
                           value: null,
@@ -6026,7 +6032,10 @@ Future<void> _addProgress() async {
                         ..._availableQuizzes.map(
                           (quiz) => DropdownMenuItem(
                             value: quiz,
-                            child: Text(quiz),
+                            child: Text(
+                              quiz,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ],
@@ -6256,7 +6265,7 @@ Future<void> _addProgress() async {
         return b.timestamp!.compareTo(a.timestamp!);
       });
 
-       // ✅ LIMIT TO LATEST 3 RECORDS
+       // LIMIT TO LATEST 3 RECORDS
       final limitedRecords = records.take(3).toList();
       final totalRecords = records.length;
 
@@ -6318,7 +6327,7 @@ Future<void> _addProgress() async {
             ),
           const SizedBox(height: 8),
 
-          // ✅ INFO BANNER: Showing latest 3 only
+          // INFO BANNER: Showing latest 3 only
           if (totalRecords > 3)
             Card(
               color: Colors.blue[50],
@@ -7274,165 +7283,203 @@ class ClassDashboardPage extends StatelessWidget {
     }
   }
 
-  // 3. TOPIC PERFORMANCE (BAR CHART + SORTED LIST)
-  Widget _buildTopicPerformanceCard(Map<String, dynamic> analytics) {
-    final sortedTopics = analytics['topicAverages'] as List<MapEntry<String, double>>;
+// 3. TOPIC PERFORMANCE (BAR CHART WITH NUMBERED LABELS + LEGEND)
+Widget _buildTopicPerformanceCard(Map<String, dynamic> analytics) {
+  final sortedTopics = analytics['topicAverages'] as List<MapEntry<String, double>>;
 
-    if (sortedTopics.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  if (sortedTopics.isEmpty) {
+    return const SizedBox.shrink();
+  }
 
-    return Card(
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: const [
-                Icon(Icons.bar_chart, color: Colors.blue),
-                SizedBox(width: 8),
-                Text(
-                  'Topic Performance Analysis',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Topics sorted by average score (lowest to highest)',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 16),
+  // Limit to top 5 struggling topics (lowest scores)
+  final topicsToShow = sortedTopics.take(5).toList();
 
-            // BAR CHART
-            SizedBox(
-              height: 250,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 100,
-                  barGroups: sortedTopics.asMap().entries.map((entry) {
-                    return BarChartGroupData(
-                      x: entry.key,
-                      barRods: [
-                        BarChartRodData(
-                          toY: entry.value.value,
-                          color: entry.value.value < 60
-                              ? Colors.red
-                              : entry.value.value < 75
-                                  ? Colors.orange
-                                  : Colors.green,
-                          width: 20,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(4),
-                          ),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          if (value.toInt() >= 0 && value.toInt() < sortedTopics.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                sortedTopics[value.toInt()].key,
-                                style: const TextStyle(fontSize: 10),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          return Text('${value.toInt()}%');
-                        },
-                      ),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  gridData: FlGridData(show: true),
-                  borderData: FlBorderData(show: false),
-                ),
+  return Card(
+    elevation: 3,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.bar_chart, color: Colors.blue),
+              SizedBox(width: 8),
+              Text(
+                'Topic Performance Analysis',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Top 5 topics needing attention (sorted by average score)',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
 
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-
-            // SORTED LIST WITH STRUGGLE INDICATOR
-            ...sortedTopics.take(5).map((entry) {
-              final isStruggling = entry.value < 60;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Icon(
-                      isStruggling ? Icons.warning : Icons.check_circle,
-                      color: isStruggling ? Colors.red : Colors.green,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.key,
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          if (isStruggling)
-                            const Text(
-                              '⚠️ Students struggling with this topic',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.red,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      '${entry.value.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: entry.value < 60
+          // BAR CHART WITH NUMBERED LABELS
+          SizedBox(
+            height: 250,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: 100,
+                barGroups: topicsToShow.asMap().entries.map((entry) {
+                  return BarChartGroupData(
+                    x: entry.key,
+                    barRods: [
+                      BarChartRodData(
+                        toY: entry.value.value,
+                        color: entry.value.value < 60
                             ? Colors.red
-                            : entry.value < 75
+                            : entry.value.value < 75
                                 ? Colors.orange
                                 : Colors.green,
+                        width: 30,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        if (value.toInt() >= 0 && value.toInt() < topicsToShow.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              '${value.toInt() + 1}', // Show numbers: 1, 2, 3, 4, 5
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        return Text('${value.toInt()}%');
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                gridData: FlGridData(show: true),
+                borderData: FlBorderData(show: false),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 8),
+
+          // LEGEND - NUMBERED LIST WITH TOPIC NAMES
+          Text(
+            'Legend',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          ...topicsToShow.asMap().entries.map((entry) {
+            final index = entry.key;
+            final topic = entry.value;
+            final isStruggling = topic.value < 60;
+            
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  // Number badge matching the chart
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: topic.value < 60
+                          ? Colors.red
+                          : topic.value < 75
+                              ? Colors.orange
+                              : Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          topic.key,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (isStruggling)
+                          const Text(
+                            '⚠️ Students struggling with this topic',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.red,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${topic.value.toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: topic.value < 60
+                          ? Colors.red
+                          : topic.value < 75
+                              ? Colors.orange
+                              : Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
-
+}
 // ---------- Achievements ----------
 
 class AchievementsPage extends StatefulWidget {
