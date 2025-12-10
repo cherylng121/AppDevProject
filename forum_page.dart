@@ -280,14 +280,20 @@ class _ForumPageState extends State<ForumPage> {
         subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(description, maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 6),
-          Row(children: [
-            Chip(label: Text(tag)),
-            const SizedBox(width: 8),
-            Text('By $creatorName'),
-            const SizedBox(width: 8),
-            if (timestamp != null)
-              Text('· ${DateFormat('dd/MM/yyyy').format(timestamp)}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
-          ]),
+          Wrap(
+  spacing: 8,
+  runSpacing: 4,
+  children: [
+    Chip(label: Text(tag)),
+    Text('By $creatorName'),
+    if (timestamp != null)
+      Text(
+        '· ${DateFormat('dd/MM/yyyy').format(timestamp)}',
+        style: const TextStyle(fontSize: 12, color: Colors.black54),
+      ),
+  ],
+)
+
         ]),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
           Tooltip(message: 'Buka topik', child: IconButton(icon: const Icon(Icons.open_in_new, size: 22), onPressed: () => _openPostDetailsById(id))),
