@@ -167,65 +167,63 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
-  // ----- registerUser -----
-  Future<bool> registerUser({
-    required String username,
-    required String email,
-    required String password,
-    required UserType userType,
-    String? className,
-    String? formLevel,
-  }) async {
-    _isLoading = true;
-    _errorMessage = null;
+// ----- registerUser -----
+Future<bool> registerUser({
+  required String username,
+  required String email,
+  required String password,
+  required UserType userType,
+  String? className,
+  String? formLevel,
+}) async {
+  _isLoading = true;
+  _errorMessage = null;
+  notifyListeners();
+
+  try {
+    // ✅ CREATE USER FIRST
+    final userCredential = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    print('Firebase Auth user created: ${userCredential.user!.uid}');
+
+    final newUser = AppUser(
+      id: userCredential.user!.uid,
+      username: username,
+      email: email,
+      userType: userType,
+      className: className,
+      formLevel: formLevel,
+    );
+
+    // ✅ THEN SAVE TO FIRESTORE
+    await _firestore
+        .collection('users')
+        .doc(userCredential.user!.uid)
+        .set(newUser.toMap());
+
+    _currentUser = newUser;
+    _isLoading = false;
     notifyListeners();
-
-    try {
-      final usernameQuery = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username)
-          .get();
-
-      if (usernameQuery.docs.isNotEmpty) {
-        _errorMessage = 'Username already exists';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      print('Firebase Auth user created: ${userCredential.user!.uid}');
-
-      final newUser = AppUser(
-        id: userCredential.user!.uid,
-        username: username,
-        email: email,
-        userType: userType,
-        className: className,
-        formLevel: formLevel,
-      );
-
-      await _firestore
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .set(newUser.toMap());
-
-      _currentUser = newUser;
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      _errorMessage = _getAuthErrorMessage(e.code);
-      print('Error during registration: $_errorMessage');
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
+    return true;
+  } on firebase_auth.FirebaseAuthException catch (e) {
+    _errorMessage = _getAuthErrorMessage(e.code);
+    print('Error during registration: $_errorMessage');
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  } catch (e) {
+    // ✅ ADD GENERAL ERROR HANDLING
+    _errorMessage = 'Registration failed: $e';
+    print('Error during registration: $_errorMessage');
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
+}
+
 
   // ----- login -----
   Future<bool> login(String email, String password) async {
@@ -268,6 +266,7 @@ class FirebaseUserState extends ChangeNotifier {
     if (_currentUser == null) return false;
 
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
@@ -275,6 +274,7 @@ class FirebaseUserState extends ChangeNotifier {
         final usernameQuery = await _firestore
             .collection('users')
             .where('username', isEqualTo: username)
+            .limit(1)
             .get();
 
         if (usernameQuery.docs.isNotEmpty) {
@@ -363,45 +363,51 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
-  Future<List<AppUser>> searchUserByName(String query) async {
-    try {
-      final snapshot = await _firestore.collection('users').get();
-      return snapshot.docs
-          .map((doc) => AppUser.fromMap(doc.id, doc.data()))
-          .where(
-            (user) => user.username.toLowerCase().contains(query.toLowerCase()),
-          )
-          .toList();
-    } catch (e) {
-      return [];
-    }
+Future<List<AppUser>> searchUserByName(String query) async {
+  try {
+    final snapshot = await _firestore
+        .collection('users')
+        .limit(50)  // ✅ Added explicit limit
+        .get();
+    
+    return snapshot.docs
+        .map((doc) => AppUser.fromMap(doc.id, doc.data()))
+        .where(
+          (user) => user.username.toLowerCase().contains(query.toLowerCase()),
+        )
+        .toList();
+  } catch (e) {
+    print('❌ Search error: $e');
+    return [];
   }
+}
 
-  // ----- filterUsers -----
-  Future<List<AppUser>> filterUsers({
-    String? className,
-    String? formLevel,
-  }) async {
-    try {
-      Query query = _firestore.collection('users');
-      if (className != null) {
-        query = query.where('className', isEqualTo: className);
-      }
-      if (formLevel != null) {
-        query = query.where('formLevel', isEqualTo: formLevel);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs
-          .map(
-            (doc) =>
-                AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>),
-          )
-          .toList();
-    } catch (e) {
-      return [];
+ // ----- filterUsers -----
+Future<List<AppUser>> filterUsers({
+  String? className,
+  String? formLevel,
+}) async {
+  try {
+    Query query = _firestore.collection('users').limit(50);  // ✅ Added limit
+    
+    if (className != null) {
+      query = query.where('className', isEqualTo: className);
     }
+    if (formLevel != null) {
+      query = query.where('formLevel', isEqualTo: formLevel);
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map(
+          (doc) => AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>),
+        )
+        .toList();
+  } catch (e) {
+    print('❌ Filter error: $e');
+    return [];
   }
+}
 
   // ----- addPoints -----
   Future<void> addPoints(int points) async {
@@ -1332,39 +1338,39 @@ class _UserSearchPageState extends State<UserSearchPage> {
   }
 
   // ----- loadAllUsers -----
-  Future<void> _loadAllUsers() async {
-    setState(() => _isLoading = true);
-    final userState = context.read<FirebaseUserState>();
-    final users = await userState.searchUserByName('');
-    setState(() {
-      _displayedUsers = users;
-      _isLoading = false;
-    });
+Future<void> _loadAllUsers() async {
+  setState(() => _isLoading = true);
+  final userState = context.read<FirebaseUserState>();
+  final users = await userState.searchUserByName('');
+  setState(() {
+    _displayedUsers = users;
+    _isLoading = false;
+  });
+}
+
+// ----- searchUsers -----
+Future<void> _searchUsers(String query) async {
+  setState(() => _isLoading = true);
+  final userState = context.read<FirebaseUserState>();
+  var results = await userState.searchUserByName(query);
+
+  if (_filterClassName != null || _filterFormLevel != null) {
+    results = results.where((user) {
+      if (_filterClassName != null && user.className != _filterClassName) {
+        return false;
+      }
+      if (_filterFormLevel != null && user.formLevel != _filterFormLevel) {
+        return false;
+      }
+      return true;
+    }).toList();
   }
 
-  // ----- searchUsers -----
-  Future<void> _searchUsers(String query) async {
-    setState(() => _isLoading = true);
-    final userState = context.read<FirebaseUserState>();
-    var results = await userState.searchUserByName(query);
-
-    if (_filterClassName != null || _filterFormLevel != null) {
-      results = results.where((user) {
-        if (_filterClassName != null && user.className != _filterClassName) {
-          return false;
-        }
-        if (_filterFormLevel != null && user.formLevel != _filterFormLevel) {
-          return false;
-        }
-        return true;
-      }).toList();
-    }
-
-    setState(() {
-      _displayedUsers = results;
-      _isLoading = false;
-    });
-  }
+  setState(() {
+    _displayedUsers = results;
+    _isLoading = false;
+  });
+}
 
   // ----- applyFilters -----
   Future<void> _applyFilters() async {
@@ -1530,7 +1536,6 @@ class _UserSearchPageState extends State<UserSearchPage> {
   }
 
   @override
-  @override
 Widget build(BuildContext context) {
   final currentUser = context.watch<FirebaseUserState>().currentUser;
 
@@ -1627,126 +1632,126 @@ Widget build(BuildContext context) {
         ),
         
         // User list - everyone can see
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _displayedUsers.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.person_off,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No users found',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey[600],
+Expanded(
+  child: _isLoading
+      ? const Center(child: CircularProgressIndicator())
+      : _displayedUsers.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.person_off,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No users found',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _displayedUsers.length,
+              itemBuilder: (context, index) {
+                final user = _displayedUsers[index];
+                final isCurrentUser = user.id == currentUser?.id;
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: user.userType == UserType.student
+                          ? Colors.blue[100]
+                          : Colors.green[100],
+                      backgroundImage: user.profilePicture != null &&
+                                     user.profilePicture!.isNotEmpty &&
+                                     user.profilePicture!.startsWith('http')
+                          ? NetworkImage(user.profilePicture!)
+                          : null,
+                      child: user.profilePicture == null ||
+                             user.profilePicture!.isEmpty ||
+                             !user.profilePicture!.startsWith('http')
+                          ? Icon(
+                              user.userType == UserType.student ? Icons.school : Icons.person,
+                              color: user.userType == UserType.student
+                                  ? Colors.blue[700]
+                                  : Colors.green[700],
+                            )
+                          : null,
+                    ),
+                    title: Row(
+                      children: [
+                        Text(user.username),
+                        if (isCurrentUser) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'You',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue[700],
+                              ),
                             ),
                           ),
                         ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _displayedUsers.length,
-                      itemBuilder: (context, index) {
-                        final user = _displayedUsers[index];
-                        final isCurrentUser = user.id == currentUser?.id;
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: user.userType == UserType.student
-                                  ? Colors.blue[100]
-                                  : Colors.green[100],
-                              backgroundImage: user.profilePicture != null &&
-                                             user.profilePicture!.isNotEmpty &&
-                                             user.profilePicture!.startsWith('http')
-                                  ? NetworkImage(user.profilePicture!)
-                                  : null,
-                              child: user.profilePicture == null ||
-                                     user.profilePicture!.isEmpty ||
-                                     !user.profilePicture!.startsWith('http')
-                                  ? Icon(
-                                      user.userType == UserType.student ? Icons.school : Icons.person,
-                                      color: user.userType == UserType.student
-                                          ? Colors.blue[700]
-                                          : Colors.green[700],
-                                    )
-                                  : null,
-                            ),
-                            title: Row(
-                              children: [
-                                Text(user.username),
-                                if (isCurrentUser) ...[
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue[100],
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      'You',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.blue[700],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user.userType == UserType.student
-                                      ? 'Student'
-                                      : 'Teacher',
-                                  style: TextStyle(
-                                    color: user.userType == UserType.student
-                                        ? Colors.blue[700]
-                                        : Colors.green[700],
-                                  ),
-                                ),
-                                if (user.formLevel != null)
-                                  Text('Form: ${user.formLevel}'),
-                                if (user.className != null)
-                                  Text('Class: ${user.className}'),
-                              ],
-                            ),
-                            trailing: user.userType == UserType.student
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.star,
-                                        size: 16,
-                                        color: Colors.amber,
-                                      ),
-                                      Text(
-                                        '${user.points}',
-                                        style: const TextStyle(fontSize: 12),
-                                      ),
-                                    ],
-                                  )
-                                : null,
-                            onTap: () => _showUserDetailsDialog(user),
-                          ),
-                        );
-                      },
+                      ],
                     ),
-        ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.userType == UserType.student
+                              ? 'Student'
+                              : 'Teacher',
+                          style: TextStyle(
+                            color: user.userType == UserType.student
+                                ? Colors.blue[700]
+                                : Colors.green[700],
+                          ),
+                        ),
+                        if (user.formLevel != null)
+                          Text('Form: ${user.formLevel}'),
+                        if (user.className != null)
+                          Text('Class: ${user.className}'),
+                      ],
+                    ),
+                    trailing: user.userType == UserType.student
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.star,
+                                size: 16,
+                                color: Colors.amber,
+                              ),
+                              Text(
+                                '${user.points}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          )
+                        : null,
+                    onTap: () => _showUserDetailsDialog(user),
+                  ),
+                );
+              },
+            ),
+),
       ],
     ),
   );
@@ -3588,394 +3593,6 @@ class CreateQuizPage extends StatefulWidget {
   State<CreateQuizPage> createState() => _CreateQuizPageState();
 }
 
-/* ========== CREATE QUIZ PAGE STATE ==========
-class _CreateQuizPageState extends State<CreateQuizPage> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _titleController;
-  late TextEditingController _topicController;
-  List<Question> _questions = [];
-  bool _isEditing = false;
-  bool _isLoading = false;
-
-  // Controllers for adding new question
-  final _newQuestionTextController = TextEditingController();
-  final _newAnswerController = TextEditingController();
-  final _newExplanationController = TextEditingController(); // For feedback
-  QuestionType _newQuestionType = QuestionType.mcq;
-
-  final List<TextEditingController> _mcqOptionControllers = [
-    TextEditingController(),
-    TextEditingController(),
-    TextEditingController(),
-    TextEditingController(),
-  ];
-
-  int _correctMcqOptionIndex = 0; // Index of the correct option
-
-  @override
-  void initState() {
-    super.initState();
-    _isEditing = widget.quizToEdit != null;
-
-    if (_isEditing) {
-      // Populate fields from existing quiz
-      final quiz = widget.quizToEdit!;
-      _titleController = TextEditingController(text: quiz.title);
-      _topicController = TextEditingController(text: quiz.topic);
-      _questions = List.from(quiz.questions);
-    } else {
-      // Start fresh
-      _titleController = TextEditingController();
-      _topicController = TextEditingController();
-    }
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _topicController.dispose();
-    _newQuestionTextController.dispose();
-    _newAnswerController.dispose();
-    _newExplanationController.dispose();
-    for (var controller in _mcqOptionControllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
-  // Helper to add a question to the local list
-  void _addQuestion() {
-    if (_newQuestionTextController.text.isEmpty) {
-      _showError('Please enter the question text.');
-      return;
-    }
-
-    String answer;
-    List<String> options = [];
-
-    if (_newQuestionType == QuestionType.mcq) {
-      options = _mcqOptionControllers.map((c) => c.text).toList();
-      if (options.any((opt) => opt.isEmpty)) {
-        _showError('Please fill all 4 MCQ options.');
-        return;
-      }
-      answer = options[_correctMcqOptionIndex];
-    } else {
-      // Short Answer
-      if (_newAnswerController.text.isEmpty) {
-        _showError('Please enter the correct answer.');
-        return;
-      }
-      answer = _newAnswerController.text;
-    }
-
-    setState(() {
-      _questions.add(
-        Question(
-          id: UniqueKey().toString(), // Simple unique ID
-          questionText: _newQuestionTextController.text,
-          type: _newQuestionType,
-          options: options,
-          answer: answer,
-          explanation: _newExplanationController.text.isEmpty
-              ? null
-              : _newExplanationController.text,
-        ),
-      );
-    });
-
-    // Reset controllers
-    _newQuestionTextController.clear();
-    _newAnswerController.clear();
-    _newExplanationController.clear();
-    for (var c in _mcqOptionControllers) {
-      c.clear();
-    }
-    setState(() => _correctMcqOptionIndex = 0);
-  }
-
-  // Save or Update the quiz (US005-01, US005-02)
-  Future<void> _saveQuiz(QuizStatus status) async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_questions.isEmpty) {
-      _showError('Please add at least one question.');
-      return;
-    }
-
-    _formKey.currentState!.save();
-
-    final user = context.read<FirebaseUserState>().currentUser;
-    if (user == null) {
-      _showError('You must be logged in to create a quiz.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      if (_isEditing) {
-        // Find and update the existing quiz in the global list
-        final quiz = widget.quizToEdit!;
-        quiz.title = _titleController.text;
-        quiz.topic = _topicController.text;
-        quiz.questions = _questions;
-        quiz.status = status;
-
-        // Update in Firestore
-        await FirebaseFirestore.instance
-            .collection('quizzes')
-            .doc(quiz.id)
-            .update(quiz.toMap());
-      } else {
-        // Add a new quiz to the global list
-        final newQuiz = Quiz(
-          id: '', // ID will be auto-generated by Firestore
-          title: _titleController.text,
-          topic: _topicController.text.isEmpty
-              ? 'General'
-              : _topicController.text,
-          questions: _questions,
-          status: status,
-          createdBy: user.id, // Link quiz to the teacher
-        );
-
-        // Add to Firestore
-        await FirebaseFirestore.instance
-            .collection('quizzes')
-            .add(newQuiz.toMap());
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Quiz saved as ${status.name.toUpperCase()}!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context); // Go back to the QuizPage
-      }
-    } catch (e) {
-      _showError('Failed to save quiz: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(_isEditing ? 'Edit Quiz' : 'Create New Quiz')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: InputDecoration(
-                        labelText: 'Quiz Title',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                      ),
-                      validator: (v) =>
-                          v!.isEmpty ? 'Please enter a title' : null,
-                    ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _topicController,
-                      decoration: InputDecoration(
-                        labelText: 'Topic (e.g., 1.1)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                      ),
-                      validator: (v) =>
-                          v!.isEmpty ? 'Please enter a topic' : null,
-                    ),
-                    const Divider(height: 30, thickness: 2),
-
-                    // --- Add New Question Form ---
-                    const Text(
-                      'Add New Question:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    DropdownButtonFormField<QuestionType>(
-                      initialValue: _newQuestionType,
-                      items: const [
-                        DropdownMenuItem(
-                          value: QuestionType.mcq,
-                          child: Text('Multiple Choice (MCQ)'),
-                        ),
-                        DropdownMenuItem(
-                          value: QuestionType.shortAnswer,
-                          child: Text('Short Answer'),
-                        ),
-                      ],
-                      onChanged: (QuestionType? value) =>
-                          setState(() => _newQuestionType = value!),
-                      decoration: const InputDecoration(
-                        labelText: 'Question Type',
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    /*TextFormField(
-                controller: _newQuestionTextController,
-                decoration: const InputDecoration(labelText: 'Question Text', border: OutlineInputBorder()),
-              ),*/
-                    TextFormField(
-                      controller: _newQuestionTextController,
-                      decoration: InputDecoration(
-                        labelText: 'Question Text',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                        hintText: 'Enter your question here...',
-                      ),
-                      maxLines: 5, // Allow multiple lines
-                      minLines: 3,
-                    ),
-                    const SizedBox(height: 10),
-
-                    if (_newQuestionType == QuestionType.mcq) ...[
-                      const Text(
-                        'MCQ Options (Select the correct one):',
-                        style: TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      ...List.generate(_mcqOptionControllers.length, (index) {
-                        return Row(
-                          children: [
-                            Radio<int>(
-                              value: index,
-                              groupValue: _correctMcqOptionIndex,
-                              onChanged: (int? value) => setState(
-                                () => _correctMcqOptionIndex = value!,
-                              ),
-                            ),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _mcqOptionControllers[index],
-                                decoration: InputDecoration(
-                                  labelText: 'Option ${index + 1}',
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
-                    ] else ...[
-                      TextFormField(
-                        controller: _newAnswerController,
-                        decoration: const InputDecoration(
-                          labelText: 'Correct Short Answer',
-                          border: OutlineInputBorder(),
-                          hintText: 'Enter the correct answer...',
-                        ),
-                        maxLines: 3, // Allow multiple lines
-                        minLines: 2,
-                      ),
-                      /*TextFormField(
-                  controller: _newAnswerController,
-                  decoration: const InputDecoration(labelText: 'Correct Short Answer', border: OutlineInputBorder()),
-                ),*/
-                    ],
-
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _newExplanationController,
-                      decoration: InputDecoration(
-                        labelText: 'Explanation (Optional)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                        hintText: 'Provide detailed feedback...',
-                      ),
-                      maxLines: 5, // Allow multiple lines
-                      minLines: 3,
-                    ),
-
-                    /*TextFormField(
-                controller: _newExplanationController,
-                decoration: const InputDecoration(labelText: 'Explanation (Optional)', border: OutlineInputBorder()),
-              ),*/
-                    const SizedBox(height: 10),
-                    Center(
-                      child: ElevatedButton.icon(
-                        onPressed: _addQuestion,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Question to Quiz'),
-                      ),
-                    ),
-                    const Divider(height: 30, thickness: 2),
-
-                    // --- Added Questions List ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Quiz Questions:',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text('${_questions.length} Question(s)'),
-                      ],
-                    ),
-                    ..._questions.asMap().entries.map((entry) {
-                      int idx = entry.key;
-                      Question q = entry.value;
-                      return ListTile(
-                        title: Text('Q${idx + 1}: ${q.questionText}'),
-                        subtitle: Text('Answer: ${q.answer}'),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () =>
-                              setState(() => _questions.removeAt(idx)),
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 30),
-
-                    // --- Save/Publish Buttons ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () => _saveQuiz(QuizStatus.draft),
-                          icon: const Icon(Icons.drafts),
-                          label: const Text('Save as Draft'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () => _saveQuiz(QuizStatus.published),
-                          icon: const Icon(Icons.cloud_upload),
-                          label: Text(
-                            _isEditing ? 'Update & Publish' : 'Publish Quiz',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-}*/
-
 class _CreateQuizPageState extends State<CreateQuizPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
@@ -4692,11 +4309,11 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     _markingModel = googleAI.generativeModel(
       model: 'gemini-2.5-flash',
       systemInstruction: Content.system(
-        'You are an AI quiz marker. You will be given an expected answer and a user answer. '
-        'Compare them for semantic similarity, not just exact text match, including synonyms and variations, and lowercase and uppercase differences. '
-        'Respond with only the word "YES" if the user answer is correct or a close synonym/variation. '
-        'Respond with only the word "NO" if the user answer is incorrect.'
-        'Give an justification for each answer.',
+        'Anda adalah AI yang menandakan kuiz. Anda akan diberi jawapan yang dijangka dan jawapan pengguna. '
+      'Bandingkan keduanya untuk kesamaan semantik, bukan hanya padanan teks tepat, termasuk sinonim dan variasi, serta perbezaan huruf besar dan kecil. '
+      'Balas dengan HANYA perkataan "YA" jika jawapan pengguna betul atau sinonim/variasi yang hampir. '
+      'Balas dengan HANYA perkataan "TIDAK" jika jawapan pengguna salah. '
+      'Berikan justifikasi untuk setiap jawapan dalam Bahasa Malaysia.',
       ),
     );
   }
@@ -4815,7 +4432,7 @@ Future<void> _submitQuiz() async {
         children: [
           CircularProgressIndicator(),
           SizedBox(width: 20),
-          Text('Marking quiz...'),
+          Text('Menandakan kuiz...'),
         ],
       ),
     ),
@@ -4823,45 +4440,53 @@ Future<void> _submitQuiz() async {
 
   int score = 0;
   
-  // IMPROVED: Store AI feedback for each question
+  // Store AI feedback for each question
   Map<String, String> aiFeedback = {};
 
   for (var q in widget.questions) {
-    final userAnswer = _userAnswers[q.id]?.toLowerCase().trim() ?? "";
-    final correctAnswer = q.answer.toLowerCase().trim();
+    final userAnswer = _userAnswers[q.id]?.trim() ?? "";
+    final correctAnswer = q.answer.trim();
 
     if (userAnswer.isEmpty) {
-      aiFeedback[q.id] = "No answer provided.";
+      aiFeedback[q.id] = "Tiada jawapan diberikan.";
       continue;
     }
 
     if (q.type == QuestionType.mcq) {
-      if (userAnswer == correctAnswer) {
+      // MCQ: Case-insensitive exact match
+      if (userAnswer.toLowerCase() == correctAnswer.toLowerCase()) {
         score++;
-        aiFeedback[q.id] = "✅ Correct!";
+        aiFeedback[q.id] = "✅ Betul!";
       } else {
-        aiFeedback[q.id] = "❌ Incorrect. The correct answer is: ${q.answer}";
+        aiFeedback[q.id] = "❌ Salah. Jawapan yang betul ialah: ${q.answer}";
       }
     } else if (q.type == QuestionType.shortAnswer) {
-      // Exact match check first
-      if (userAnswer == correctAnswer) {
+      // Short Answer: Check case-insensitive match first
+      if (userAnswer.toLowerCase() == correctAnswer.toLowerCase()) {
         score++;
-        aiFeedback[q.id] = "✅ Perfect answer!";
+        aiFeedback[q.id] = "✅ Jawapan sempurna!";
       } else {
         try {
-          // IMPROVED: Better AI prompt with personalized feedback
+          // IMPROVED: Better AI prompt that explicitly handles case sensitivity
           final prompt =
-              'You are grading a student\'s short answer.\n\n'
-              'Question: ${q.questionText}\n'
-              'Expected Answer: $correctAnswer\n'
-              'Student Answer: $userAnswer\n\n'
-              'Task:\n'
-              '1. Determine if the student answer is correct (consider synonyms, paraphrasing, and meaning).\n'
-              '2. Respond with EXACTLY "YES" or "NO" on the first line.\n'
-              '3. On the second line, provide brief personalized feedback (1-2 sentences) explaining why it\'s correct or what was missing.\n\n'
+              'Anda sedang menilai jawapan pendek pelajar.\n\n'
+              'Soalan: ${q.questionText}\n'
+              'Jawapan Dijangka: $correctAnswer\n'
+              'Jawapan Pelajar: $userAnswer\n\n'
+              'Tugas:\n'
+              '1. Tentukan sama ada jawapan pelajar adalah betul.\n'
+              '2. ABAIKAN perbezaan huruf besar/kecil (contoh: "Java" = "java" = "JAVA").\n'
+              '3. TERIMA sinonim, parafrase, dan variasi yang bermakna sama.\n'
+              '4. TERIMA jawapan yang mempunyai makna yang sama walaupun perkataan berbeza sedikit.\n'
+              '5. Balas dengan TEPAT "YA" atau "TIDAK" pada baris pertama.\n'
+              '6. Pada baris kedua, berikan maklum balas peribadi ringkas (1-2 ayat) dalam Bahasa Malaysia.\n\n'
+              'Contoh jawapan yang MESTI diterima:\n'
+              '- "Pemboleh ubah sejagat" = "pemboleh ubah sejagat" = "PEMBOLEH UBAH SEJAGAT"\n'
+              '- "Leraian" = "leraian" = "decomposition" = "memecahkan masalah"\n'
+              '- "Integer" = "integer" = "nombor bulat"\n\n'
               'Format:\n'
-              'YES or NO\n'
-              'Your feedback here';
+              'YA atau TIDAK\n'
+              'Maklum balas anda di sini';
 
           final response = await _markingModel.generateContent([
             Content.text(prompt),
@@ -4870,18 +4495,19 @@ Future<void> _submitQuiz() async {
           final responseText = response.text?.trim() ?? "";
           final lines = responseText.split('\n');
           
-          final verdict = lines.isNotEmpty ? lines[0].toUpperCase().trim() : "NO";
-          final feedback = lines.length > 1 ? lines.sublist(1).join(' ').trim() : "No feedback available.";
+          final verdict = lines.isNotEmpty ? lines[0].toUpperCase().trim() : "TIDAK";
+          final feedback = lines.length > 1 ? lines.sublist(1).join(' ').trim() : "Tiada maklum balas tersedia.";
 
-          if (verdict == 'YES') {
+          // Accept both "YA" (Malay) and "YES" (English) from AI
+          if (verdict == 'YA' || verdict == 'YES') {
             score++;
             aiFeedback[q.id] = "✅ $feedback";
           } else {
-            aiFeedback[q.id] = "❌ $feedback\n\nExpected: $correctAnswer";
+            aiFeedback[q.id] = "❌ $feedback\n\nJawapan Dijangka: $correctAnswer";
           }
         } catch (e) {
           print('AI marking error: $e');
-          aiFeedback[q.id] = "❌ Could not verify answer. Expected: $correctAnswer";
+          aiFeedback[q.id] = "❌ Tidak dapat mengesahkan jawapan. Dijangka: $correctAnswer";
         }
       }
     }
@@ -4892,7 +4518,7 @@ Future<void> _submitQuiz() async {
   await _saveQuizScoreToDatabase(score, widget.questions.length);
   await _saveQuizToProgressRecords(score, widget.questions.length);
 
-  // MODIFIED: Pass AI feedback to the attempt
+  // Pass AI feedback to the attempt
   final attempt = QuizAttempt(
     quizTitle: widget.quizTitle,
     questions: widget.questions,
@@ -4900,7 +4526,7 @@ Future<void> _submitQuiz() async {
     score: score,
     total: widget.questions.length,
     timestamp: DateTime.now(),
-    aiFeedback: aiFeedback, //NEW: Store AI feedback
+    aiFeedback: aiFeedback,
   );
 
   await _saveQuizAttemptToFirestore(attempt);
@@ -5811,9 +5437,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     _model = googleAI.generativeModel(
       model: 'gemini-2.5-flash',
       systemInstruction: Content.system(
-        'You are a helpful AI tutor specializing in Java programming for Malaysian students. '
-        'Answer questions about Java concepts, syntax, OOP principles, and help with coding problems. '
-        'Keep responses clear, educational, and supportive. You can respond in both English and Bahasa Malaysia.',
+        'Anda adalah seorang tutor AI yang membantu dalam pengaturcaraan Java untuk pelajar Malaysia. '
+        'Jawab soalan tentang konsep Java, sintaks, prinsip OOP, dan bantu dengan masalah pengaturcaraan. '
+        'Pastikan respons jelas, mendidik, dan menyokong. Anda boleh menjawab dalam Bahasa Inggeris dan Bahasa Malaysia.',
       ),
     );
 
@@ -6098,25 +5724,29 @@ class _ProgressPageState extends State<ProgressPage> {
     _loadAvailableQuizzes();
   }
 
-  // Fetch available quizzes for the dropdown
-  Future<void> _loadAvailableQuizzes() async {
-    try {
-      final snapshot = await _fs
-          .collection('progress_records')
-          .get();
+// Fetch available quizzes for the dropdown
+Future<void> _loadAvailableQuizzes() async {
+  try {
+    final snapshot = await _fs
+        .collection('progress_records')
+        .get();
 
-      final quizTitles = snapshot.docs
-          .map((doc) => doc['activity'] as String)
-          .toSet()
-          .toList();
+    final quizTitles = snapshot.docs
+        .map((doc) => doc['activity'] as String)
+        .toSet()
+        .toList();
 
-      setState(() {
-        _availableQuizzes = quizTitles..sort();
-      });
-    } catch (e) {
-      print('Error loading quiz list: $e');
-    }
+    setState(() {
+      _availableQuizzes = quizTitles..sort();
+    });
+  } catch (e) {
+    print('Error loading quiz list: $e');
+    // Provide empty list on error
+    setState(() {
+      _availableQuizzes = [];
+    });
   }
+}
 
   // Clear all filters
   void _clearFilters() {
@@ -6128,42 +5758,48 @@ class _ProgressPageState extends State<ProgressPage> {
     });
   }
 
-  Future<void> _searchUsers(String query) async {
-    if (query.isEmpty) {
-      setState(() => _searchResults = []);
-      return;
-    }
+Future<void> _searchUsers(String query) async {
+  if (query.isEmpty) {
+    setState(() => _searchResults = []);
+    return;
+  }
 
-    setState(() => _isSearching = true);
+  setState(() => _isSearching = true);
 
-    try {
-      final snapshot = await _fs
-          .collection('users')
-          .where('userType', isEqualTo: 'UserType.student')
-          .get();
+  try {
+    // ✅ FIX: Add explicit limit to satisfy security rules
+    final snapshot = await _fs
+        .collection('users')
+        .where('userType', isEqualTo: 'UserType.student')
+        .limit(50)  // ✅ Added explicit limit
+        .get();
 
-      final results = snapshot.docs
-          .where((doc) {
-            final username = (doc.data()['username'] ?? '').toLowerCase();
-            return username.contains(query.toLowerCase());
-          })
-          .map((doc) => {
-                'id': doc.id,
-                'username': doc['username'],
-              })
-          .toList();
+    // Filter results locally
+    final results = snapshot.docs
+        .where((doc) {
+          final username = (doc.data()['username'] ?? '').toLowerCase();
+          return username.contains(query.toLowerCase());
+        })
+        .map((doc) => {
+              'id': doc.id,
+              'username': doc['username'],
+            })
+        .toList();
 
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-    } catch (e) {
-      setState(() => _isSearching = false);
+    setState(() {
+      _searchResults = results;
+      _isSearching = false;
+    });
+  } catch (e) {
+    print('❌ User search error: $e');
+    setState(() => _isSearching = false);
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('User search failed: $e')),
       );
     }
   }
+}
 
 Future<void> _addProgress() async {
   if (!_formKey.currentState!.validate()) return;
@@ -8203,43 +7839,31 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
     'Other',
   ];
 
-  // ⚠️ Function to fetch live student list from Firestore
-  Future<List<AppUser>> _getStudentsList() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where(
-            'userType',
-            isEqualTo: UserType.student.toString(),
-          ) // FIX: Use enum.toString()
-          .orderBy('username')
-          .get();
+// ⚠️ Function to fetch live student list from Firestore
+Future<List<AppUser>> _getStudentsList() async {
+  try {
+    // ✅ FIX: Simplified query - remove orderBy to avoid index requirement
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('userType', isEqualTo: 'UserType.student')
+        .limit(50)
+        .get();
 
-      return snapshot.docs
-          .map(
-            (doc) =>
-                AppUser.fromMap(doc.id, doc.data()),
-          )
-          .toList();
-    } catch (e) {
-      print("Error fetching student list: $e");
-      // Fallback list when fetching live data fails (e.g., due to rules)
-      return [
-        AppUser(
-          id: 'FALLBACK_1',
-          username: 'LOAD_ERROR: John Doe',
-          email: '',
-          userType: UserType.student,
-        ),
-        AppUser(
-          id: 'FALLBACK_2',
-          username: 'LOAD_ERROR: Jane Smith',
-          email: '',
-          userType: UserType.student,
-        ),
-      ];
-    }
+    // ✅ Sort in code instead of in query
+    final students = snapshot.docs
+        .map((doc) => AppUser.fromMap(doc.id, doc.data()))
+        .toList();
+    
+    // Sort by username locally
+    students.sort((a, b) => a.username.compareTo(b.username));
+    
+    return students;
+  } catch (e) {
+    print("❌ Error fetching student list: $e");
+    // Return empty list instead of fallback data
+    return [];
   }
+}
 
   // ⚠️ Function to submit the achievement to Firestore (Live Write)
   Future<void> _submitAchievement() async {
@@ -8719,9 +8343,7 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
- // Replace the _pickAndUploadProfilePicture function in ProfilePage class
-
-Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
+ Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
   try {
     final picker = ImagePicker();
     final image = await picker.pickImage(
@@ -8783,14 +8405,11 @@ Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
       },
     );
 
-    final uploadTask = await storageRef.putData(imageBytes, metadata);
+    // ✅ FIX: Use putData directly without storing uploadTask
+    await storageRef.putData(imageBytes, metadata);
 
-    if (uploadTask.state != TaskState.success) {
-      throw Exception('Upload failed');
-    }
-
-    // Get download URL
-    final downloadUrl = await uploadTask.ref.getDownloadURL();
+    // Get download URL after upload completes
+    final downloadUrl = await storageRef.getDownloadURL();
     
     print('✅ Profile picture uploaded successfully!');
     print('   URL: $downloadUrl');
