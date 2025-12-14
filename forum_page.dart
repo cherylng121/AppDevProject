@@ -25,6 +25,8 @@ class _ForumPageState extends State<ForumPage> {
   String searchKeyword = '';
   String selectedTag = 'All';
   DateTime? selectedDate;
+  String _selectedCreateTag = 'General';
+
 
   // Current user info (loaded from FirebaseAuth + users collection)
   String? _currentUid;
@@ -318,7 +320,8 @@ class _ForumPageState extends State<ForumPage> {
 
   // Create dialog
   void _showCreateTopicDialog() {
-    String selectedCreateTag = tags.length > 1 ? tags[1] : 'General';
+   _selectedCreateTag = 'General';
+
     _titleController.clear();
     _descController.clear();
 
@@ -333,9 +336,9 @@ class _ForumPageState extends State<ForumPage> {
             TextField(controller: _descController, maxLines: 4, decoration: const InputDecoration(labelText: 'Description')),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: selectedCreateTag,
+              value: _selectedCreateTag,
               items: tags.where((t) => t != 'All').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-              onChanged: (v) => selectedCreateTag = v ?? selectedCreateTag,
+              onChanged: (v) => _selectedCreateTag = v ?? _selectedCreateTag,
               decoration: const InputDecoration(labelText: 'Tag'),
             ),
           ]),
@@ -357,7 +360,7 @@ class _ForumPageState extends State<ForumPage> {
               final docRef = await _db.collection('forumTopics').add({
                 'title': title,
                 'description': desc,
-                'tag': selectedCreateTag,
+                'tag': _selectedCreateTag,
                 'creatorId': creatorId,
                 'creatorName': creatorName,
                 'createdAt': clientCreatedAt,
@@ -499,56 +502,85 @@ class _ForumPageState extends State<ForumPage> {
 
   // Filter dialog
   void _openFilterOptions() {
-    String tempTag = selectedTag;
-    DateTime? tempDate = selectedDate;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Filter Topics'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
+  String tempTag = selectedTag;
+  DateTime? tempDate = selectedDate;
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Filter Topics'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // TAG FILTER
           DropdownButtonFormField<String>(
             value: tempTag,
             decoration: const InputDecoration(labelText: 'Filter by Tag'),
-            items: tags.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-            onChanged: (v) => tempTag = v ?? 'All',
+            items: tags
+                .map(
+                  (t) => DropdownMenuItem(
+                    value: t,
+                    child: Text(t),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) {
+              tempTag = v ?? 'All';
+            },
           ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            child: Text(
-  tempDate == null
-      ? 'Filter by Date'
-      : 'Selected: ${DateFormat('dd/MM/yyyy').format(tempDate!)}',
-),
 
+          const SizedBox(height: 12),
+
+          // DATE FILTER
+          ElevatedButton(
             onPressed: () async {
-              final picked = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: tempDate ?? DateTime.now(),
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+              );
               if (picked != null) {
-                setState(() => tempDate = picked);
+                tempDate = picked;
               }
             },
-          )
-        ]),
-        actions: [
-          TextButton(onPressed: () {
+            child: Text(
+              tempDate == null
+                  ? 'Filter by Date'
+                  : 'Selected: ${DateFormat('dd/MM/yyyy').format(tempDate!)}',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        // CLEAR ALL
+        TextButton(
+          onPressed: () {
             setState(() {
               selectedTag = 'All';
               selectedDate = null;
-              _searchController.clear();
-              searchKeyword = '';
             });
             Navigator.pop(context);
-          }, child: const Text('Clear All')),
-          ElevatedButton(onPressed: () {
+          },
+          child: const Text('Clear All'),
+        ),
+
+        // APPLY
+        ElevatedButton(
+          onPressed: () {
             setState(() {
               selectedTag = tempTag;
               selectedDate = tempDate;
             });
             Navigator.pop(context);
-          }, child: const Text('Apply')),
-        ],
-      ),
-    );
-  }
+          },
+          child: const Text('Apply'),
+        ),
+      ],
+    ),
+  );
+}
+
 
   // Help / FAQ
   void _showHelpDialog() {
