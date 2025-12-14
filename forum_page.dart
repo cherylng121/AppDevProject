@@ -634,7 +634,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
 
     await _db.collection('forumTopics').doc(widget.topicId).collection('comments').add({
       'text': text,
-      'creatorId': creatorId,
+      'authorId': creatorId,
       'creatorName': creatorName,
       'timestamp': FieldValue.serverTimestamp(),
       'createdAt': DateTime.now(),
