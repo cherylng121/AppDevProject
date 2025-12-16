@@ -2156,6 +2156,14 @@ class _DetailsPageState extends State<DetailsPage> {
 enum QuestionType { mcq, shortAnswer }
 enum QuizStatus { draft, published }
 
+enum AssessmentStatus {
+  notStarted,
+  completed,
+}
+enum AssessmentType {
+  system,
+  teacher,
+}
 class Question {
   final String id;
   final String questionText;
@@ -2335,6 +2343,23 @@ class QuizAttempt {
     required this.total,
     required this.timestamp,
     this.aiFeedback,
+  });
+}
+class AssessmentItem {
+  final String title;
+  final String topic;
+  final AssessmentType type;
+  final List<Question> questions;
+  final String? quizId;
+  final AssessmentStatus status;
+
+  AssessmentItem({
+    required this.title,
+    required this.topic,
+    required this.type,
+    required this.questions,
+    this.quizId,
+    required this.status,
   });
 }
 
@@ -2921,7 +2946,376 @@ final List<Question> summativeTestQuestions = [
         'Indeks tatasusunan (array) bermula dari 0. "Ungu" ialah [0], "Biru" ialah [1], dan "Merah" ialah [2].',
   ),
 ];
+// US008-03: Filter assessments by topic and status
+class StudentAssessmentsPage extends StatefulWidget {
+  const StudentAssessmentsPage({super.key});
 
+  @override
+  State<StudentAssessmentsPage> createState() => _StudentAssessmentsPageState();
+}
+
+class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
+  String? _selectedTopicFilter;
+  AssessmentStatus? _selectedStatusFilter;
+  bool _showFilters = false;
+  final List<String> _availableTopics = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableTopics();
+  }
+
+  void _loadAvailableTopics() {
+    _availableTopics.addAll(systemQuizData.keys.toList());
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedTopicFilter = null;
+      _selectedStatusFilter = null;
+    });
+  }
+
+  bool _isAssessmentCompleted(String quizTitle, String? quizId) {
+    final userAttempts = userQuizAttempts.where((attempt) => 
+      attempt.quizTitle == quizTitle
+    );
+    return userAttempts.isNotEmpty;
+  }
+
+  AssessmentStatus _getAssessmentStatus(String quizTitle, String? quizId) {
+    return _isAssessmentCompleted(quizTitle, quizId) 
+        ? AssessmentStatus.completed 
+        : AssessmentStatus.notStarted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    final isTeacher = user?.userType == UserType.teacher;
+
+    if (isTeacher) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Access Denied')),
+        body: const Center(
+          child: Text('This page is for students only.'),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Assessments'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {
+              setState(() => _showFilters = !_showFilters);
+            },
+            tooltip: 'Show/Hide Filters',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (_showFilters) _buildFilterSection(),
+          Expanded(child: _buildAssessmentsList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterSection() {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Filter Assessments',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            
+            DropdownButtonFormField<String>(
+              value: _selectedTopicFilter,
+              decoration: const InputDecoration(
+                labelText: 'Filter by Topic',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.category),
+              ),
+              items: [
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('All Topics'),
+                ),
+                ..._availableTopics.map((topic) {
+                  return DropdownMenuItem(
+                    value: topic,
+                    child: Text(topic),
+                  );
+                }).toList(),
+              ],
+              onChanged: (value) {
+                setState(() => _selectedTopicFilter = value);
+              },
+            ),
+            
+            const SizedBox(height: 12),
+            
+            DropdownButtonFormField<AssessmentStatus>(
+              value: _selectedStatusFilter,
+              decoration: const InputDecoration(
+                labelText: 'Filter by Status',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.flag),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text('All Statuses'),
+                ),
+                ...AssessmentStatus.values.map((status) {
+                  return DropdownMenuItem(
+                    value: status,
+                    child: Text(
+                      status == AssessmentStatus.completed ? 'Completed' : 'Not Started',
+                    ),
+                  );
+                }).toList(),
+              ],
+              onChanged: (value) {
+                setState(() => _selectedStatusFilter = value);
+              },
+            ),
+            
+            const SizedBox(height: 12),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _clearFilters,
+                  icon: const Icon(Icons.clear),
+                  label: const Text('Clear Filters'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAssessmentsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('quizzes')
+          .where('status', isEqualTo: 'published')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        final teacherQuizzes = snapshot.data!.docs
+            .map((doc) => Quiz.fromFirestore(doc))
+            .where((quiz) => quiz.status == QuizStatus.published)
+            .toList();
+
+        final allAssessments = <AssessmentItem>[];
+        
+        systemQuizData.forEach((topic, questions) {
+          allAssessments.add(AssessmentItem(
+            title: topic,
+            topic: topic,
+            type: AssessmentType.system,
+            questions: questions,
+            status: _getAssessmentStatus(topic, null),
+          ));
+        });
+        
+        allAssessments.add(AssessmentItem(
+          title: 'Summative Test (Bab 1)',
+          topic: 'Comprehensive',
+          type: AssessmentType.system,
+          questions: summativeTestQuestions,
+          status: _getAssessmentStatus('Summative Test (Bab 1)', null),
+        ));
+        
+        for (final quiz in teacherQuizzes) {
+          allAssessments.add(AssessmentItem(
+            title: quiz.title,
+            topic: quiz.topic,
+            type: AssessmentType.teacher,
+            questions: quiz.questions,
+            quizId: quiz.id,
+            status: _getAssessmentStatus(quiz.title, quiz.id),
+          ));
+        }
+
+        final filteredAssessments = allAssessments.where((assessment) {
+          if (_selectedTopicFilter != null && 
+              assessment.topic != _selectedTopicFilter) {
+            return false;
+          }
+          
+          if (_selectedStatusFilter != null && 
+              assessment.status != _selectedStatusFilter) {
+            return false;
+          }
+          
+          return true;
+        }).toList();
+
+        if (filteredAssessments.isEmpty) {
+          return _buildNoResultsState();
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(8.0),
+          itemCount: filteredAssessments.length,
+          itemBuilder: (context, index) {
+            final assessment = filteredAssessments[index];
+            return _buildAssessmentCard(assessment);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAssessmentCard(AssessmentItem assessment) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+      child: ListTile(
+        leading: Icon(
+          assessment.type == AssessmentType.system 
+              ? Icons.auto_awesome 
+              : Icons.school,
+          color: assessment.status == AssessmentStatus.completed 
+              ? Colors.green 
+              : Colors.blue,
+        ),
+        title: Text(assessment.title),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Topic: ${assessment.topic}'),
+            const SizedBox(height: 2),
+            Text(
+              'Status: ${assessment.status == AssessmentStatus.completed ? 'Completed' : 'Not Started'}',
+              style: TextStyle(
+                color: assessment.status == AssessmentStatus.completed 
+                    ? Colors.green 
+                    : Colors.orange,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              'Questions: ${assessment.questions.length}',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        trailing: Icon(
+          assessment.status == AssessmentStatus.completed
+              ? Icons.check_circle
+              : Icons.play_arrow,
+          color: assessment.status == AssessmentStatus.completed
+              ? Colors.green
+              : Colors.blue,
+        ),
+        onTap: () {
+          if (assessment.status == AssessmentStatus.completed) {
+            final attempt = userQuizAttempts.firstWhere(
+              (a) => a.quizTitle == assessment.title,
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => QuizResultsPage(attempt: attempt),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TakeQuizPage(
+                  quizTitle: assessment.title,
+                  questions: assessment.questions,
+                ),
+              ),
+            ).then((_) {
+              setState(() {});
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.quiz, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text(
+            'No Assessments Available',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Your teacher hasn\'t published any quizzes yet.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text(
+            'No Matching Assessments',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Try adjusting your filters to see more results.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _clearFilters,
+            child: const Text('Clear All Filters'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 // ========== QUIZ PAGE ==========
 class QuizPage extends StatefulWidget {
   const QuizPage({super.key});
@@ -3347,6 +3741,29 @@ trailing: isTeacher
                       },
                     ),
             ],
+            //US008-03: Filter assessments by topic and status
+            if (!isTeacher) ...[
+              const Divider(height: 30, thickness: 1),
+              _buildSectionTitle('Assessment Management'),
+              Card(
+                elevation: 2,
+                child: ListTile(
+                  leading: const Icon(Icons.filter_alt, color: Colors.purple),
+                  title: const Text('Filter My Assessments'),
+                  subtitle: const Text('View and filter assessments by topic and completion status'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StudentAssessmentsPage(),
+          ),
+        );
+      },
+    ),
+  ),
+],
+
           ],
         ),
       ),
