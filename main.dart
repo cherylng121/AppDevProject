@@ -1047,14 +1047,28 @@ class InHomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+               Expanded(
                   child: InkWell(
                     onTap: () => navigateToPage(8), // Navigate to Achievements
-                    child: _buildStatCard(
-                      icon: Icons.emoji_events,
-                      title: 'Badges',
-                      value: user.badges.length.toString(),
-                      color: Colors.orange,
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('achievements')
+                          .where('studentId', isEqualTo: user.id)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        int badgeCount = 0;
+                        
+                        if (snapshot.hasData) {
+                          badgeCount = snapshot.data!.docs.length;
+                        }
+                        
+                        return _buildStatCard(
+                          icon: Icons.emoji_events,
+                          title: 'Badges',
+                          value: badgeCount.toString(),
+                          color: Colors.orange,
+                        );
+                      },
                     ),
                   ),
                 ),
