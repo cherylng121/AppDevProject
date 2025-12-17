@@ -1064,7 +1064,7 @@ class InHomePage extends StatelessWidget {
                         
                         return _buildStatCard(
                           icon: Icons.emoji_events,
-                          title: 'Badges',
+                          title: 'Awards',
                           value: badgeCount.toString(),
                           color: Colors.orange,
                         );
