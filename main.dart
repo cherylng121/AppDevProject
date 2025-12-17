@@ -7970,6 +7970,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
   // FIX: Initialize the filter state variable
   String _selectedCategory = 'All'; // 'All', 'Badge', 'Certificate', 'Milestone', 'Other'
 
+  String _searchQuery = '';
   // Helper function to get the correct achievement stream (Your original code)
   Stream<QuerySnapshot> getAchievementStream(AppUser? user) {
     var query = FirebaseFirestore.instance.collection('achievements');
@@ -8060,16 +8061,32 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Rely exclusively on live FirebaseUserState
     final userState = context.watch<FirebaseUserState>();
     final isLoggedIn = userState.isLoggedIn;
     final user = userState.currentUser;
     final bool isTeacher = user?.userType == UserType.teacher ?? false;
     final bool isStudent = user?.userType == UserType.student ?? false;
 
-    final String pageTitle = isLoggedIn ? '🏆 Achievement' : '🏅 Community Achievement';
+    // Page title
+    final String pageTitle = isLoggedIn
+        ? '🏆 Achievement'
+        : '🏅 Community Achievement';
 
+    // If not logged in, show a simplified message (re-using old logic for non-logged-in state)
     if (!isLoggedIn) {
-      return Scaffold( /* ... login required state ... */ );
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(pageTitle),
+          backgroundColor: Colors.amber,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text(
+            'Please log in to view personalized achievements or community feed.',
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -8078,28 +8095,36 @@ class _AchievementsPageState extends State<AchievementsPage> {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         actions: [
-          if (isTeacher)
-            IconButton(
-              icon: const Icon(Icons.add_box),
-              tooltip: 'Add Achievement',
-              onPressed: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AddAchievementPage()),
-                );
-                if (result != null && result['success'] == true && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
-                  );
-                }
-              },
+    if (isTeacher)
+      IconButton(
+        icon: const Icon(Icons.add_box),
+        tooltip: 'Add Achievement',
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddAchievementPage(),
             ),
-        ],
+          );
+
+          if (result != null &&
+              result['success'] == true &&
+              context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message']),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
+      ),
+  ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logic to show the 'unlocked message' (UNCHANGED)
+          // Logic to show the 'unlocked message'
           if (userState.lastUnlockedMessage != null)
             Builder(
               builder: (ctx) {
@@ -8107,14 +8132,40 @@ class _AchievementsPageState extends State<AchievementsPage> {
                   final msg = userState.lastUnlockedMessage;
                   if (msg != null) {
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text(msg), backgroundColor: Colors.green),
+                      SnackBar(
+                        content: Text(msg),
+                        backgroundColor: Colors.green,
+                      ),
                     );
-                    context.read<FirebaseUserState>().consumeLastUnlockedMessage();
+                    context
+                        .read<FirebaseUserState>()
+                        .consumeLastUnlockedMessage();
                   }
                 });
                 return const SizedBox.shrink();
               },
             ),
+
+          // === START US0010-02 SEARCH UI ===
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              decoration: InputDecoration(
+                labelText: 'Search achievements by name...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.toLowerCase();
+                });
+              },
+            ),
+          ),
+          // === END US0010-02 SEARCH UI ===
 
           // === START US013-01 FILTER UI ===
           if (isStudent)
@@ -8122,41 +8173,65 @@ class _AchievementsPageState extends State<AchievementsPage> {
           // === END US013-01 FILTER UI ===
 
           Expanded(
+            // Use live StreamBuilder
             child: StreamBuilder<QuerySnapshot>(
-              stream: getAchievementStream(user),
+              stream: getAchievementStream(
+                user,
+              ), // Fetch achievements for current user
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error loading achievements: ${snapshot.error}'));
+                  return Center(
+                    child: Text(
+                      'Error loading achievements: ${snapshot.error}',
+                    ),
+                  );
                 }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                var achievements = snapshot.data!.docs.map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>}).toList();
+                // Map DocumentSnapshot list to Map list, including the document ID
+                var achievements = snapshot.data!.docs
+                    .map(
+                      (doc) => {
+                        'id': doc.id,
+                        ...doc.data() as Map<String, dynamic>,
+                      },
+                    )
+                    .toList();
 
-                // === START US013-01 FILTER LOGIC ===
+                // === START FILTERING LOGIC (Applied to list after loading) ===
+
+                // 1. Apply Search Filter (US0010-02)
+                if (_searchQuery.isNotEmpty) {
+                    achievements = achievements.where((a) {
+                        final title = (a['title'] ?? '').toString().toLowerCase();
+                        return title.contains(_searchQuery);
+                    }).toList();
+                }
+
+                // 2. Apply Category Filter (US013-01) - Only for Students
                 if (isStudent && _selectedCategory != 'All') {
                   achievements = achievements.where((a) {
                     final type = (a['type'] ?? 'Other').toString();
-                    
-                    // Note: 'Auto' is a common type in your database for auto-awarded badges, so include it under 'Badge'
                     if (_selectedCategory == 'Badge' && (type.toLowerCase().contains('badge') || type.toLowerCase().contains('auto'))) return true;
                     if (_selectedCategory == 'Certificate' && type.toLowerCase().contains('certificate')) return true;
                     if (_selectedCategory == 'Milestone' && type.toLowerCase().contains('milestone')) return true;
-                    
-                    // If 'Other' is selected, filter out known types
                     if (_selectedCategory == 'Other' && !type.toLowerCase().contains('badge') && !type.toLowerCase().contains('certificate') && !type.toLowerCase().contains('milestone')) return true;
-                    
                     return false;
                   }).toList();
                 }
-                // === END US013-01 FILTER LOGIC ===
+                // === END FILTERING LOGIC ===
+                final totalAchievements = snapshot.data!.docs.length;
 
+                final isFilteredEmpty = totalAchievements > 0 && achievements.isEmpty;
+                
                 return _buildAchievementListView(
                   achievements,
                   isLoggedIn,
                   isTeacher,
                   user!.id,
+                  isFilteredEmpty,
                 );
               },
             ),
@@ -8175,6 +8250,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
     void _setCategory(String category) {
       setState(() {
         _selectedCategory = category;
+        _searchQuery = ''; // Clear search when changing category filter
       });
     }
 
@@ -8182,8 +8258,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        // Note: The Row widget does not have a 'spacing' property, use `Wrap` or manual `SizedBox`
-        // I'll adjust the style to use `Wrap` or `SizedBox` inside the map.
         children: categories.map((category) {
           final isSelected = _selectedCategory == category;
           return Padding(
@@ -8214,6 +8288,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
     bool isLoggedIn,
     bool isTeacher,
     String? currentUserId,
+    bool isFilteredEmpty,
   ) {
     // Sort achievements manually by date
     achievements.sort((a, b) {
@@ -8239,9 +8314,12 @@ class _AchievementsPageState extends State<AchievementsPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Text(
-                isLoggedIn
-                    ? 'You have no achievements yet. Start learning and completing quizzes!'
-                    : 'No public achievements found.',
+                // MODIFIED: Use the new flag to show the correct message
+                isFilteredEmpty
+                    ? 'No achievements match your search or filter criteria.'
+                    : (isLoggedIn
+                        ? 'You have no achievements yet. Start learning and completing quizzes!'
+                        : 'No public achievements found.'),
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
