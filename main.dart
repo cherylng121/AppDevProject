@@ -1792,9 +1792,14 @@ Expanded(
 }
 
 // ========== COURSE PAGE ==========
-class CoursePage extends StatelessWidget {
+class CoursePage extends StatefulWidget {
   const CoursePage({super.key});
 
+  @override
+  State<CoursePage> createState() => _CoursePageState();
+}
+
+class _CoursePageState extends State<CoursePage> {
   final List<Map<String, String>> topics = const [
     {
       "title": "1.1 Strategi Penyelesaian Masalah",
@@ -1949,14 +1954,14 @@ PEMBOLEH UBAH SEJAGAT 🆚 SETEMPAT
 • NOT (Cth : if(!lulus))
 
 while (<syarat boolean>){
-  <Blok kenyataan berulang>
-  <kemas kini nilai dalam syarat>
+  <Blok kenyataan berulang>
+  <kemas kini nilai dalam syarat>
 }
 i+=1 🟰 i = i + 1
 
 while (<syarat boolean>){
-  <Blok kenyataan berulang>
-  <kemas kini nilai dalam syarat>
+  <Blok kenyataan berulang>
+  <kemas kini nilai dalam syarat>
 }
 i-=1 🟰 i = i – 1
 """,
@@ -1976,14 +1981,14 @@ Pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghas
 
 ❌ (3) JENIS RALAT
 1. Sintaks
-   • Kesalahan tatabahasa 
-   • Penggunaan aksara yang tidak dikenali
+   • Kesalahan tatabahasa 
+   • Penggunaan aksara yang tidak dikenali
 2. Masa Larian 
-   • Pengiraan data bukan berangka
-   • Pembahagian dengan digit 0
-   • Mencari punca kuasa dua bagi nombor negatif
+   • Pengiraan data bukan berangka
+   • Pembahagian dengan digit 0
+   • Mencari punca kuasa dua bagi nombor negatif
 3. Logik
-   • Atur cara tidak berfungsi seperti yang diingini
+   • Atur cara tidak berfungsi seperti yang diingini
 """,
       "video": "https://youtu.be/E0i_O5RXqtM?si=W4BkFsV43DNSPb_N"
     },
@@ -2031,8 +2036,8 @@ PARAMETER
 • parameter rasmi (formal parameter) - Merujuk parameter bagi subatur cara
 • parameter sebenar (actual parameter) - Merujuk pemboleh ubah di dalam subatur cara pemanggil
 • Cth : 
-  Tiada parameter : static void subAtur01 (){}
-  Menerima parameter : static void subAtur01 (int x){}
+  Tiada parameter : static void subAtur01 (){}
+  Menerima parameter : static void subAtur01 (int x){}
 """,
       "video": "https://youtu.be/1kw_OQmxU5c?si=JfuQ2-Z-GFL7-B_9"
     },
@@ -2051,6 +2056,32 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
       "video": "https://youtu.be/PQU16kOnQRk?si=1dCReplwhLzder9c"
     },
   ];
+  late List<bool> _isDone;
+
+  @override
+  void initState() {
+    super.initState();
+    _isDone = List<bool>.filled(topics.length, false);
+  }
+
+  void _navigateToDetails(BuildContext context, int index) {
+    final topic = topics[index];
+
+    setState(() {
+      _isDone[index] = true; 
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DetailsPage(
+          title: topic["title"]!,
+          note: topic["note"]!,
+          videoUrl: topic["video"]!,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2067,6 +2098,7 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
           itemCount: topics.length,
           itemBuilder: (context, index) {
             final topic = topics[index];
+            final isDone = _isDone[index]; 
 
             return Card(
               elevation: 2,
@@ -2074,30 +2106,45 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
                 borderRadius: BorderRadius.circular(12),
               ),
               margin: const EdgeInsets.symmetric(vertical: 8),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => DetailsPage(
-                        title: topic["title"]!,
-                        note: topic["note"]!,
-                        videoUrl: topic["video"]!,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _navigateToDetails(context, index), 
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        topic["title"]!,
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: isDone ? Colors.green[800] : Colors.black, 
+                          fontWeight: isDone ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    topic["title"]!,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.black,
+                  ),
+
+                  const Divider(height: 1, color: Colors.grey),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDone ? Colors.green : Colors.lightBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => _navigateToDetails(context, index), 
+                      child: Text(
+                        isDone ? "Done" : "To View",
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             );
           },
@@ -2164,7 +2211,6 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 }
-
 
 // ========== QUIZ ==========
 enum QuestionType { mcq, shortAnswer }
