@@ -22,6 +22,8 @@ import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
@@ -1792,6 +1794,7 @@ Expanded(
 }
 
 // ========== COURSE PAGE ==========
+const String _kDoneStatusKeyPrefix = 'course_status_done_';
 class CoursePage extends StatefulWidget {
   const CoursePage({super.key});
 
@@ -2061,17 +2064,37 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
   @override
   void initState() {
     super.initState();
+    // Inisialisasi awal dengan false, kemudian muatkan status yang disimpan
     _isDone = List<bool>.filled(topics.length, false);
+    _loadDoneStatus();
   }
 
-  void _navigateToDetails(BuildContext context, int index) {
+  // Muatkan status selesai dari SharedPreferences
+  Future<void> _loadDoneStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      for (int i = 0; i < topics.length; i++) {
+        // Bina key unik untuk setiap topik
+        final key = '$_kDoneStatusKeyPrefix$i';
+        // Dapatkan status. Jika tiada status, nilai lalai adalah false.
+        _isDone[i] = prefs.getBool(key) ?? false;
+      }
+    });
+  }
+
+  // Simpan status selesai ke SharedPreferences
+  Future<void> _saveDoneStatus(int index, bool status) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_kDoneStatusKeyPrefix$index';
+    await prefs.setBool(key, status);
+  }
+
+  // Fungsi untuk menavigasi dan mengemas kini status
+  void _navigateToDetails(BuildContext context, int index) async {
     final topic = topics[index];
 
-    setState(() {
-      _isDone[index] = true; 
-    });
-
-    Navigator.push(
+    // Navigasi ke laman butiran dan tunggu sehingga pengguna kembali
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => DetailsPage(
@@ -2081,6 +2104,14 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
         ),
       ),
     );
+
+    // Apabila pengguna kembali (pop dari DetailsPage), 
+    // kemas kini state di memori dan simpan ke penyimpanan tempatan
+    setState(() {
+      _isDone[index] = true;
+    });
+    // Simpan status baharu secara kekal
+    _saveDoneStatus(index, true); 
   }
 
   @override
@@ -2109,23 +2140,27 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // 1. InkWell untuk keseluruhan kawasan tajuk
                   InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    onTap: () => _navigateToDetails(context, index), 
+                    onTap: () => _navigateToDetails(context, index),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
                         topic["title"]!,
                         style: TextStyle(
                           fontSize: 18,
-                          color: isDone ? Colors.green[800] : Colors.black, 
+                          color: isDone ? Colors.green[800] : Colors.black,
                           fontWeight: isDone ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ),
                   ),
 
+                  // 2. Garis Pemisah (Divider)
                   const Divider(height: 1, color: Colors.grey),
+
+                  // 3. Butang "To View" / "Mark As Done"
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: ElevatedButton(
@@ -2139,7 +2174,7 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
                       ),
                       onPressed: () => _navigateToDetails(context, index), 
                       child: Text(
-                        isDone ? "Done" : "To View",
+                        isDone ? "Mark As Done" : "To View",
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -10085,203 +10120,39 @@ class MaterialsPage extends StatefulWidget {
 // ========== MATERIALS PAGE STATE ==========
 class _MaterialsPageState extends State<MaterialsPage> {
   String searchQuery = '';
-  String userType = 'UserType.student'; 
+  String userType = 'UserType.student';
 
-// ----- downloadFile -----
-Future<void> _downloadFile(BuildContext context, LearningMaterial material) async {
-  final filePath = material.file;
+  String _getUniqueFileName(LearningMaterial material) {
+    if (!material.file.startsWith('http')) return '';
 
-  // Handle local files
-  if (!filePath.startsWith('http')) {
-    try {
-      final File sourceFile = File(filePath);
-      if (!sourceFile.existsSync()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error: Local file not found.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      await OpenFile.open(sourceFile.path);
-      return;
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-  }
-
-  // Request storage permission 
-  if (Platform.isAndroid) {
-    // Check Android version
-    final androidInfo = await DeviceInfoPlugin().androidInfo;
-    
-    if (androidInfo.version.sdkInt >= 30) {
-      // Android 11+ (API 30+) - Request MANAGE_EXTERNAL_STORAGE
-      var status = await Permission.manageExternalStorage.status;
-      if (!status.isGranted) {
-        status = await Permission.manageExternalStorage.request();
-        if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Storage permission is required to download files.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-    } else {
-      // Android 10 and below - Request regular storage permission
-      var status = await Permission.storage.status;
-      if (!status.isGranted) {
-        status = await Permission.storage.request();
-        if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Storage permission denied.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-    }
-  }
-
-  try {
-    // Show loading
-    if (context.mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Downloading...'),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Get filename
-    final Uri uri = Uri.parse(filePath);
+    final Uri uri = Uri.parse(material.file);
     String fileName = uri.pathSegments.last.split('?').first;
     fileName = Uri.decodeComponent(fileName);
-    
+
     if (fileName.contains('learning_materials/')) {
       fileName = fileName.split('learning_materials/').last;
     }
-    if (fileName.contains('_') && int.tryParse(fileName.split('_')[0]) != null) {
-      fileName = fileName.split('_').sublist(1).join('_');
-    }
-
-    // Save to Downloads folder
-    Directory? downloadDir;
-    if (Platform.isAndroid) {
-      downloadDir = Directory('/storage/emulated/0/Download');
-      if (!downloadDir.existsSync()) {
-        downloadDir = await getExternalStorageDirectory();
-      }
-    } else {
-      downloadDir = await getApplicationDocumentsDirectory();
-    }
-
-    final String savePath = '${downloadDir!.path}/$fileName';
-    final File downloadFile = File(savePath);
-
-    // Download from Firebase
-    final ref = FirebaseStorage.instance.refFromURL(filePath);
-    await ref.writeToFile(downloadFile);
-
-    if (context.mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Material downloaded successfully!'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'OPEN',
-            textColor: Colors.white,
-            onPressed: () => OpenFile.open(downloadFile.path),
-          ),
-        ),
-      );
-    }
-  } catch (e) {
-    if (context.mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Download failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-}
-
-// ----- migrateToCloud -----
-Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) async {
-  if (material.file.startsWith('http')) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('This file is already in the cloud.')),
-    );
-    return;
+    return fileName;
   }
 
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Migrate to Cloud Storage'),
-      content: const Text(
-        'This will upload the local file to Firebase Storage.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Upload'),
-        ),
-      ],
-    ),
-  );
+  Future<String> _getLocalFilePath(LearningMaterial material) async {
+    final fileName = _getUniqueFileName(material);
+    if (fileName.isEmpty) return '';
 
-  if (confirm != true) return;
+    final directory = await getApplicationDocumentsDirectory();
+    return '${directory.path}/$fileName';
+  }
 
-  try {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text('Uploading to cloud...'),
-          ],
-        ),
-      ),
-    );
+  // ----- downloadFile -----
+  Future<void> _downloadFile(BuildContext context, LearningMaterial material,
+      {bool openAfterDownload = true}) async {
+    final filePath = material.file;
 
-    final file = File(material.file);
-    
-    if (!file.existsSync()) {
+    if (!filePath.startsWith('http')) {
       if (context.mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Local file not found. Please re-upload this material.'),
+            content: Text('Error: Only cloud files can be downloaded.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -10289,43 +10160,83 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
       return;
     }
 
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
-    final storageRef = FirebaseStorage.instance.ref().child('learning_materials/$fileName');
-    final uploadTask = await storageRef.putFile(file);
-    final downloadUrl = await uploadTask.ref.getDownloadURL();
+    final savePath = await _getLocalFilePath(material);
+    final downloadFile = File(savePath);
 
-    // Update Firestore with new URL
-    final updatedMaterial = LearningMaterial(
-      id: material.id,
-      name: material.name,
-      description: material.description,
-      file: downloadUrl,
-      time: material.time,
-    );
-
-    await context.read<MaterialAppState>().editMaterial(updatedMaterial);
-
-    if (context.mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Successfully migrated to cloud storage!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    // 1. Check local status first
+    if (await downloadFile.exists()) {
+      if (openAfterDownload) {
+        await OpenFile.open(downloadFile.path);
+      }
+      return;
     }
-  } catch (e) {
-    if (context.mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Migration failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+
+    // 2. CHECK INTERNET BEFORE SHOWING DIALOG
+    var connectivityResult = await (Connectivity().checkConnectivity());
+    if (connectivityResult == ConnectivityResult.none) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No Internet Connection. Cannot download file.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return; 
+    }
+
+    try {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text('Downloading...'),
+              ],
+            ),
+          ),
+        );
+      }
+
+      final ref = FirebaseStorage.instance.refFromURL(filePath);
+      await ref.writeToFile(downloadFile);
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Material downloaded successfully!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () => OpenFile.open(downloadFile.path),
+            ),
+          ),
+        );
+
+        if (openAfterDownload) {
+          await OpenFile.open(downloadFile.path);
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        if (Navigator.of(context).canPop()) Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-}
 
   @override
   void initState() {
@@ -10340,10 +10251,8 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
     final uid = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
     if (doc.exists) {
       setState(() {
         userType =
@@ -10358,8 +10267,9 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
     var theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('📚 Material'),
-      backgroundColor: Colors.lightBlue,
+      appBar: AppBar(
+        title: const Text('📚 Material'),
+        backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         actions: [
           if (userType == UserType.teacher.toString())
@@ -10367,14 +10277,14 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
               icon: const Icon(Icons.add_box),
               tooltip: 'Upload material',
               onPressed: () async {
-                // Open UploadPage and wait for result
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const UploadPage()),
                 );
 
-                // Show success message if available
-                if (result != null && result['success'] == true && context.mounted) {
+                if (result != null &&
+                    result['success'] == true &&
+                    context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(result['message']),
@@ -10393,12 +10303,13 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
             TextField(
               decoration: InputDecoration(
                 labelText: 'Search materials...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onChanged: (value) => setState(() => searchQuery = value.toLowerCase()),
+              onChanged: (value) =>
+                  setState(() => searchQuery = value.toLowerCase()),
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -10437,145 +10348,162 @@ Future<void> _migrateToCloud(BuildContext context, LearningMaterial material) as
                     itemCount: materials.length,
                     itemBuilder: (context, index) {
                       final material = materials[index];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          leading: Icon(
-                            Icons.file_present,
-                            color: theme.colorScheme.primary,
-                            size: 32,
-                          ),
-                          title: Text(
-                            material.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+
+                      return FutureBuilder<bool>(
+                        future: _getLocalFilePath(material)
+                            .then((localPath) => File(localPath).exists()),
+                        builder: (context, snapshot) {
+                          final isDownloaded = snapshot.data ?? false;
+
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 6, horizontal: 12),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (material.description.isNotEmpty)
-                                Text(
-                                  material.description,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Uploaded: ${DateFormat.yMMMd().add_jm().format(material.time)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600],
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              leading: Icon(
+                                Icons.file_present,
+                                color: isDownloaded
+                                    ? Colors.green
+                                    : theme.colorScheme.primary,
+                                size: 32,
+                              ),
+                              title: Text(
+                                material.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
                               ),
-                            ],
-                          ),
-                          onTap: () async {
-                            if (material.file.startsWith('http')) {
-                              final url = Uri.parse(material.file);
-                              if (await canLaunchUrl(url)) {
-                                await launchUrl(url);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Cannot open file URL.'),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (material.description.isNotEmpty)
+                                    Text(
+                                      material.description,
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Uploaded: ${DateFormat.yMMMd().add_jm().format(material.time)}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
                                   ),
-                                );
-                              }
-                            } else {
-                              final result = await OpenFile.open(material.file);
-                              if (result.type != ResultType.done) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        'File not found or cannot be opened. Use the download button if it is a cloud file.'),
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Download button (all users)
-                              IconButton(
-                                icon: const Icon(Icons.download, color: Colors.green),
-                                tooltip: 'Download File',
-                                onPressed: () => _downloadFile(context, material),
+                                ],
                               ),
+                              onTap: () async {
+                                final localPath =
+                                    await _getLocalFilePath(material);
+                                if (await File(localPath).exists()) {
+                                  await OpenFile.open(localPath);
+                                } else {
+                                  await _downloadFile(context, material,
+                                      openAfterDownload: true);
+                                }
+                                setState(() {});
+                              },
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // DOWNLOAD/FOLDER BUTTON
+                                  IconButton(
+                                    icon: Icon(
+                                      isDownloaded
+                                          ? Icons.folder_open
+                                          : Icons.cloud_download,
+                                      color: isDownloaded
+                                          ? Colors.blue
+                                          : Colors.green,
+                                    ),
+                                    tooltip: isDownloaded
+                                        ? 'Open Local File'
+                                        : 'Download File',
+                                    onPressed: () async {
+                                      await _downloadFile(context, material);
+                                      setState(() {});
+                                    },
+                                  ),
 
-                              // Edit button (teachers only)
-                              if (userType == UserType.teacher.toString())
-                                IconButton(
-                                  icon: const Icon(Icons.edit, color: Colors.blue),
-                                  tooltip: 'Edit Material',
-                                  onPressed: () async {
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => UploadPage(
-                                          existingMaterial: material,
-                                        ),
-                                      ),
-                                    );
-
-                                    if (result != null && result['success'] == true && context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(result['message']),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-
-                              // Delete button (teachers only)
-                              if (userType == UserType.teacher.toString())
-                                IconButton(
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  tooltip: 'Delete Material',
-                                  onPressed: () async {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('Delete Confirmation'),
-                                        content: const Text('Are you sure you want to delete this material?'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(context, false),
-                                            child: const Text('Cancel'),
+                                  // Teacher actions
+                                  if (userType == UserType.teacher.toString()) ...[
+                                    IconButton(
+                                      icon: const Icon(Icons.edit,
+                                          color: Colors.blue),
+                                      onPressed: () async {
+                                        final result = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => UploadPage(
+                                              existingMaterial: material,
+                                            ),
                                           ),
-                                          ElevatedButton(
-                                            onPressed: () => Navigator.pop(context, true),
-                                            child: const Text('Confirm'),
+                                        );
+                                        if (result != null &&
+                                            result['success'] == true &&
+                                            context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(SnackBar(
+                                            content: Text(result['message']),
+                                            backgroundColor: Colors.green,
+                                          ));
+                                        }
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text(
+                                                'Delete Confirmation'),
+                                            content: const Text(
+                                                'Are you sure you want to delete this material?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(
+                                                        context, false),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(
+                                                        context, true),
+                                                child: const Text('Confirm'),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
-                                    );
+                                        );
 
-                                    if (confirm == true) {
-                                      await appState.deleteMaterial(material);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Material deleted successfully!'),
-                                          backgroundColor: Colors.green,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                            ],
-                          ),
-                    ),
+                                        if (confirm == true) {
+                                          await appState
+                                              .deleteMaterial(material);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(const SnackBar(
+                                            content: Text(
+                                                'Material deleted successfully!'),
+                                            backgroundColor: Colors.green,
+                                          ));
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   );
-                },
-              );
                 },
               ),
             ),
