@@ -5798,6 +5798,11 @@ class _ChatBodyState extends State<_ChatBody> {
                       ),
                       onPressed: () {
                         setState(() => lastRating = s);
+
+                        context.read<ChatBloc>().add(
+            SubmitChatRatingEvent(s),
+          );
+          
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -5940,6 +5945,11 @@ class ChatError extends ChatState {
 
 class LoadChatHistoryEvent extends ChatEvent {}
 
+class SubmitChatRatingEvent extends ChatEvent {
+  final int rating;
+  SubmitChatRatingEvent(this.rating);
+}
+
 // Chat BLoC Implementation
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final List<ChatMessage> _messages = [];
@@ -5964,6 +5974,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ClearChatEvent>(_onClearChat);
     on<LoadWelcomeEvent>(_onLoadWelcome);
     on<LoadChatHistoryEvent>(_onLoadChatHistory);
+    on<SubmitChatRatingEvent>(_onSubmitChatRating);
 
     // Initialize with welcome message
     add(const LoadWelcomeEvent());
@@ -6165,7 +6176,38 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     );
     emit(ChatLoaded(messages: List.from(_messages)));
   }
+
+  Future<void> _onSubmitChatRating(
+  SubmitChatRatingEvent event,
+  Emitter<ChatState> emit,
+) async {
+  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+
+  if (user == null) {
+    debugPrint('❌ No logged-in user');
+    return;
+  }
+
+  try {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('chatbot_ratings')
+        .add({
+      'rating': event.rating,
+      'source': 'AI Chatbot',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    debugPrint('✅ Chatbot rating saved');
+  } catch (e) {
+    debugPrint('❌ Failed to save rating: $e');
+  }
 }
+
+}
+
+
 
 // Progress Page
 class ProgressPage extends StatefulWidget {
