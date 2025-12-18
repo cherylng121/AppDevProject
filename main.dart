@@ -3145,6 +3145,7 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.category),
               ),
+              isExpanded: true,
               items: [
                 const DropdownMenuItem(
                   value: null,
@@ -3153,7 +3154,11 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
                 ..._availableTopics.map((topic) {
                   return DropdownMenuItem(
                     value: topic,
-                    child: Text(topic),
+                    child: Text(
+                      topic,
+                      overflow: TextOverflow.ellipsis, // Add ellipsis for long text
+                      maxLines: 1, // Limit to single line
+                    ),
                   );
                 }).toList(),
               ],
@@ -3789,9 +3794,30 @@ trailing: isTeacher
                 );
               },
             ),
-
-            const Divider(height: 30, thickness: 1),
-
+             
+            //US008-03: Filter assessments by topic and status
+            if (!isTeacher) ...[
+              const Divider(height: 30, thickness: 1),
+              _buildSectionTitle('Assessments Management'),
+              Card(
+                elevation: 2,
+                child: ListTile(
+                  leading: const Icon(Icons.filter_alt, color: Colors.purple),
+                  title: const Text('Filter My Assessments'),
+                  subtitle: const Text('View and filter assessments by topic and status'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StudentAssessmentsPage(),
+          ),
+        );
+      },
+    ),
+  ),
+],
+const Divider(height: 30, thickness: 1),
             // --- 3. Student Quiz History (US006-02) ---
             if (!isTeacher) ...[
               _buildSectionTitle('My Quiz History'),
@@ -3836,28 +3862,7 @@ trailing: isTeacher
                       },
                     ),
             ],
-            //US008-03: Filter assessments by topic and status
-            if (!isTeacher) ...[
-              const Divider(height: 30, thickness: 1),
-              _buildSectionTitle('Assessment Management'),
-              Card(
-                elevation: 2,
-                child: ListTile(
-                  leading: const Icon(Icons.filter_alt, color: Colors.purple),
-                  title: const Text('Filter My Assessments'),
-                  subtitle: const Text('View and filter assessments by topic and completion status'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const StudentAssessmentsPage(),
-          ),
-        );
-      },
-    ),
-  ),
-],
+
 
           ],
         ),
