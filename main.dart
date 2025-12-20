@@ -2247,6 +2247,151 @@ class _DetailsPageState extends State<DetailsPage> {
   }
 }
 
+// ========== QUIZ ==========
+enum QuestionType { mcq, shortAnswer }
+enum QuizStatus { draft, published }
+
+enum AssessmentStatus {
+  notStarted,
+  completed,
+}
+enum AssessmentType {
+  system,
+  teacher,
+}
+class Question {
+  final String id;
+  final String questionText;
+  final QuestionType type;
+  final List<String> options;
+  final String answer;
+  final String? explanation;
+
+  Question({
+    required this.id,
+    required this.questionText,
+    required this.type,
+    this.options = const [],
+    required this.answer,
+    this.explanation,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'questionText': questionText,
+      'type': type.name,
+      'options': options,
+      'answer': answer,
+      'explanation': explanation,
+    };
+  }
+
+  factory Question.fromMap(Map<String, dynamic> map) {
+    return Question(
+      id: map['id'] as String,
+      questionText: map['questionText'] as String,
+      type: QuestionType.values.firstWhere(
+        (e) => e.name == map['type'],
+        orElse: () => QuestionType.mcq,
+      ),
+      options: List<String>.from(map['options'] ?? []),
+      answer: map['answer'] as String,
+      explanation: map['explanation'] as String?,
+    );
+  }
+}
+
+// ========== QUIZ ========== (Model for Quiz (Created by teacher))
+class Quiz {
+  final String id; // Unique ID for the quiz
+  String title;
+  String topic;
+  List<Question> questions;
+  QuizStatus status;
+  String createdBy;
+
+  Quiz({
+    required this.id,
+    required this.title,
+    required this.topic,
+    required this.questions,
+    this.status = QuizStatus.draft,
+    required this.createdBy,
+  });
+
+  // Convert Quiz object to a Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'topic': topic,
+      'questions': questions
+          .map((q) => q.toMap())
+          .toList(), // Convert list of Questions
+      'status': status.name, // Store enum as string
+      'createdBy': createdBy,
+      'createdAt': FieldValue.serverTimestamp(), // Good practice
+    };
+  }
+
+  // Create a Quiz object from a Firestore document
+  factory Quiz.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Quiz(
+      id: doc.id,
+      title: data['title'] ?? '',
+      topic: data['topic'] ?? '',
+      questions:
+          (data['questions'] as List<dynamic>?)
+              ?.map((qMap) => Question.fromMap(qMap as Map<String, dynamic>))
+              .toList() ??
+          [],
+      status: QuizStatus.values.firstWhere(
+        (e) => e.name == data['status'],
+        orElse: () => QuizStatus.draft,
+      ),
+      createdBy: data['createdBy'] ?? '',
+    );
+  }
+}
+
+class QuizAttempt {
+  final String quizTitle;
+  final List<Question> questions;
+  final Map<String, String> userAnswers;
+  final int score;
+  final int total;
+  final DateTime timestamp;
+  final Map<String, String>? aiFeedback;
+
+  QuizAttempt({
+    required this.quizTitle,
+    required this.questions,
+    required this.userAnswers,
+    required this.score,
+    required this.total,
+    required this.timestamp,
+    this.aiFeedback,
+  });
+}
+class AssessmentItem {
+  final String title;
+  final String topic;
+  final AssessmentType type;
+  final List<Question> questions;
+  final String? quizId;
+  final AssessmentStatus status;
+
+  AssessmentItem({
+    required this.title,
+    required this.topic,
+    required this.type,
+    required this.questions,
+    this.quizId,
+    required this.status,
+  });
+}
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
