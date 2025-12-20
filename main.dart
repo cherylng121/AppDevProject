@@ -2392,6 +2392,396 @@ class AssessmentItem {
   });
 }
 
+// ========== SYSTEM QUIZ ==========
+// Dummy list for storing student quiz history (US006-02)
+List<QuizAttempt> userQuizAttempts = [];
+
+// System-Generated Quiz Data (US-System)
+final Map<String, List<Question>> systemQuizData = {
+  "1.1 Strategi Penyelesaian Masalah": [
+    Question(
+      id: 's1-1',
+      questionText: 'Senaraikan empat teknik pemikiran komputasional.',
+      type: QuestionType.shortAnswer,
+      answer: 'Leraian, Pengecaman corak, Peniskalaan, Algoritma',
+      explanation:
+          'Keempat-empat teknik ini adalah asas kepada pemikiran komputasional.',
+    ),
+    Question(
+      id: 's1-2',
+      questionText:
+          'Manakah antara berikut BUKAN ciri penyelesaian masalah berkesan?',
+      type: QuestionType.mcq,
+      options: const ['Kos', 'Masa', 'Sumber', 'Populariti'],
+      answer: 'Populariti',
+      explanation:
+          'Penyelesaian berkesan dinilai berdasarkan kos, masa, dan sumber yang digunakan.',
+    ),
+    Question(
+      id: 's1-3',
+      questionText:
+          'Proses memecahkan masalah kepada bahagian yang lebih kecil & terkawal dipanggil...',
+      type: QuestionType.mcq,
+      options: const [
+        'Leraian',
+        'Pengecaman corak',
+        'Peniskalaan',
+        'Algoritma',
+      ],
+      answer: 'Leraian',
+      explanation:
+          'Leraian (Decomposition) adalah langkah pertama dalam mempermudahkan masalah yang kompleks.',
+    ),
+    Question(
+      id: 's1-4',
+      questionText:
+          'Apakah proses penyelesaian masalah yang kelapan (terakhir)?',
+      type: QuestionType.shortAnswer,
+      answer: 'Membuat penambahbaikan',
+      explanation:
+          'Selepas penilaian, langkah terakhir adalah membuat penambahbaikan berdasarkan maklum balas.',
+    ),
+    Question(
+      id: 's1-5',
+      questionText:
+          'Mencari persamaan antara masalah & dalam masalah ialah teknik...',
+      type: QuestionType.mcq,
+      options: const [
+        'Leraian',
+        'Pengecaman corak',
+        'Peniskalaan',
+        'Algoritma',
+      ],
+      answer: 'Pengecaman corak',
+      explanation:
+          'Pengecaman corak membantu kita mencari penyelesaian yang boleh diguna semula.',
+    ),
+  ],
+  "1.2 Algoritma": [
+    Question(
+      id: 's2-1',
+      questionText: 'Senaraikan tiga (3) ciri algoritma.',
+      type: QuestionType.shortAnswer,
+      answer: 'Butiran jelas, Boleh dilaksanakan, Mempunyai batasan',
+      explanation:
+          'Algoritma mesti jelas, boleh diikuti, dan mempunyai titik permulaan dan penamat yang terhad.',
+    ),
+    Question(
+      id: 's2-2',
+      questionText:
+          'Apakah perwakilan algoritma yang menggunakan simbol grafik?',
+      type: QuestionType.mcq,
+      options: const [
+        'Pseudokod',
+        'Carta Alir',
+        'Kod Atur Cara',
+        'Ralat Sintaks',
+      ],
+      answer: 'Carta Alir',
+      explanation:
+          'Carta Alir (Flowchart) menggunakan simbol-simbol piawai untuk mewakili arahan dan aliran.',
+    ),
+    Question(
+      id: 's2-3',
+      questionText:
+          'Struktur kawalan yang manakah membuat keputusan berasaskan syarat?',
+      type: QuestionType.mcq,
+      options: const [
+        'Struktur Kawalan Urutan',
+        'Struktur Kawalan Pilihan',
+        'Struktur Kawalan Pengulangan',
+        'Struktur Kawalan Data',
+      ],
+      answer: 'Struktur Kawalan Pilihan',
+      explanation:
+          'Struktur Kawalan Pilihan (Selection) menggunakan "if-else" atau "switch-case" untuk membuat keputusan.',
+    ),
+    Question(
+      id: 's2-4',
+      questionText:
+          'Ralat yang timbul apabila atur cara dijalankan, seperti pembahagian dengan sifar, dipanggil...',
+      type: QuestionType.mcq,
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Algoritma',
+      ],
+      answer: 'Ralat Masa Larian',
+      explanation:
+          'Ralat Masa Larian (Run-time Error) berlaku semasa program sedang dilaksanakan.',
+    ),
+    Question(
+      id: 's2-5',
+      questionText:
+          'Ralat yang menyebabkan atur cara tidak berfungsi seperti yang diingini (cth: output salah) dipanggil...',
+      type: QuestionType.mcq,
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Pengecaman',
+      ],
+      answer: 'Ralat Logik',
+      explanation:
+          'Ralat Logik (Logic Error) bermakna atur cara boleh berjalan, tetapi menghasilkan output yang salah.',
+    ),
+  ],
+  "1.3 Pemboleh Ubah, Pemalar dan Jenis Data": [
+    Question(
+      id: 's3-1',
+      questionText:
+          'Apakah jenis data yang sesuai untuk menyimpan nilai "hello world"?',
+      type: QuestionType.mcq,
+      options: const ['int', 'double', 'char', 'String'],
+      answer: 'String',
+      explanation: 'String digunakan untuk menyimpan jujukan aksara (teks).',
+    ),
+    Question(
+      id: 's3-2',
+      questionText: 'Apakah jenis data yang sesuai untuk menyimpan nilai "z"?',
+      type: QuestionType.mcq,
+      options: const ['int', 'double', 'char', 'String'],
+      answer: 'char',
+      explanation: 'char digunakan untuk menyimpan satu aksara sahaja.',
+    ),
+    Question(
+      id: 's3-3',
+      questionText:
+          'Apakah jenis data yang sesuai untuk menyimpan nilai "true" atau "false"?',
+      type: QuestionType.mcq,
+      options: const ['int', 'boolean', 'char', 'String'],
+      answer: 'boolean',
+      explanation:
+          'Boolean hanya boleh memegang nilai benar (true) atau palsu (false).',
+    ),
+    Question(
+      id: 's3-4',
+      questionText:
+          'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
+      type: QuestionType.shortAnswer,
+      answer: 'Pemboleh ubah sejagat',
+      explanation:
+          'Pemboleh ubah Sejagat (Global Variable) mempunyai skop di seluruh atur cara.',
+    ),
+    Question(
+      id: 's3-5',
+      questionText:
+          'Pemboleh ubah yang diisytiharkan dalam sebuah fungsi dan tidak boleh diakses di luar fungsi itu dipanggil...',
+      type: QuestionType.shortAnswer,
+      answer: 'Pemboleh ubah setempat',
+      explanation:
+          'Pemboleh ubah Setempat (Local Variable) hanya wujud di dalam fungsi ia diisytiharkan.',
+    ),
+  ],
+  "1.4 Struktur Kawalan": [
+    Question(
+      id: 's4-1',
+      questionText:
+          'Operator logikal yang manakah hanya benar jika SEMUA syarat benar?',
+      type: QuestionType.mcq,
+      options: const ['AND', 'OR', 'NOT', 'IF'],
+      answer: 'AND',
+      explanation:
+          'Operator AND (&&) memerlukan semua syarat benar untuk menghasilkan "true".',
+    ),
+    Question(
+      id: 's4-2',
+      questionText:
+          'Operator logikal yang manakah benar jika SALAH SATU syarat benar?',
+      type: QuestionType.mcq,
+      options: const ['AND', 'OR', 'NOT', 'IF'],
+      answer: 'OR',
+      explanation:
+          'Operator OR (||) hanya memerlukan satu syarat benar untuk menghasilkan "true".',
+    ),
+    Question(
+      id: 's4-3',
+      questionText: 'Apakah operator hubungan untuk "Tidak sama dengan"?',
+      type: QuestionType.mcq,
+      options: const ['==', '!=', '>=', '<='],
+      answer: '!=',
+      explanation: '`!=` digunakan untuk menyemak jika dua nilai tidak sama.',
+    ),
+    Question(
+      id: 's4-4',
+      questionText:
+          'Apakah struktur kawalan yang menggunakan "For", "While", dan "Do-while"?',
+      type: QuestionType.shortAnswer,
+      answer: 'Struktur Kawalan Pengulangan',
+      explanation:
+          'Ini adalah jenis-jenis gelung (loops) yang digunakan untuk pengulangan.',
+    ),
+    Question(
+      id: 's4-5',
+      questionText:
+          'Struktur kawalan "Switch-case" adalah sejenis struktur kawalan...',
+      type: QuestionType.shortAnswer,
+      answer: 'Pilihan',
+      explanation:
+          'Switch-case ialah satu cara untuk melaksanakan Struktur Kawalan Pilihan, alternatif kepada "if-else-if".',
+    ),
+  ],
+  "1.5 Amalan Terbaik Pengaturcaraan": [
+    Question(
+      id: 's5-1',
+      questionText:
+          'Senaraikan tiga (3) faktor yang mempengaruhi kebolehbacaan kod.',
+      type: QuestionType.shortAnswer,
+      answer: 'Inden yang konsisten, Pemboleh ubah yang bermakna, Komen',
+      explanation:
+          'Faktor-faktor ini (termasuk juga jenis data) membantu pengatur cara lain memahami kod anda.',
+    ),
+    Question(
+      id: 's5-2',
+      questionText:
+          'Apakah jenis ralat yang disebabkan oleh kesalahan tatabahasa dalam kod?',
+      type: QuestionType.mcq,
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Amalan',
+      ],
+      answer: 'Ralat Sintaks',
+      explanation:
+          'Ralat Sintaks (Syntax Error) adalah seperti kesalahan ejaan atau tatabahasa yang tidak difahami oleh pengkompil.',
+    ),
+    Question(
+      id: 's5-3',
+      questionText:
+          'Penggunaan nama pemboleh ubah seperti "x" dan "y" adalah amalan yang baik. (Benar/Palsu)',
+      type: QuestionType.mcq,
+      options: const ['Benar', 'Palsu'],
+      answer: 'Palsu',
+      explanation:
+          'Nama pemboleh ubah harus bermakna (cth: "lebar", "tinggi") supaya kod mudah difahami.',
+    ),
+    Question(
+      id: 's5-4',
+      questionText:
+          'Apakah tujuan utama meletakkan "komen" (comments) dalam atur cara?',
+      type: QuestionType.shortAnswer,
+      answer: 'Untuk menerangkan fungsi kod',
+      explanation:
+          'Komen membantu manusia (pengatur cara) memahami apa yang dilakukan oleh sesuatu bahagian kod.',
+    ),
+    Question(
+      id: 's5-5',
+      questionText:
+          'Pembahagian dengan digit 0 akan menyebabkan ralat jenis apa?',
+      type: QuestionType.mcq,
+      options: const [
+        'Ralat Sintaks',
+        'Ralat Logik',
+        'Ralat Masa Larian',
+        'Ralat Komen',
+      ],
+      answer: 'Ralat Masa Larian',
+      explanation:
+          'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya boleh dikesan semasa atur cara dijalankan.',
+    ),
+  ],
+  "1.6 Struktur Data dan Modular": [
+    Question(
+      id: 's6-1',
+      questionText:
+          'Apakah nama struktur data yang membolehkan koleksi beberapa nilai data dalam satu pemboleh ubah menggunakan indeks?',
+      type: QuestionType.shortAnswer,
+      answer: 'Tatasusunan',
+      explanation:
+          'Tatasusunan (Array) menyimpan elemen dalam ruang memori berindeks.',
+    ),
+    Question(
+      id: 's6-2',
+      questionText:
+          'Jika diberi: int[] senaraiUmur = {17, 18, 19}; Apakah nilai bagi senaraiUmur[1]?',
+      type: QuestionType.mcq,
+      options: const ['17', '18', '19', 'Ralat'],
+      answer: '18',
+      explanation:
+          'Indeks tatasusunan bermula dari 0. Jadi, indeks 0 ialah 17, dan indeks 1 ialah 18.',
+    ),
+    Question(
+      id: 's6-3',
+      questionText:
+          'Nyatakan satu kelebihan menggunakan struktur modul (subatur cara).',
+      type: QuestionType.shortAnswer,
+      answer: 'Lebih mudah untuk digunakan semula',
+      explanation:
+          'Kelebihan lain: lebih mudah diuji, projek kompleks jadi ringkas, mudah dibahagikan tugas. (Mana-mana jawapan ini diterima)',
+    ),
+    Question(
+      id: 's6-4',
+      questionText: 'Subatur cara yang MEMULANGKAN nilai dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Prosedur', 'Fungsi', 'Tatasusunan', 'Modul'],
+      answer: 'Fungsi',
+      explanation:
+          'Fungsi (Function) memulangkan nilai (cth: "int kiraLuas()"), manakala Prosedur (Procedure) tidak (cth: "void paparNama()").',
+    ),
+    Question(
+      id: 's6-5',
+      questionText:
+          'Dalam "void paparHarga(String item, double h)", "item" dan "h" dipanggil...',
+      type: QuestionType.mcq,
+      options: const ['Parameter', 'Pemboleh ubah', 'Fungsi', 'Jenis Data'],
+      answer: 'Parameter',
+      explanation:
+          'Ini adalah parameter yang menerima nilai apabila subatur cara itu dipanggil.',
+    ),
+  ],
+  "1.7 Pembagunan Aplikasi": [
+    Question(
+      id: 's7-1',
+      questionText: 'Apakah maksud singkatan SDLC?',
+      type: QuestionType.shortAnswer,
+      answer: 'Kitaran Hayat Pembangunan Sistem',
+      explanation: 'SDLC bermaksud "System Development Life Cycle".',
+    ),
+    Question(
+      id: 's7-2',
+      questionText: 'Nyatakan fasa pertama dalam SDLC.',
+      type: QuestionType.shortAnswer,
+      answer: 'Analisis masalah',
+      explanation:
+          'Fasa pertama ialah Analisis Masalah, diikuti Reka Bentuk, Laksana, Uji & Nyah Ralat, dan Dokumentasi.',
+    ),
+    Question(
+      id: 's7-3',
+      questionText: 'Fasa "Uji & Nyah Ralat" datang SELEPAS fasa mana?',
+      type: QuestionType.mcq,
+      options: const [
+        'Analisis masalah',
+        'Reka bentuk penyelesaian',
+        'Laksana penyelesaian',
+        'Dokumentasi',
+      ],
+      answer: 'Laksana penyelesaian',
+      explanation:
+          'Selepas kod ditulis (dilaksana), ia mesti diuji untuk mencari ralat.',
+    ),
+    Question(
+      id: 's7-4',
+      questionText:
+          'Reka bentuk yang manakah melibatkan reka bentuk antara muka (GUI)?',
+      type: QuestionType.mcq,
+      options: const ['Logikal', 'Fizikal', 'Analisis', 'Laksana'],
+      answer: 'Fizikal',
+      explanation:
+          'Reka bentuk logikal ialah aliran (carta alir/pseudokod), manakala reka bentuk fizikal ialah rupa (GUI) dan pangkalan data.',
+    ),
+    Question(
+      id: 's7-5',
+      questionText: 'Apakah fasa terakhir dalam SDLC?',
+      type: QuestionType.shortAnswer,
+      answer: 'Dokumentasi',
+      explanation:
+          'Fasa terakhir ialah Dokumentasi, yang penting untuk rujukan dan penyelenggaraan masa depan.',
+    ),
+  ],
+};
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
