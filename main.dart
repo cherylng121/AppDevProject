@@ -3033,6 +3033,120 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
       );
     }
 
+     return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Assessments'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {
+              setState(() => _showFilters = !_showFilters);
+            },
+            tooltip: 'Show/Hide Filters',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (_showFilters) _buildFilterSection(),
+          Expanded(child: _buildAssessmentsList()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterSection() {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Filter Assessments',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            
+            DropdownButtonFormField<String>(
+              value: _selectedTopicFilter,
+              decoration: const InputDecoration(
+                labelText: 'Filter by Topic',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.category),
+              ),
+              isExpanded: true,
+              items: [
+                const DropdownMenuItem(
+                  value: null,
+                  child: Text('All Topics'),
+                ),
+                ..._availableTopics.map((topic) {
+                  return DropdownMenuItem(
+                    value: topic,
+                    child: Text(
+                      topic,
+                      overflow: TextOverflow.ellipsis, // Add ellipsis for long text
+                      maxLines: 1, // Limit to single line
+                    ),
+                  );
+                }).toList(),
+              ],
+              onChanged: (value) {
+                setState(() => _selectedTopicFilter = value);
+              },
+            ),
+            
+            const SizedBox(height: 12),
+            
+            DropdownButtonFormField<AssessmentStatus>(
+              value: _selectedStatusFilter,
+              decoration: const InputDecoration(
+                labelText: 'Filter by Status',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.flag),
+              ),
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text('All Statuses'),
+                ),
+                ...AssessmentStatus.values.map((status) {
+                  return DropdownMenuItem(
+                    value: status,
+                    child: Text(
+                      status == AssessmentStatus.completed ? 'Completed' : 'Not Started',
+                    ),
+                  );
+                }).toList(),
+              ],
+              onChanged: (value) {
+                setState(() => _selectedStatusFilter = value);
+              },
+            ),
+            
+            const SizedBox(height: 12),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _clearFilters,
+                  icon: const Icon(Icons.clear),
+                  label: const Text('Clear Filters'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+    
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
