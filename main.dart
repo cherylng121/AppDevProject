@@ -3302,7 +3302,124 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
       ),
     );
   }
-  
+
+Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.quiz, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text(
+            'No Assessments Available',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Your teacher hasn\'t published any quizzes yet.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text(
+            'No Matching Assessments',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Try adjusting your filters to see more results.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _clearFilters,
+            child: const Text('Clear All Filters'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ========== QUIZ PAGE ==========
+class QuizPage extends StatefulWidget {
+  const QuizPage({super.key});
+
+  @override
+  State<QuizPage> createState() => _QuizPageState();
+}
+
+// ========== QUIZ PAGE STATE ==========
+class _QuizPageState extends State<QuizPage> {
+
+ @override
+  void initState() {
+    super.initState();
+    _loadQuizAttempts();
+  }
+
+  // Load quiz attempts from Firestore
+  Future<void> _loadQuizAttempts() async {
+    final userState = context.read<FirebaseUserState>();
+    final user = userState.currentUser;
+    
+    if (user == null || user.userType != UserType.student) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.id)
+          .collection('quiz_attempts')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      // Clear existing in-memory attempts
+      userQuizAttempts.clear();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        
+        // Convert questions back to Question objects
+        final questionsData = data['questions'] as List<dynamic>;
+        final questions = questionsData
+            .map((q) => Question.fromMap(q as Map<String, dynamic>))
+            .toList();
+
+        final attempt = QuizAttempt(
+          quizTitle: data['quizTitle'] ?? '',
+          questions: questions,
+          userAnswers: Map<String, String>.from(data['userAnswers'] ?? {}),
+          score: data['score'] ?? 0,
+          total: data['total'] ?? 0,
+          timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          aiFeedback: data['aiFeedback'] != null 
+              ? Map<String, String>.from(data['aiFeedback']) 
+              : null,
+        );
+
+        userQuizAttempts.add(attempt);
+      }
+
+      print('✅ Loaded ${userQuizAttempts.length} quiz attempts from Firestore');
+      
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('❌ Error loading quiz attempts: $e');
+    }
+  }
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
