@@ -3146,7 +3146,163 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
       ),
     );
   }
-    
+
+  Widget _buildAssessmentsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('quizzes')
+          .where('status', isEqualTo: 'published')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        final teacherQuizzes = snapshot.data!.docs
+            .map((doc) => Quiz.fromFirestore(doc))
+            .where((quiz) => quiz.status == QuizStatus.published)
+            .toList();
+
+        final allAssessments = <AssessmentItem>[];
+        
+        systemQuizData.forEach((topic, questions) {
+          allAssessments.add(AssessmentItem(
+            title: topic,
+            topic: topic,
+            type: AssessmentType.system,
+            questions: questions,
+            status: _getAssessmentStatus(topic, null),
+          ));
+        });
+        
+        allAssessments.add(AssessmentItem(
+          title: 'Summative Test (Bab 1)',
+          topic: 'Comprehensive',
+          type: AssessmentType.system,
+          questions: summativeTestQuestions,
+          status: _getAssessmentStatus('Summative Test (Bab 1)', null),
+        ));
+        
+        for (final quiz in teacherQuizzes) {
+          allAssessments.add(AssessmentItem(
+            title: quiz.title,
+            topic: quiz.topic,
+            type: AssessmentType.teacher,
+            questions: quiz.questions,
+            quizId: quiz.id,
+            status: _getAssessmentStatus(quiz.title, quiz.id),
+          ));
+        }
+
+        final filteredAssessments = allAssessments.where((assessment) {
+          if (_selectedTopicFilter != null && 
+              assessment.topic != _selectedTopicFilter) {
+            return false;
+          }
+          
+          if (_selectedStatusFilter != null && 
+              assessment.status != _selectedStatusFilter) {
+            return false;
+          }
+          
+          return true;
+        }).toList();
+
+        if (filteredAssessments.isEmpty) {
+          return _buildNoResultsState();
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(8.0),
+          itemCount: filteredAssessments.length,
+          itemBuilder: (context, index) {
+            final assessment = filteredAssessments[index];
+            return _buildAssessmentCard(assessment);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAssessmentCard(AssessmentItem assessment) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+      child: ListTile(
+        leading: Icon(
+          assessment.type == AssessmentType.system 
+              ? Icons.auto_awesome 
+              : Icons.school,
+          color: assessment.status == AssessmentStatus.completed 
+              ? Colors.green 
+              : Colors.blue,
+        ),
+        title: Text(assessment.title),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Topic: ${assessment.topic}'),
+            const SizedBox(height: 2),
+            Text(
+              'Status: ${assessment.status == AssessmentStatus.completed ? 'Completed' : 'Not Started'}',
+              style: TextStyle(
+                color: assessment.status == AssessmentStatus.completed 
+                    ? Colors.green 
+                    : Colors.orange,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              'Questions: ${assessment.questions.length}',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        trailing: Icon(
+          assessment.status == AssessmentStatus.completed
+              ? Icons.check_circle
+              : Icons.play_arrow,
+          color: assessment.status == AssessmentStatus.completed
+              ? Colors.green
+              : Colors.blue,
+        ),
+        onTap: () {
+          if (assessment.status == AssessmentStatus.completed) {
+            final attempt = userQuizAttempts.firstWhere(
+              (a) => a.quizTitle == assessment.title,
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => QuizResultsPage(attempt: attempt),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TakeQuizPage(
+                  quizTitle: assessment.title,
+                  questions: assessment.questions,
+                ),
+              ),
+            ).then((_) {
+              setState(() {});
+            });
+          }
+        },
+      ),
+    );
+  }
+  
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
