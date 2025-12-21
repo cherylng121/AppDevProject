@@ -2782,6 +2782,207 @@ final Map<String, List<Question>> systemQuizData = {
   ],
 };
 
+// System-Generated Summative Test
+final List<Question> summativeTestQuestions = [
+  Question(
+    id: 'sum-1',
+    questionText:
+        'Yang manakah penyataan yang tidak tepat mengenai mengapa perlunya strategi dalam penyelesaian masalah?',
+    type: QuestionType.mcq,
+    options: const [
+      'Membantu pengembangan sesuatu konsep',
+      'Menggalakkan pembelajaran kendiri',
+      'Meningkatkan kemahiran berfikir',
+      'Mewujudkan komunikasi sehala',
+    ],
+    answer: 'Mewujudkan komunikasi sehala',
+    explanation:
+        'Strategi penyelesaian masalah menggalakkan komunikasi DUA hala, bukan sehala.',
+  ),
+  Question(
+    id: 'sum-2',
+    questionText:
+        'Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian, merujuk kepada konsep...',
+    type: QuestionType.mcq,
+    options: const [
+      'Analisis Masalah',
+      'Penyelesaian Masalah',
+      'Reka Bentuk Sistem',
+      'Algoritma',
+    ],
+    answer: 'Penyelesaian Masalah',
+    explanation: 'Ini adalah definisi asas bagi penyelesaian masalah.',
+  ),
+  Question(
+    id: 'sum-3',
+    questionText:
+        'Teknik Leraian, Pengecaman Corak, Peniskalaan, dan Algoritma adalah teknik dalam...',
+    type: QuestionType.mcq,
+    options: const [
+      'SDLC',
+      'Amalan Terbaik',
+      'Pemikiran Komputasional',
+      'Struktur Kawalan',
+    ],
+    answer: 'Pemikiran Komputasional',
+    explanation:
+        'Ini adalah empat tonggak utama dalam Pemikiran Komputasional.',
+  ),
+  Question(
+    id: 'sum-4',
+    questionText: 'Apakah fungsi bagi struktur kawalan pilihan?',
+    type: QuestionType.mcq,
+    options: const [
+      'Memberikan perisian komputer keupayaan untuk membuat keputusan berasaskan syarat',
+      'Mengulang satu set arahan sehingga syarat dipenuhi',
+      'Melaksanakan arahan satu per satu mengikut urutan',
+      'Menyimpan data dalam memori',
+    ],
+    answer:
+        'Memberikan perisian komputer keupayaan untuk membuat keputusan berasaskan syarat',
+    explanation:
+        'Struktur kawalan pilihan (cth: "if", "switch") membenarkan atur cara membuat keputusan.',
+  ),
+  Question(
+    id: 'sum-5',
+    questionText:
+        'Apakah yang dimaksudkan dengan amalan terbaik dalam pengaturcaraan?',
+    type: QuestionType.mcq,
+    options: const [
+      'Menjalankan atur cara tanpa sebarang ralat',
+      'Mempraktikkan amalan-amalan untuk menghasilkan atur cara yang baik dan mudah difahami',
+      'Menulis kod atur cara dengan paling pantas',
+      'Menggunakan pemboleh ubah yang paling sedikit',
+    ],
+    answer:
+        'Mempraktikkan amalan-amalan untuk menghasilkan atur cara yang baik dan mudah difahami',
+    explanation:
+        'Amalan terbaik mementingkan kebolehbacaan, kecekapan, dan penyelenggaraan kod.',
+  ),
+  Question(
+    id: 'sum-6',
+    questionText:
+        'Kata kunci "int" dalam Java digunakan untuk mengisytiharkan pemboleh ubah jenis...',
+    type: QuestionType.shortAnswer,
+    answer: 'Integer',
+    explanation:
+        '`int` adalah singkatan untuk "Integer", yang merupakan nombor bulat.',
+  ),
+  Question(
+    id: 'sum-7',
+    questionText:
+        'Jenis data "float" atau "double" digunakan untuk menyimpan nombor yang mempunyai...',
+    type: QuestionType.shortAnswer,
+    answer: 'Titik perpuluhan',
+    explanation:
+        'Nombor perpuluhan (cth: 10.5) disimpan sebagai "float" atau "double".',
+  ),
+  Question(
+    id: 'sum-8',
+    questionText:
+        'Data dalam bentuk pilihan "Benar" (True) atau "Palsu" (False) ialah jenis data...',
+    type: QuestionType.shortAnswer,
+    answer: 'Boolean',
+    explanation:
+        'Jenis data "boolean" hanya boleh menyimpan nilai "true" atau "false".',
+  ),
+  Question(
+    id: 'sum-9',
+    questionText:
+        'Perwakilan algoritma yang menggunakan senarai arahan dalam bahasa pertuturan manusia dipanggil...',
+    type: QuestionType.shortAnswer,
+    answer: 'Pseudokod',
+    explanation:
+        'Pseudokod ialah cara menulis logik atur cara menggunakan bahasa biasa, bukan kod sebenar.',
+  ),
+  Question(
+    id: 'sum-10',
+    questionText:
+        'Perwakilan algoritma yang menggunakan simbol grafik dipanggil...',
+    type: QuestionType.shortAnswer,
+    answer: 'Carta alir',
+    explanation:
+        'Carta alir (flowchart) menggunakan simbol untuk mewakili proses, keputusan, dan aliran.',
+  ),
+  Question(
+    id: 'sum-11',
+    questionText:
+        'Pemboleh ubah yang diisytiharkan di luar mana-mana fungsi dan boleh diakses di mana-mana dipanggil...',
+    type: QuestionType.mcq,
+    options: const [
+      'Pemboleh ubah setempat',
+      'Pemboleh ubah sejagat',
+      'Pemalar',
+      'Jenis Data',
+    ],
+    answer: 'Pemboleh ubah sejagat',
+    explanation:
+        'Pemboleh ubah sejagat (global) boleh diakses dari mana-mana bahagian atur cara.',
+  ),
+  Question(
+    id: 'sum-12',
+    questionText:
+        'Fasa pertama dalam Kitaran Hayat Pembangunan Sistem (SDLC) ialah...',
+    type: QuestionType.mcq,
+    options: const [
+      'Reka bentuk penyelesaian',
+      'Laksana penyelesaian',
+      'Analisis Masalah',
+      'Dokumentasi',
+    ],
+    answer: 'Analisis Masalah',
+    explanation:
+        'Proses SDLC sentiasa bermula dengan menganalisis masalah yang perlu diselesaikan.',
+  ),
+  Question(
+    id: 'sum-13',
+    questionText:
+        'Ralat yang berlaku disebabkan pembahagian dengan digit 0 ialah...',
+    type: QuestionType.mcq,
+    options: const [
+      'Ralat logik',
+      'Ralat masa larian',
+      'Ralat sintaks',
+      'Ralat pengguna',
+    ],
+    answer: 'Ralat masa larian',
+    explanation:
+        'Ini adalah Ralat Masa Larian (Run-time Error) kerana ia hanya dikesan semasa atur cara cuba melakukan pembahagian itu.',
+  ),
+  Question(
+    id: 'sum-14',
+    questionText:
+        'Fasa "Menguji dan Menyahralat" dalam SDLC datang selepas fasa...',
+    type: QuestionType.mcq,
+    options: const [
+      'Analisis Masalah',
+      'Reka Bentuk Penyelesaian',
+      'Laksana Penyelesaian',
+      'Dokumentasi',
+    ],
+    answer: 'Laksana Penyelesaian',
+    explanation:
+        'Selepas atur cara ditulis (dilaksanakan), ia mesti diuji untuk mencari ralat.',
+  ),
+  Question(
+    id: 'sum-15',
+    questionText:
+        'Diberi: String[] senaraiWarna = {"Ungu", "Biru", "Merah"}; Apakah indeks bagi "Biru"?',
+    type: QuestionType.mcq,
+    options: const ['0', '1', '2', '3'],
+    answer: '1',
+    explanation:
+        'Indeks tatasusunan (array) bermula dari 0. "Ungu" ialah [0], "Biru" ialah [1], dan "Merah" ialah [2].',
+  ),
+];
+// US008-03: Filter assessments by topic and status
+class StudentAssessmentsPage extends StatefulWidget {
+  const StudentAssessmentsPage({super.key});
+
+  @override
+  State<StudentAssessmentsPage> createState() => _StudentAssessmentsPageState();
+}
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
