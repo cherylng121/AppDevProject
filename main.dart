@@ -2983,6 +2983,56 @@ class StudentAssessmentsPage extends StatefulWidget {
   State<StudentAssessmentsPage> createState() => _StudentAssessmentsPageState();
 }
 
+class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
+  String? _selectedTopicFilter;
+  AssessmentStatus? _selectedStatusFilter;
+  bool _showFilters = false;
+  final List<String> _availableTopics = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableTopics();
+  }
+
+  void _loadAvailableTopics() {
+    _availableTopics.addAll(systemQuizData.keys.toList());
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedTopicFilter = null;
+      _selectedStatusFilter = null;
+    });
+  }
+
+  bool _isAssessmentCompleted(String quizTitle, String? quizId) {
+    final userAttempts = userQuizAttempts.where((attempt) => 
+      attempt.quizTitle == quizTitle
+    );
+    return userAttempts.isNotEmpty;
+  }
+
+  AssessmentStatus _getAssessmentStatus(String quizTitle, String? quizId) {
+    return _isAssessmentCompleted(quizTitle, quizId) 
+        ? AssessmentStatus.completed 
+        : AssessmentStatus.notStarted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    final isTeacher = user?.userType == UserType.teacher;
+
+    if (isTeacher) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Access Denied')),
+        body: const Center(
+          child: Text('This page is for students only.'),
+        ),
+      );
+    }
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
