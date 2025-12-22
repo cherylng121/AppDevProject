@@ -5049,6 +5049,161 @@ Future<void> _saveQuizAttemptToFirestore(QuizAttempt attempt) async {
   }
 }
 
+// ========== QUIZ RESULTS PAGE ==========
+class QuizResultsPage extends StatelessWidget {
+  final QuizAttempt attempt;
+  const QuizResultsPage({super.key, required this.attempt});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Results: ${attempt.quizTitle}'),
+        automaticallyImplyLeading: false, // No back button
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // --- 1. Score Summary ---
+            Text(
+              'Quiz Complete!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[800],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Your Score: ${attempt.score} / ${attempt.total}',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 24),
+
+            // --- 2. Detailed Feedback List ---
+            const Text(
+              'Detailed Feedback',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(),
+
+           ListView.builder(
+  shrinkWrap: true,
+  physics: const NeverScrollableScrollPhysics(),
+  itemCount: attempt.questions.length,
+  itemBuilder: (context, index) {
+    final q = attempt.questions[index];
+    final userAnswer = attempt.userAnswers[q.id];
+    final isCorrect = userAnswer?.toLowerCase().trim() == q.answer.toLowerCase().trim();
+    
+    // Get AI feedback
+    final feedback = attempt.aiFeedback?[q.id] ?? '';
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      color: isCorrect ? Colors.green[50] : Colors.red[50],
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Q${index + 1}: ${q.questionText}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your Answer: $userAnswer',
+              style: TextStyle(
+                color: isCorrect ? Colors.green[800] : Colors.red[800],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (!isCorrect) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Correct Answer: ${q.answer}',
+                style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.w500),
+              ),
+            ],
+            
+            // Display AI personalized feedback
+            if (feedback.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.psychology, size: 16, color: Colors.blue[700]),
+                        const SizedBox(width: 6),
+                        Text(
+                          'AI Feedback:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[900],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      feedback,
+                      style: TextStyle(color: Colors.blue[900], fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            
+            // Show explanation if available
+            if (q.explanation != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                width: double.infinity,
+                color: Colors.grey[200],
+                child: Text(
+                  'Explanation: ${q.explanation}',
+                  style: TextStyle(color: Colors.grey[800], fontStyle: FontStyle.italic),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  },
+)
+],
+),
+),
+      bottomNavigationBar: BottomAppBar(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton(
+            onPressed: () {
+              // Pop back to the main Quiz Page
+              Navigator.pop(context);
+            },
+            child: const Text('Back to Quiz Home'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
