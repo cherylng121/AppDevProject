@@ -3826,61 +3826,373 @@ class SystemQuizListPage extends StatelessWidget {
   }
 }
 
-========== SYSTEM QUIZ LIST PAGE ==========
-class SystemQuizListPage extends StatelessWidget {
-  const SystemQuizListPage({super.key});
+// ========== REVIEW QUIZ PAGE (FOR TEACHERS) ==========
+class ReviewQuizPage extends StatelessWidget {
+  final String quizTitle;
+  final List<Question> questions;
+
+  const ReviewQuizPage({
+    super.key,
+    required this.quizTitle,
+    required this.questions,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<FirebaseUserState>().currentUser;
-    final isTeacher = user?.userType == UserType.teacher;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('System-Generated Quizzes')),
-      body: ListView.builder(
-        itemCount: systemQuizData.length,
-        itemBuilder: (context, index) {
-          final topicTitle = systemQuizData.keys.elementAt(index);
-          final generatedQuestions = systemQuizData[topicTitle]!;
+      appBar: AppBar(
+        title: Text('Review: $quizTitle'),
+        backgroundColor: Colors.orange[700],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Reviewing Answers (${questions.length} questions)',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(thickness: 1),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: questions.length,
+              itemBuilder: (context, index) {
+                final q = questions[index];
 
-          return Card(
-            margin: const EdgeInsets.all(8.0),
-            child: ListTile(
-              title: Text(topicTitle),
-              subtitle: Text('${generatedQuestions.length} Questions'),
-              trailing: const Icon(Icons.play_arrow),
-              onTap: () {
-                // Navigate to the quiz-taking page (US006-01)
-                if (isTeacher) {
-                  // NEW: Teacher reviews the quiz
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ReviewQuizPage(
-                        quizTitle: topicTitle,
-                        questions: generatedQuestions,
-                      ),
+                return Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(vertical: 8.0),
+                  color: Colors.blue[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Q${index + 1}: ${q.questionText}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        if (q.type == QuestionType.mcq)
+                          ...q.options.map(
+                            (opt) => Text(
+                              '- $opt',
+                              style: TextStyle(
+                                color: opt == q.answer
+                                    ? Colors.green[800]
+                                    : Colors.black87,
+                                fontWeight: opt == q.answer
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+
+                        const SizedBox(height: 8),
+                        Text(
+                          'Correct Answer: ${q.answer}',
+                          style: TextStyle(
+                            color: Colors.green[800],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (q.explanation != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8.0),
+                            width: double.infinity,
+                            color: Colors.grey[200],
+                            child: Text(
+                              'Explanation: ${q.explanation}',
+                              style: TextStyle(
+                                color: Colors.grey[800],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  );
-                } else {
-                  // Student starts the quiz
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TakeQuizPage(
-                        quizTitle: topicTitle,
-                        questions: generatedQuestions,
-                      ),
-                    ),
-                  );
-                }
+                  ),
+                );
               },
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
+}
+
+// ========== Quiz Creation / EDIT Page ==========
+class CreateQuizPage extends StatefulWidget {
+  final Quiz? quizToEdit; // If not null, we are in "Edit" mode
+  const CreateQuizPage({super.key, this.quizToEdit});
+
+  @override
+  State<CreateQuizPage> createState() => _CreateQuizPageState();
+}
+
+class _CreateQuizPageState extends State<CreateQuizPage> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _titleController;
+  late TextEditingController _topicController;
+  List<Question> _questions = [];
+  bool _isEditing = false;
+  bool _isLoading = false;
+
+  final _newQuestionTextController = TextEditingController();
+  final _newAnswerController = TextEditingController();
+  final _newExplanationController = TextEditingController();
+  QuestionType _newQuestionType = QuestionType.mcq;
+
+// Show dialog to edit existing question
+void _showEditQuestionDialog(int index) {
+  final question = _questions[index];
+  
+  final editQuestionController = TextEditingController(text: question.questionText);
+  final editAnswerController = TextEditingController(text: question.answer);
+  final editExplanationController = TextEditingController(text: question.explanation ?? '');
+  
+  QuestionType editType = question.type;
+  
+  // Initialize MCQ options controllers
+  List<TextEditingController> editMcqControllers = [];
+  int editCorrectIndex = 0;
+  
+  if (question.type == QuestionType.mcq) {
+    for (int i = 0; i < question.options.length; i++) {
+      editMcqControllers.add(TextEditingController(text: question.options[i]));
+      if (question.options[i] == question.answer) {
+        editCorrectIndex = i;
+      }
+    }
+  }
+
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setDialogState) {
+        return AlertDialog(
+          title: Text('Edit Question ${index + 1}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Question Type Dropdown (Read-only)
+                DropdownButtonFormField<QuestionType>(
+                  value: editType,
+                  decoration: const InputDecoration(labelText: 'Question Type'),
+                  items: const [
+                    DropdownMenuItem(value: QuestionType.mcq, child: Text('Multiple Choice (MCQ)')),
+                    DropdownMenuItem(value: QuestionType.shortAnswer, child: Text('Short Answer')),
+                  ],
+                  onChanged: null, 
+                ),
+                const SizedBox(height: 10),
+
+                // Question Text
+                TextFormField(
+                  controller: editQuestionController,
+                  decoration: InputDecoration(
+                    labelText: 'Question Text',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  maxLines: 5,
+                  minLines: 3,
+                ),
+                const SizedBox(height: 10),
+
+                if (editType == QuestionType.mcq) ...[
+                  // MCQ Options
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('MCQ Options:', style: TextStyle(fontWeight: FontWeight.w500)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Colors.green),
+                        onPressed: () {
+                          setDialogState(() {
+                            editMcqControllers.add(TextEditingController());
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  ...List.generate(editMcqControllers.length, (i) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          Radio<int>(
+                            value: i,
+                            groupValue: editCorrectIndex,
+                            onChanged: (int? value) {
+                              setDialogState(() => editCorrectIndex = value!);
+                            },
+                          ),
+                          Expanded(
+                            child: TextFormField(
+                              controller: editMcqControllers[i],
+                              decoration: InputDecoration(
+                                labelText: 'Option ${i + 1}',
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              maxLines: 2,
+                              minLines: 1,
+                            ),
+                          ),
+                          if (editMcqControllers.length > 2)
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle, color: Colors.red),
+                              onPressed: () {
+                                if (editMcqControllers.length <= 2) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Minimum 2 options required')),
+                                  );
+                                  return;
+                                }
+                                setDialogState(() {
+                                  editMcqControllers[i].dispose();
+                                  editMcqControllers.removeAt(i);
+                                  if (editCorrectIndex >= editMcqControllers.length) {
+                                    editCorrectIndex = editMcqControllers.length - 1;
+                                  }
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                ] else ...[
+                  // Short Answer
+                  TextFormField(
+                    controller: editAnswerController,
+                    decoration: InputDecoration(
+                      labelText: 'Correct Answer',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    maxLines: 3,
+                    minLines: 2,
+                  ),
+                ],
+
+                const SizedBox(height: 10),
+
+                // Explanation
+                TextFormField(
+                  controller: editExplanationController,
+                  decoration: InputDecoration(
+                    labelText: 'Explanation (Optional)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  maxLines: 5,
+                  minLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Dispose controllers
+                editQuestionController.dispose();
+                editAnswerController.dispose();
+                editExplanationController.dispose();
+                for (var c in editMcqControllers) {
+                  c.dispose();
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Validate
+                if (editQuestionController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Question text cannot be empty')),
+                  );
+                  return;
+                }
+
+                String updatedAnswer;
+                List<String> updatedOptions = [];
+
+                if (editType == QuestionType.mcq) {
+                  updatedOptions = editMcqControllers.map((c) => c.text.trim()).toList();
+                  final nonEmptyOptions = updatedOptions.where((opt) => opt.isNotEmpty).toList();
+                  
+                  if (nonEmptyOptions.length < 2) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please fill at least 2 MCQ options')),
+                    );
+                    return;
+                  }
+                  
+                  updatedOptions = nonEmptyOptions;
+                  if (editCorrectIndex >= updatedOptions.length) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please select a valid correct answer')),
+                    );
+                    return;
+                  }
+                  updatedAnswer = updatedOptions[editCorrectIndex];
+                } else {
+                  if (editAnswerController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Answer cannot be empty')),
+                    );
+                    return;
+                  }
+                  updatedAnswer = editAnswerController.text.trim();
+                }
+
+                // Update the question
+                setState(() {
+                  _questions[index] = Question(
+                    id: question.id, // Keep the same ID
+                    questionText: editQuestionController.text.trim(),
+                    type: editType,
+                    options: updatedOptions,
+                    answer: updatedAnswer,
+                    explanation: editExplanationController.text.trim().isEmpty
+                        ? null
+                        : editExplanationController.text.trim(),
+                  );
+                });
+
+                // Dispose controllers
+                editQuestionController.dispose();
+                editAnswerController.dispose();
+                editExplanationController.dispose();
+                for (var c in editMcqControllers) {
+                  c.dispose();
+                }
+
+                Navigator.pop(context);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Question updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text('Save Changes'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 // ========== AI CHATBOT PAGE ==========
