@@ -3771,6 +3771,118 @@ const Divider(height: 30, thickness: 1),
   }
 }
 
+class SystemQuizListPage extends StatelessWidget {
+  const SystemQuizListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    final isTeacher = user?.userType == UserType.teacher;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('System-Generated Quizzes')),
+      body: ListView.builder(
+        itemCount: systemQuizData.length,
+        itemBuilder: (context, index) {
+          final topicTitle = systemQuizData.keys.elementAt(index);
+          final generatedQuestions = systemQuizData[topicTitle]!;
+
+          return Card(
+            margin: const EdgeInsets.all(8.0),
+            child: ListTile(
+              title: Text(topicTitle),
+              subtitle: Text('${generatedQuestions.length} Questions'),
+              trailing: Icon(isTeacher ? Icons.visibility : Icons.play_arrow),
+              onTap: () {
+                // ✅ MODIFIED: Teacher ALWAYS reviews, never takes quiz
+                if (isTeacher) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReviewQuizPage(
+                        quizTitle: topicTitle,
+                        questions: generatedQuestions,
+                      ),
+                    ),
+                  );
+                } else {
+                  // Student takes the quiz
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TakeQuizPage(
+                        quizTitle: topicTitle,
+                        questions: generatedQuestions,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+========== SYSTEM QUIZ LIST PAGE ==========
+class SystemQuizListPage extends StatelessWidget {
+  const SystemQuizListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<FirebaseUserState>().currentUser;
+    final isTeacher = user?.userType == UserType.teacher;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('System-Generated Quizzes')),
+      body: ListView.builder(
+        itemCount: systemQuizData.length,
+        itemBuilder: (context, index) {
+          final topicTitle = systemQuizData.keys.elementAt(index);
+          final generatedQuestions = systemQuizData[topicTitle]!;
+
+          return Card(
+            margin: const EdgeInsets.all(8.0),
+            child: ListTile(
+              title: Text(topicTitle),
+              subtitle: Text('${generatedQuestions.length} Questions'),
+              trailing: const Icon(Icons.play_arrow),
+              onTap: () {
+                // Navigate to the quiz-taking page (US006-01)
+                if (isTeacher) {
+                  // NEW: Teacher reviews the quiz
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReviewQuizPage(
+                        quizTitle: topicTitle,
+                        questions: generatedQuestions,
+                      ),
+                    ),
+                  );
+                } else {
+                  // Student starts the quiz
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TakeQuizPage(
+                        quizTitle: topicTitle,
+                        questions: generatedQuestions,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
