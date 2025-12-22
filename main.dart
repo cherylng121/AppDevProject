@@ -4195,6 +4195,425 @@ void _showEditQuestionDialog(int index) {
   );
 }
 
+//Dynamic list of MCQ option controllers
+  List<TextEditingController> _mcqOptionControllers = [
+    TextEditingController(),
+    TextEditingController(),
+  ];
+
+  int _correctMcqOptionIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _isEditing = widget.quizToEdit != null;
+
+    if (_isEditing) {
+      final quiz = widget.quizToEdit!;
+      _titleController = TextEditingController(text: quiz.title);
+      _topicController = TextEditingController(text: quiz.topic);
+      _questions = List.from(quiz.questions);
+    } else {
+      _titleController = TextEditingController();
+      _topicController = TextEditingController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _topicController.dispose();
+    _newQuestionTextController.dispose();
+    _newAnswerController.dispose();
+    _newExplanationController.dispose();
+    for (var controller in _mcqOptionControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  // Add more MCQ options
+  void _addMcqOption() {
+    setState(() {
+      _mcqOptionControllers.add(TextEditingController());
+    });
+  }
+
+  // Remove MCQ option (minimum 2)
+  void _removeMcqOption(int index) {
+    if (_mcqOptionControllers.length <= 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Minimum 2 options required')),
+      );
+      return;
+    }
+    setState(() {
+      _mcqOptionControllers[index].dispose();
+      _mcqOptionControllers.removeAt(index);
+      if (_correctMcqOptionIndex >= _mcqOptionControllers.length) {
+        _correctMcqOptionIndex = _mcqOptionControllers.length - 1;
+      }
+    });
+  }
+
+  void _addQuestion() {
+    if (_newQuestionTextController.text.isEmpty) {
+      _showError('Please enter the question text.');
+      return;
+    }
+
+    String answer;
+    List<String> options = [];
+
+    if (_newQuestionType == QuestionType.mcq) {
+      options = _mcqOptionControllers.map((c) => c.text.trim()).toList();
+      
+      // Check only non-empty options
+      final nonEmptyOptions = options.where((opt) => opt.isNotEmpty).toList();
+      if (nonEmptyOptions.length < 2) {
+        _showError('Please fill at least 2 MCQ options.');
+        return;
+      }
+      
+      options = nonEmptyOptions;
+      if (_correctMcqOptionIndex >= options.length) {
+        _showError('Please select a valid correct answer.');
+        return;
+      }
+      answer = options[_correctMcqOptionIndex];
+    } else {
+      if (_newAnswerController.text.isEmpty) {
+        _showError('Please enter the correct answer.');
+        return;
+      }
+      answer = _newAnswerController.text;
+    }
+
+    setState(() {
+      _questions.add(
+        Question(
+          id: UniqueKey().toString(),
+          questionText: _newQuestionTextController.text,
+          type: _newQuestionType,
+          options: options,
+          answer: answer,
+          explanation: _newExplanationController.text.isEmpty
+              ? null
+              : _newExplanationController.text,
+        ),
+      );
+    });
+
+    // Reset controllers
+    _newQuestionTextController.clear();
+    _newAnswerController.clear();
+    _newExplanationController.clear();
+    
+    // Reset to 2 empty options
+    for (var c in _mcqOptionControllers) {
+      c.dispose();
+    }
+    _mcqOptionControllers = [
+      TextEditingController(),
+      TextEditingController(),
+    ];
+    setState(() => _correctMcqOptionIndex = 0);
+  }
+
+  Future<void> _saveQuiz(QuizStatus status) async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_questions.isEmpty) {
+      _showError('Please add at least one question.');
+      return;
+    }
+
+    _formKey.currentState!.save();
+
+    final user = context.read<FirebaseUserState>().currentUser;
+    if (user == null) {
+      _showError('You must be logged in to create a quiz.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      if (_isEditing) {
+        final quiz = widget.quizToEdit!;
+        quiz.title = _titleController.text;
+        quiz.topic = _topicController.text;
+        quiz.questions = _questions;
+        quiz.status = status;
+
+        await FirebaseFirestore.instance
+            .collection('quizzes')
+            .doc(quiz.id)
+            .update(quiz.toMap());
+      } else {
+        final newQuiz = Quiz(
+          id: '',
+          title: _titleController.text,
+          topic: _topicController.text.isEmpty ? 'General' : _topicController.text,
+          questions: _questions,
+          status: status,
+          createdBy: user.id,
+        );
+
+        await FirebaseFirestore.instance.collection('quizzes').add(newQuiz.toMap());
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Quiz saved as ${status.name.toUpperCase()}!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      _showError('Failed to save quiz: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Quiz' : 'Create New Quiz')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: InputDecoration(
+                        labelText: 'Quiz Title',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Please enter a title' : null,
+                    ),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _topicController,
+                      decoration: InputDecoration(
+                        labelText: 'Topic (e.g., 1.1)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Please enter a topic' : null,
+                    ),
+                    const Divider(height: 30, thickness: 2),
+
+                    const Text(
+                      'Add New Question:',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    DropdownButtonFormField<QuestionType>(
+                      value: _newQuestionType,
+                      items: const [
+                        DropdownMenuItem(value: QuestionType.mcq, child: Text('Multiple Choice (MCQ)')),
+                        DropdownMenuItem(value: QuestionType.shortAnswer, child: Text('Short Answer')),
+                      ],
+                      onChanged: (QuestionType? value) => setState(() => _newQuestionType = value!),
+                      decoration: const InputDecoration(labelText: 'Question Type'),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Multiline question text
+                    TextFormField(
+                      controller: _newQuestionTextController,
+                      decoration: InputDecoration(
+                        labelText: 'Question Text',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintText: 'Enter your question here...',
+                      ),
+                      maxLines: 5,
+                      minLines: 3,
+                    ),
+                    const SizedBox(height: 10),
+
+                    if (_newQuestionType == QuestionType.mcq) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'MCQ Options (Select correct one):',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          //Add option button
+                          IconButton(
+                            icon: const Icon(Icons.add_circle, color: Colors.green),
+                            tooltip: 'Add Option',
+                            onPressed: _addMcqOption,
+                          ),
+                        ],
+                      ),
+                      //Dynamic MCQ options with delete button
+                      ...List.generate(_mcqOptionControllers.length, (index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Row(
+                            children: [
+                              Radio<int>(
+                                value: index,
+                                groupValue: _correctMcqOptionIndex,
+                                onChanged: (int? value) => setState(() => _correctMcqOptionIndex = value!),
+                              ),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _mcqOptionControllers[index],
+                                  decoration: InputDecoration(
+                                    labelText: 'Option ${index + 1}',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  maxLines: 2,
+                                  minLines: 1,
+                                ),
+                              ),
+                              //Delete option button (only if more than 2)
+                              if (_mcqOptionControllers.length > 2)
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle, color: Colors.red),
+                                  tooltip: 'Remove Option',
+                                  onPressed: () => _removeMcqOption(index),
+                                ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ] else ...[
+                      //Multiline short answer
+                      TextFormField(
+                        controller: _newAnswerController,
+                        decoration: InputDecoration(
+                          labelText: 'Correct Short Answer',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          hintText: 'Enter the correct answer...',
+                        ),
+                        maxLines: 3,
+                        minLines: 2,
+                      ),
+                    ],
+
+                    const SizedBox(height: 10),
+                    // Multiline explanation
+                    TextFormField(
+                      controller: _newExplanationController,
+                      decoration: InputDecoration(
+                        labelText: 'Explanation (Optional)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        hintText: 'Provide detailed feedback...',
+                      ),
+                      maxLines: 5,
+                      minLines: 3,
+                    ),
+
+                    const SizedBox(height: 10),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: _addQuestion,
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Question to Quiz'),
+                      ),
+                    ),
+                    const Divider(height: 30, thickness: 2),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Quiz Questions:',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        Text('${_questions.length} Question(s)'),
+                      ],
+                    ),
+                    ..._questions.asMap().entries.map((entry) {
+  int idx = entry.key;
+  Question q = entry.value;
+  return Card(
+    margin: const EdgeInsets.symmetric(vertical: 6),
+    child: ListTile(
+      title: Text(
+        'Q${idx + 1}: ${q.questionText}',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Type: ${q.type == QuestionType.mcq ? "MCQ" : "Short Answer"}',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          Text(
+            'Answer: ${q.answer}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Edit button
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.blue),
+            tooltip: 'Edit Question',
+            onPressed: () => _showEditQuestionDialog(idx),
+          ),
+          // Delete button
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            tooltip: 'Delete Question',
+            onPressed: () => setState(() => _questions.removeAt(idx)),
+          ),
+        ],
+      ),
+    ),
+  );
+}),
+                    const SizedBox(height: 30),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => _saveQuiz(QuizStatus.draft),
+                          icon: const Icon(Icons.drafts),
+                          label: const Text('Save as Draft'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => _saveQuiz(QuizStatus.published),
+                          icon: const Icon(Icons.cloud_upload),
+                          label: Text(_isEditing ? 'Update & Publish' : 'Publish Quiz'),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
