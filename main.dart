@@ -4920,6 +4920,135 @@ Future<void> _saveQuizAttemptToFirestore(QuizAttempt attempt) async {
   }
 }
 
+ @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.quizTitle),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4.0),
+          child: LinearProgressIndicator(
+            value: (_currentPage + 1) / widget.questions.length,
+            backgroundColor: Colors.grey[300],
+          ),
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(), // Disable swiping
+        itemCount: widget.questions.length,
+        itemBuilder: (context, index) {
+          final question = widget.questions[index];
+          return _buildQuestionPage(question, index);
+        },
+        onPageChanged: (index) => setState(() => _currentPage = index),
+      ),
+      bottomNavigationBar: BottomAppBar(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton(
+              onPressed: _currentPage == 0 || _isSubmitting
+                  ? null
+                  : () => _pageController.previousPage(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeIn,
+                    ),
+              child: const Text('Previous'),
+            ),
+            Text('Question ${_currentPage + 1}/${widget.questions.length}'),
+            ElevatedButton(
+              onPressed: _isSubmitting
+                  ? null
+                  : () {
+                      if (_currentPage < widget.questions.length - 1) {
+                        _pageController.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeIn,
+                        );
+                      } else {
+                        // Last page, show submit dialog
+                        _showSubmitDialog();
+                      }
+                    },
+              child: Text(
+                _currentPage == widget.questions.length - 1 ? 'Submit' : 'Next',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ----- showSubmitDialog -----
+  void _showSubmitDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Submit Quiz'),
+        content: const Text('Are you sure you want to submit your answers?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _submitQuiz();
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionPage(Question question, int index) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Q${index + 1}: ${question.questionText}',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 24),
+          if (question.type == QuestionType.mcq)
+            ...question.options.map((option) {
+              return RadioListTile<String>(
+                title: Text(option),
+                value: option,
+                groupValue: _userAnswers[question.id],
+                onChanged: (value) {
+                  setState(() {
+                    _userAnswers[question.id] = value!;
+                  });
+                },
+              );
+            }),
+          if (question.type == QuestionType.shortAnswer)
+            TextField(
+              controller: _shortAnswerControllers[question.id],
+              decoration: const InputDecoration(
+                labelText: 'Your Answer',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _userAnswers[question.id] = value;
+                });
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
   const AIChatbotPage({super.key});
