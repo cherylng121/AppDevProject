@@ -3419,6 +3419,405 @@ class _QuizPageState extends State<QuizPage> {
       print('❌ Error loading quiz attempts: $e');
     }
   }
+// ----- startQuiz ----- (Helper function to navigate to the quiz-taking page)
+  void _startQuiz(
+    BuildContext context,
+    String title,
+    List<Question> questions,
+  ) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            TakeQuizPage(quizTitle: title, questions: questions),
+      ),
+    ).then((_) {
+      // When returning from a quiz, refresh the state to show new quiz history
+      setState(() {});
+    });
+  }
+
+  // ----- deleteQuiz ----- (Helper function to delete a quiz from Firestore)
+  void _deleteQuiz(Quiz quiz) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Confirmation'),
+        content: Text(
+          'Are you sure you want to delete "${quiz.title}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('quizzes')
+            .doc(quiz.id)
+            .delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Quiz deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete quiz: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // ----- editQuiz ----- (Helper function to edit quiz (US005-02))
+  void _editQuiz(Quiz quiz) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CreateQuizPage(quizToEdit: quiz)),
+    ).then((_) {
+      // Refresh the list in case changes were made
+      setState(() {});
+    });
+  }
+
+  // ----- reviewQuiz ----- (Helper function to review quiz)
+  void _reviewQuiz(Quiz quiz) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ReviewQuizPage(quizTitle: quiz.title, questions: quiz.questions),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Get user type to show/hide teacher buttons
+    final user = context.watch<FirebaseUserState>().currentUser;
+    final isTeacher = user?.userType == UserType.teacher;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('🎯 Quiz'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          if (isTeacher)
+            IconButton(
+              icon: const Icon(Icons.add_box),
+              tooltip: 'Create New Quiz',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CreateQuizPage(),
+                  ),
+                ).then((_) {
+                  // Refresh list when returning from create page
+                  setState(() {});
+                });
+              },
+            ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // --- 1. System Quizzes ---
+            _buildSectionTitle('System Quizzes'),
+            Card(
+              elevation: 2,
+              child: ListTile(
+                leading: const Icon(Icons.auto_stories, color: Colors.blue),
+                title: const Text('Sub-Topic Quizzes'),
+                subtitle: const Text('Practice questions for each topic'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SystemQuizListPage(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+            /*Card(
+              elevation: 2,
+              child: ListTile(
+                leading: const Icon(Icons.quiz, color: Colors.blue),
+                title: const Text('Summative Test (Bab 1)'),
+                subtitle: const Text(
+                  'Test your knowledge on the whole chapter',
+                ),
+                trailing: const Icon(Icons.play_arrow),
+                onTap: () => _startQuiz(
+                  context,
+                  'Summative Test (Bab 1)',
+                  summativeTestQuestions,
+                ),
+              ),
+            ),*/
+
+            Card(
+            elevation: 2,
+            child: ListTile(
+              leading: const Icon(Icons.quiz, color: Colors.blue),
+              title: const Text('Summative Test (Bab 1)'),
+              subtitle: const Text('Test your knowledge on the whole chapter'),
+              trailing: Icon(isTeacher ? Icons.visibility : Icons.play_arrow), // ✅ MODIFIED
+              onTap: () {
+            if (isTeacher) {
+              Navigator.push(
+              context,
+              MaterialPageRoute(
+              builder: (context) => ReviewQuizPage(
+              quizTitle: 'Summative Test (Bab 1)',
+              questions: summativeTestQuestions,
+            ),
+          ),
+        );
+      } else {
+        _startQuiz(context, 'Summative Test (Bab 1)', summativeTestQuestions);
+      }
+    },
+  ),
+),
+
+            const Divider(height: 30, thickness: 1),
+
+            // --- 2. Teacher-Created Quizzes ---
+            _buildSectionTitle('Teacher Quizzes'),
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('quizzes')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No quizzes published by your teacher yet.'),
+                    ),
+                  );
+                }
+
+                final quizzes = snapshot.data!.docs
+                    .map((doc) => Quiz.fromFirestore(doc))
+                    .toList();
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: quizzes.length,
+                  itemBuilder: (context, index) {
+                    final quiz = quizzes[index];
+
+                    // Show drafts only to teachers
+                    if (quiz.status == QuizStatus.draft && !isTeacher) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Card(
+                      elevation: 2,
+                      child: ListTile(
+                        leading: Icon(
+                          quiz.status == QuizStatus.published
+                              ? Icons.check_circle
+                              : Icons.edit,
+                          color: quiz.status == QuizStatus.published
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
+                        title: Text(quiz.title),
+                        subtitle: Text(
+                          '${quiz.topic} - ${quiz.questions.length} questions',
+                        ),
+
+trailing: isTeacher
+    ? PopupMenuButton<String>(
+        onSelected: (value) {
+          if (value == 'edit') _editQuiz(quiz);
+          if (value == 'delete') _deleteQuiz(quiz);
+          if (value == 'review') _reviewQuiz(quiz);
+        },
+        itemBuilder: (context) => [
+          // ✅ MODIFIED: Show 'Edit' for BOTH draft and published
+          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+
+          // Show 'Review' for all quizzes
+          const PopupMenuItem(value: 'review', child: Text('Review Answers')),
+
+          // Delete is available for both draft and published
+          const PopupMenuItem(value: 'delete', child: Text('Delete')),
+        ],
+      )
+    : const Icon(Icons.play_arrow),
+
+                        /*trailing: isTeacher
+                            ? PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  if (value == 'edit') _editQuiz(quiz);
+                                  if (value == 'delete') _deleteQuiz(quiz);
+                                  if (value == 'review') {
+                                    _reviewQuiz(quiz); // NEW: Handle review
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  // NEW: Only show 'Edit' if quiz is a draft
+                                  if (quiz.status == QuizStatus.draft)
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('Edit'),
+                                    ),
+
+                                  // NEW: Show 'Review' for all
+                                  const PopupMenuItem(
+                                    value: 'review',
+                                    child: Text('Review Answers'),
+                                  ),
+
+                                  // 'Delete' is always available for teachers
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Text('Delete'),
+                                  ),
+                                ],
+                              )
+                            : const Icon(Icons.play_arrow),*/
+                        onTap: () {
+                          if (isTeacher) {
+                            // Default tap action for teacher is 'review'
+                            _reviewQuiz(quiz);
+                          } else if (quiz.status == QuizStatus.published) {
+                            // Student tap action is 'start quiz'
+                            _startQuiz(context, quiz.title, quiz.questions);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+             
+            //US008-03: Filter assessments by topic and status
+            if (!isTeacher) ...[
+              const Divider(height: 30, thickness: 1),
+              _buildSectionTitle('Assessments Management'),
+              Card(
+                elevation: 2,
+                child: ListTile(
+                  leading: const Icon(Icons.filter_alt, color: Colors.purple),
+                  title: const Text('Filter My Assessments'),
+                  subtitle: const Text('View and filter assessments by topic and status'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StudentAssessmentsPage(),
+          ),
+        );
+      },
+    ),
+  ),
+],
+const Divider(height: 30, thickness: 1),
+            // --- 3. Student Quiz History (US006-02) ---
+            if (!isTeacher) ...[
+              _buildSectionTitle('My Quiz History'),
+              userQuizAttempts.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Text('You have not completed any quizzes yet.'),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: userQuizAttempts.length,
+                      itemBuilder: (context, index) {
+                        final attempt = userQuizAttempts.reversed
+                            .toList()[index]; // Show newest first
+                        return Card(
+                          elevation: 2,
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.history,
+                              color: Colors.purple,
+                            ),
+                            title: Text(attempt.quizTitle),
+                            subtitle: Text(
+                              'Score: ${attempt.score}/${attempt.total} - Completed on ${attempt.timestamp.toLocal().toString().split(' ')[0]}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              // Navigate to the results page to review
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      QuizResultsPage(attempt: attempt),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ],
+
+
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+}
 
 // ========== AI CHATBOT PAGE ==========
 class AIChatbotPage extends StatelessWidget {
