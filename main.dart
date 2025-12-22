@@ -3486,7 +3486,7 @@ class _QuizPageState extends State<QuizPage> {
     }
   }
 
-  // ----- editQuiz ----- (Helper function to edit quiz (US005-02))
+  // ----- editQuiz ----- (Helper function to edit quiz)
   void _editQuiz(Quiz quiz) {
     Navigator.push(
       context,
@@ -3563,22 +3563,6 @@ class _QuizPageState extends State<QuizPage> {
               ),
             ),
             const SizedBox(height: 10),
-            /*Card(
-              elevation: 2,
-              child: ListTile(
-                leading: const Icon(Icons.quiz, color: Colors.blue),
-                title: const Text('Summative Test (Bab 1)'),
-                subtitle: const Text(
-                  'Test your knowledge on the whole chapter',
-                ),
-                trailing: const Icon(Icons.play_arrow),
-                onTap: () => _startQuiz(
-                  context,
-                  'Summative Test (Bab 1)',
-                  summativeTestQuestions,
-                ),
-              ),
-            ),*/
 
             Card(
             elevation: 2,
@@ -3670,7 +3654,7 @@ trailing: isTeacher
           if (value == 'review') _reviewQuiz(quiz);
         },
         itemBuilder: (context) => [
-          // ✅ MODIFIED: Show 'Edit' for BOTH draft and published
+          // Show 'Edit' for BOTH draft and published
           const PopupMenuItem(value: 'edit', child: Text('Edit')),
 
           // Show 'Review' for all quizzes
@@ -3681,38 +3665,6 @@ trailing: isTeacher
         ],
       )
     : const Icon(Icons.play_arrow),
-
-                        /*trailing: isTeacher
-                            ? PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'edit') _editQuiz(quiz);
-                                  if (value == 'delete') _deleteQuiz(quiz);
-                                  if (value == 'review') {
-                                    _reviewQuiz(quiz); // NEW: Handle review
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  // NEW: Only show 'Edit' if quiz is a draft
-                                  if (quiz.status == QuizStatus.draft)
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Text('Edit'),
-                                    ),
-
-                                  // NEW: Show 'Review' for all
-                                  const PopupMenuItem(
-                                    value: 'review',
-                                    child: Text('Review Answers'),
-                                  ),
-
-                                  // 'Delete' is always available for teachers
-                                  const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text('Delete'),
-                                  ),
-                                ],
-                              )
-                            : const Icon(Icons.play_arrow),*/
                         onTap: () {
                           if (isTeacher) {
                             // Default tap action for teacher is 'review'
