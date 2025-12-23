@@ -980,7 +980,21 @@ class InHomePage extends StatelessWidget {
         });
       }
     }
+    // ----- calculateCompletionPercentage -----
+    Future<double> calculateCompletionPercentage() async {
+      final prefs = await SharedPreferences.getInstance();
+      final totalTopics = systemQuizData.length; // Total course topics
+      int completedTopics = 0;
 
+      for (int i = 0; i < totalTopics; i++) {
+        final key = '$_kDoneStatusKeyPrefix$i';
+        if (prefs.getBool(key) ?? false) {
+          completedTopics++;
+        }
+      }
+
+      return totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0.0;
+    }
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1079,12 +1093,18 @@ class InHomePage extends StatelessWidget {
             const SizedBox(height: 12),
             InkWell(
               onTap: () => navigateToPage(7), // Navigate to Progress
-              child: _buildStatCard(
-                icon: Icons.trending_up,
-                title: 'Completion',
-                value: '${(user.completionLevel * 100).toStringAsFixed(0)}%',
-                color: Colors.green,
-              ),
+              child: FutureBuilder<double>(
+                future: calculateCompletionPercentage(),  
+                builder: (context, snapshot) {
+                  final completionPercent = snapshot.data ?? 0.0;
+                  return _buildStatCard(
+                    icon: Icons.trending_up,
+                    title: 'Completion',
+                    value: '${completionPercent.toStringAsFixed(0)}%',
+                    color: Colors.green,
+                    );
+                    },
+                    ),
             ),
             const SizedBox(height: 30),
           ],
