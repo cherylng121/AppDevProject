@@ -1795,6 +1795,10 @@ Expanded(
 
 // ========== COURSE PAGE ==========
 const String _kDoneStatusKeyPrefix = 'course_status_done_';
+
+enum FilterStatus { all, toView, done }
+enum SortOption { topicAscending, topicDescending }
+
 class CoursePage extends StatefulWidget {
   const CoursePage({super.key});
 
@@ -2060,6 +2064,10 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
     },
   ];
   late List<bool> _isDone;
+  FilterStatus _currentFilter = FilterStatus.all;
+  SortOption _currentSort = SortOption.topicAscending;
+  bool _showFilters = false;
+  
 
   @override
   void initState() {
@@ -2090,8 +2098,8 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
   }
 
   // Fungsi untuk menavigasi dan mengemas kini status
-  void _navigateToDetails(BuildContext context, int index) async {
-    final topic = topics[index];
+void _navigateToDetails(BuildContext context, int originalIndex) async {
+    final topic = topics[originalIndex];
 
     // Navigasi ke laman butiran dan tunggu sehingga pengguna kembali
     await Navigator.push(
@@ -2108,82 +2116,432 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
     // Apabila pengguna kembali (pop dari DetailsPage), 
     // kemas kini state di memori dan simpan ke penyimpanan tempatan
     setState(() {
-      _isDone[index] = true;
+      _isDone[originalIndex] = true;
     });
     // Simpan status baharu secara kekal
-    _saveDoneStatus(index, true); 
+    _saveDoneStatus(originalIndex, true); 
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('📖 Course'),
-        backgroundColor: Colors.lightBlue,
-        foregroundColor: Colors.white,
+   List<MapEntry<int, Map<String, String>>> _getFilteredAndSortedTopics() {
+    List<MapEntry<int, Map<String, String>>> indexedTopics = [];
+    for (int i = 0; i < topics.length; i++) {
+      indexedTopics.add(MapEntry(i, topics[i]));
+    }
+
+    // Filter based on progress status
+    List<MapEntry<int, Map<String, String>>> filtered;
+    switch (_currentFilter) {
+      case FilterStatus.toView:
+        filtered = indexedTopics.where((entry) => !_isDone[entry.key]).toList();
+        break;
+      case FilterStatus.done:
+        filtered = indexedTopics.where((entry) => _isDone[entry.key]).toList();
+        break;
+      case FilterStatus.all:
+      default:
+        filtered = indexedTopics;
+    }
+
+    // Sort by topic
+    filtered.sort((a, b) {
+      int comparison = a.value["title"]!.compareTo(b.value["title"]!);
+      return _currentSort == SortOption.topicAscending ? comparison : -comparison;
+    });
+
+    return filtered;
+  }
+
+  void _showFilterMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: ListView.builder(
-          itemCount: topics.length,
-          itemBuilder: (context, index) {
-            final topic = topics[index];
-            final isDone = _isDone[index]; 
-
-            return Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.symmetric(vertical: 8),
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. InkWell untuk keseluruhan kawasan tajuk
-                  InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => _navigateToDetails(context, index),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        topic["title"]!,
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: isDone ? Colors.green[800] : Colors.black,
-                          fontWeight: isDone ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                    ),
+                  const Text(
+                    'Filter & Sort Options',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-
-                  // 2. Garis Pemisah (Divider)
-                  const Divider(height: 1, color: Colors.grey),
-
-                  // 3. Butang "To View" / "Mark As Done"
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isDone ? Colors.green : Colors.lightBlue,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 20),
+                  
+                  const Text('Filter by Progress:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('All'),
+                        selected: _currentFilter == FilterStatus.all,
+                        onSelected: (selected) {
+                          setModalState(() => _currentFilter = FilterStatus.all);
+                          setState(() {});
+                          Navigator.pop(context);
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('To View'),
+                        selected: _currentFilter == FilterStatus.toView,
+                        onSelected: (selected) {
+                          setModalState(() => _currentFilter = FilterStatus.toView);
+                          setState(() {});
+                          Navigator.pop(context);
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('Done'),
+                        selected: _currentFilter == FilterStatus.done,
+                        onSelected: (selected) {
+                          setModalState(() => _currentFilter = FilterStatus.done);
+                          setState(() {});
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  const Text('Sort by Topic:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('A-Z'),
+                        selected: _currentSort == SortOption.topicAscending,
+                        onSelected: (selected) {
+                          setModalState(() => _currentSort = SortOption.topicAscending);
+                          setState(() {});
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('Z-A'),
+                        selected: _currentSort == SortOption.topicDescending,
+                        onSelected: (selected) {
+                          setModalState(() => _currentSort = SortOption.topicDescending);
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 20),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setModalState(() {
+                              _currentFilter = FilterStatus.all;
+                              _currentSort = SortOption.topicAscending;
+                            });
+                          },
+                          child: const Text('Reset'),
                         ),
                       ),
-                      onPressed: () => _navigateToDetails(context, index), 
-                      child: Text(
-                        isDone ? "Mark As Done" : "To View",
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.lightBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () {
+                            setState(() {});
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Apply'),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  String _getFilterStatusText() {
+    switch (_currentFilter) {
+      case FilterStatus.toView:
+        return ' (To View)';
+      case FilterStatus.done:
+        return ' (Done)';
+      case FilterStatus.all:
+      default:
+        return '';
+    }
+  }
+    Widget _buildFilterChips() {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Active Filters:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                // Filter chip
+                if (_currentFilter != FilterStatus.all)
+                  InputChip(
+                    label: Text(
+                      _currentFilter == FilterStatus.toView ? 'To View' : 'Done',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    backgroundColor: Colors.lightBlue,
+                    deleteIcon: const Icon(Icons.close, size: 16, color: Colors.white),
+                    onDeleted: () {
+                      setState(() {
+                        _currentFilter = FilterStatus.all;
+                      });
+                    },
+                  ),
+                
+                // Sort chip
+                InputChip(
+                  label: Text(
+                    _currentSort == SortOption.topicAscending ? 'Sort: A-Z' : 'Sort: Z-A',
+                  ),
+                  backgroundColor: Colors.grey[200],
+                  deleteIcon: const Icon(Icons.close, size: 16),
+                  onDeleted: () {
+                    setState(() {
+                      _currentSort = SortOption.topicAscending;
+                    });
+                  },
+                ),
+                
+                // Clear all button
+                if (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending)
+                  ActionChip(
+                    label: const Text('Clear All'),
+                    avatar: const Icon(Icons.clear_all, size: 16),
+                    onPressed: () {
+                      setState(() {
+                        _currentFilter = FilterStatus.all;
+                        _currentSort = SortOption.topicAscending;
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _currentFilter == FilterStatus.toView ? Icons.check_circle : Icons.search_off,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _currentFilter == FilterStatus.toView 
+                ? 'No Courses To View'
+                : 'No Completed Courses',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _currentFilter == FilterStatus.toView
+                ? 'You\'ve completed all available courses!'
+                : 'Start learning to complete your first course.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          if (_currentFilter != FilterStatus.all)
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _currentFilter = FilterStatus.all;
+                });
+              },
+              child: const Text('View All Courses'),
+            ),
+        ],
+      ),
+    );
+  }
+  @override
+  Widget build(BuildContext context) {
+    final filteredTopics = _getFilteredAndSortedTopics();
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text('📖 Course${_getFilterStatusText()}'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          // Filter button
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.filter_list),
+                onPressed: () => _showFilterMenu(context),
+                tooltip: 'Filter & Sort',
+              ),
+               if (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+       body: Column(
+        children: [
+          // Show active filters when expanded
+          if (_showFilters) _buildFilterChips(),
+          
+          // Show filter summary when not expanded but filters are active
+          if (!_showFilters && (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending))
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: Colors.lightBlue[50],
+              child: Row(
+                children: [
+                  const Icon(Icons.filter_alt, size: 16, color: Colors.lightBlue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${filteredTopics.length} course${filteredTopics.length != 1 ? 's' : ''} shown',
+                      style: const TextStyle(color: Colors.lightBlue, fontSize: 12),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _showFilterMenu(context),
+                    child: const Text(
+                      'Edit',
+                      style: TextStyle(color: Colors.lightBlue, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // Courses list
+          Expanded(
+            child: filteredTopics.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    itemCount: filteredTopics.length,
+                    itemBuilder: (context, index) {
+            
+                      final entry = filteredTopics[index];
+                      final originalIndex = entry.key;
+                      final topic = entry.value;
+                      final isDone = _isDone[originalIndex];
+                      
+                      return Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Topic title 
+                            InkWell(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                              onTap: () => _navigateToDetails(context, originalIndex),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    // Status indicator
+                                    Icon(
+                                      isDone ? Icons.check_circle : Icons.radio_button_unchecked,
+                                      color: isDone ? Colors.green : Colors.grey,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Topic title
+                                    Expanded(
+                                      child: Text(
+                                        topic["title"]!,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDone ? Colors.green[800] : Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          
+                            const Divider(height: 1, color: Colors.grey),
+                            
+                            // Action button
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isDone ? Colors.green : Colors.lightBlue,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                onPressed: () => _navigateToDetails(context, originalIndex),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(isDone ? Icons.visibility : Icons.play_arrow, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      isDone ? "Review Course" : "Start Learning",
+                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
