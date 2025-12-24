@@ -6325,7 +6325,26 @@ class _ProgressPageState extends State<ProgressPage> {
     super.initState();
     _loadAvailableQuizzes();
   }
+  // Calculate course completion percentage
+  Future<double> _calculateCourseCompletionPercentage(String studentId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final totalTopics = systemQuizData.length;
+      int completedTopics = 0;
 
+      for (int i = 0; i < totalTopics; i++) {
+        final key = '${_kDoneStatusKeyPrefix}$i';
+        if (prefs.getBool(key) ?? false) {
+          completedTopics++;
+        }
+      }
+
+      return totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0.0;
+    } catch (e) {
+      print('Error calculating completion: $e');
+      return 0.0;
+    }
+  }
 // Fetch available quizzes for the dropdown
 Future<void> _loadAvailableQuizzes() async {
   try {
@@ -6588,6 +6607,154 @@ Future<void> _addProgress() async {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // Course Completion Progress Bar (Students Only)
+            if (!isTeacher && currentUser != null) ...[
+              FutureBuilder<double>(
+                future: _calculateCourseCompletionPercentage(currentUser.id),
+                builder: (context, snapshot) {
+                  final completionPercentage = snapshot.data ?? 0.0;
+                  final completedTopics = (completionPercentage / 100 * systemQuizData.length).round();
+                  final totalTopics = systemQuizData.length;
+
+                  return Card(
+                    elevation: 4,
+                    color: Colors.blue[50],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                '📚 Course Completion',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              Text(
+                                '${completionPercentage.toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: completionPercentage >= 80
+                                      ? Colors.green
+                                      : completionPercentage >= 50
+                                          ? Colors.orange
+                                          : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          // Progress Bar
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: completionPercentage / 100,
+                              minHeight: 20,
+                              backgroundColor: Colors.grey[300],
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                completionPercentage >= 80
+                                    ? Colors.green
+                                    : completionPercentage >= 50
+                                        ? Colors.orange
+                                        : Colors.red,
+                              ),
+                            ),
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Stats
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '$completedTopics Completed',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Icon(Icons.pending, color: Colors.orange, size: 20),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${totalTopics - completedTopics} Remaining',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 12),
+                          
+                          // Motivational Message
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue[200]!),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  completionPercentage >= 80
+                                      ? Icons.celebration
+                                      : completionPercentage >= 50
+                                          ? Icons.trending_up
+                                          : Icons.emoji_events,
+                                  color: Colors.blue,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    completionPercentage >= 100
+                                        ? '🎉 Amazing! You\'ve completed all courses!'
+                                        : completionPercentage >= 80
+                                            ? '🌟 Great progress! Keep it up!'
+                                            : completionPercentage >= 50
+                                                ? '💪 You\'re halfway there!'
+                                                : '🚀 Start your learning journey!',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[800],
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
             if (isTeacher) ...[
               Card(
           elevation: 3,
@@ -6806,25 +6973,6 @@ Future<void> _addProgress() async {
                 ),
               ),
             ],
-
-            if (!isTeacher) ...[
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: const [
-                      Icon(Icons.school, size: 60, color: Colors.blue),
-                      SizedBox(height: 12),
-                      Text('Your Progress Records', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 6),
-                      Text('Below are manually and automated progress records.'),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -7085,7 +7233,6 @@ if (!isTeacher)
     );
   }
 }
-
 
 // PROGRESS HISTORY PAGE - WITH EDIT & DELETE
 class ProgressHistoryPage extends StatefulWidget {
