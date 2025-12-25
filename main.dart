@@ -1342,6 +1342,16 @@ class _HomePageState extends State<HomePage> {
       tooltip: 'Profile',
       onPressed: () => setState(() => selectedIndex = 9),
     ),
+
+    IconButton(
+  icon: const Icon(Icons.feedback_outlined),
+  tooltip: 'Feedback',
+  onPressed: () => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => const FeedbackPage()),
+  ),
+),
+
     const SizedBox(width: 10),
   ],
 ),
@@ -11491,6 +11501,126 @@ class HelpPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+// ---------- FEEDBACK PAGE ----------
+
+
+class FeedbackPage extends StatefulWidget {
+  const FeedbackPage({super.key});
+
+  @override
+  State<FeedbackPage> createState() => _FeedbackPageState();
+}
+
+class _FeedbackPageState extends State<FeedbackPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _feedbackController = TextEditingController();
+  int _rating = 0;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _feedbackController.dispose();
+    super.dispose();
+  }
+
+  void _submitFeedback() {
+    if (_formKey.currentState!.validate()) {
+      // TODO: Send feedback to Firestore or API
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Terima kasih atas maklum balas anda!')),
+      );
+      _formKey.currentState!.reset();
+      setState(() {
+        _rating = 0;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('📝 Feedback'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nama',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || value.isEmpty ? 'Sila masukkan nama anda' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Emel',
+                  prefixIcon: Icon(Icons.email),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => value == null || !value.contains('@') ? 'Sila masukkan emel yang sah' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _feedbackController,
+                decoration: const InputDecoration(
+                  labelText: 'Maklum Balas',
+                  prefixIcon: Icon(Icons.feedback),
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 5,
+                validator: (value) => value == null || value.isEmpty ? 'Sila tulis maklum balas anda' : null,
+              ),
+              const SizedBox(height: 16),
+              // Rating stars
+              Row(
+                children: List.generate(5, (index) {
+                  final starIndex = index + 1;
+                  return IconButton(
+                    icon: Icon(
+                      starIndex <= _rating ? Icons.star : Icons.star_border,
+                      color: Colors.orange,
+                    ),
+                    onPressed: () => setState(() {
+                      _rating = starIndex;
+                    }),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _submitFeedback,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Hantar Maklum Balas', style: TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
