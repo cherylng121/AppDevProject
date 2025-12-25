@@ -6640,33 +6640,34 @@ Future<void> _addProgress() async {
     final isTeacher = currentUser?.userType == UserType.teacher;
     final currentUsername = currentUser?.username;
 
-    return Scaffold(
+return Scaffold(
       appBar: AppBar(
         title: const Text('📈 Student Progress'),
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         actions: [
-          if (isTeacher)
-          // Class Dashboard Button
-          IconButton(
-            icon: const Icon(Icons.dashboard, color: Colors.white),
-            tooltip: 'Class Dashboard',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ClassDashboardPage()),
-              ),
-              ),
-            // Progress History Button
+          if (isTeacher) ...[
+            // Class Dashboard Button
             IconButton(
-              icon: const Icon(Icons.history, color: Colors.white),
-              tooltip: 'Progress History',
+              icon: const Icon(Icons.dashboard, color: Colors.white),
+              tooltip: 'Class Dashboard',
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const ProgressHistoryPage()),
-              ),
-            ),
-        ],
+          MaterialPageRoute(builder: (_) => const ClassDashboardPage()),
+        ),
       ),
+      // Progress History Button
+      IconButton(
+        icon: const Icon(Icons.history, color: Colors.white),
+        tooltip: 'Progress History',
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProgressHistoryPage()),
+        ),
+      ),
+    ],
+  ],
+),
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
