@@ -25,6 +25,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1036,8 +1037,12 @@ class InHomePage extends StatelessWidget {
                 ),
               ],
             ),
+            
+
+            
           ),
           const SizedBox(height: 30),
+          
 
           // Welcome Message
           Text(
@@ -1311,25 +1316,37 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('CodingBahasa', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(
-              'Connect, Code and Challenge',
-              style: TextStyle(fontSize: 15, color: Colors.white70),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle, size: 32),
-            tooltip: 'Profile',
-            onPressed: () => setState(() => selectedIndex = 9),
-          ),
-          const SizedBox(width: 10),
-        ],
+  title: const Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('CodingBahasa', style: TextStyle(fontWeight: FontWeight.bold)),
+      Text(
+        'Connect, Code and Challenge',
+        style: TextStyle(fontSize: 15, color: Colors.white70),
       ),
+    ],
+  ),
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.help_outline, size: 28),
+      tooltip: 'Help',
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const HelpPage()),
+        );
+      },
+    ),
+    IconButton(
+      icon: const Icon(Icons.account_circle, size: 32),
+      tooltip: 'Profile',
+      onPressed: () => setState(() => selectedIndex = 9),
+    ),
+    const SizedBox(width: 10),
+  ],
+),
+
+
       body: Column(
         children: [
           Container(
@@ -11330,6 +11347,146 @@ class FAQPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Text(
               answer,
+              style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- HELP PAGE ----------
+
+
+class HelpPage extends StatelessWidget {
+  const HelpPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('🆘 Help'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildSectionTitle('📌 Pengenalan App'),
+          _buildHelpItem(
+            'AI Study Buddy ialah aplikasi pendidikan untuk membantu pelajar belajar Pengaturcaraan Java.',
+            'Fungsi utama termasuk kursus, nota/material, kuiz, forum, dan chatbot AI.',
+          ),
+
+          _buildSectionTitle('🗂 Navigasi Menu Utama'),
+          _buildHelpItem(
+            'Home',
+            'Halaman utama dengan ringkasan prestasi, akses pantas ke kursus dan aktiviti.',
+          ),
+          _buildHelpItem(
+            'Course / Material',
+            'Pilih topik, baca nota, muat turun video atau nota.',
+          ),
+          _buildHelpItem(
+            'Quiz',
+            'Ambil kuiz untuk menilai kemahiran anda.',
+          ),
+          _buildHelpItem(
+            'Forum',
+            'Cipta, edit, padam topik, dan berbincang dengan pelajar lain.',
+          ),
+          _buildHelpItem(
+            'AI Chatbot',
+            'Bertanya soalan teknikal atau minta bantuan, boleh beri rating jawapan.',
+          ),
+          _buildHelpItem(
+            'Progress / Achievements',
+            'Semak kemajuan belajar dan pencapaian anda.',
+          ),
+
+          _buildSectionTitle('💬 Menggunakan Chatbot AI'),
+          _buildHelpItem(
+            'Taip soalan anda di kotak input.',
+            'Berikan rating bintang untuk jawapan yang diterima. Pastikan soalan jelas dan ringkas untuk jawapan terbaik.',
+          ),
+
+          _buildSectionTitle('📝 Forum / Perbincangan'),
+          _buildHelpItem(
+            'Cipta Topik',
+            'Tekan ikon "+" untuk mencipta topik baru.',
+          ),
+          _buildHelpItem(
+            'Edit / Padam Topik',
+            'Hanya topik yang anda cipta boleh diedit atau dipadam; guru boleh mengurus semua topik.',
+          ),
+          _buildHelpItem(
+            'Carian / Filter',
+            'Gunakan fungsi filter dan carian untuk mencari topik tertentu.',
+          ),
+
+          _buildSectionTitle('💡 Tips Penggunaan'),
+          _buildHelpItem(
+            'Akses Offline',
+            'Muat turun nota untuk akses tanpa internet.',
+          ),
+          _buildHelpItem(
+            'Keselamatan Akaun',
+            'Sentiasa log keluar selepas penggunaan untuk keselamatan akaun.',
+          ),
+          _buildHelpItem(
+            'Notifikasi',
+            'Semak notifikasi untuk kemas kini kursus atau forum.',
+          ),
+
+          _buildSectionTitle('📞 Sokongan'),
+          _buildHelpItem(
+            'Masalah teknikal',
+            'Jika aplikasi tidak berfungsi atau ada masalah teknikal, hubungi pihak sokongan melalui emel (codingBahasa@example.com) atau pautan bantuan( 06-12345678) dalam aplikasi.',
+            
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 12, left: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue[900],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(String heading, String description) {
+    return Card(
+      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ExpansionTile(
+        leading: const Icon(Icons.info_outline, color: Colors.lightBlue),
+        title: Text(
+          heading,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Text(
+              description,
               style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
             ),
           ),
