@@ -226,7 +226,6 @@ Future<bool> registerUser({
   }
 }
 
-
   // ----- login -----
   Future<bool> login(String email, String password) async {
     _isLoading = true;
@@ -1149,6 +1148,47 @@ class InHomePage extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 24), 
+const Divider(), 
+const SizedBox(height: 16),
+
+Align(
+  alignment: Alignment.center,
+  child: SizedBox(
+    width: MediaQuery.of(context).size.width * 0.7,
+    child: Card(
+      elevation: 2,
+      color: Colors.grey[50], 
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
+      child: InkWell(
+        onTap: () => navigateToPage(10), 
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.help_center_rounded, color: Colors.red, size: 24),
+              const SizedBox(width: 12),
+              const Text(
+                'Need Help? FAQ',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  ),
+),
+const SizedBox(height: 30),
         ],
       ),
     );
@@ -1263,6 +1303,8 @@ class _HomePageState extends State<HomePage> {
         page = const AchievementsPage();
       case 9:
         page = const ProfilePage();
+      case 10: 
+        page = const FAQPage();
       default:
         page = const Center(child: Text('Page not found'));
     }
@@ -1792,7 +1834,6 @@ Expanded(
     ),
   );
 }
-
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
@@ -6247,10 +6288,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     debugPrint('❌ Failed to save rating: $e');
   }
 }
-
 }
-
-
 
 // Progress Page
 class ProgressPage extends StatefulWidget {
@@ -8229,8 +8267,8 @@ Widget _buildTopicPerformanceCard(Map<String, dynamic> analytics) {
   );
 }
 }
-// ---------- Achievements ----------
 
+// ---------- Achievements ----------
 class AchievementsPage extends StatefulWidget {
   const AchievementsPage({super.key});
 
@@ -11195,6 +11233,107 @@ class _UploadPageState extends State<UploadPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ---------- FAQ ----------
+class FAQPage extends StatelessWidget {
+  const FAQPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('❓ FAQ'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildCategorySection('👤 Akaun & Profil'),
+          _buildFAQItem(
+            'Bolehkah saya menukar alamat emel saya?',
+            'Tidak, hanya kata laluan dan gambar profil boleh ditukar. Sekiranya hendak menukar alamat emel, sila daftar akaun baharu.',
+          ),
+          _buildFAQItem(
+            'Bolehkah saya memadam akaun saya?',
+            'Boleh. Anda boleh memadam akaun secara kekal di halaman Profil. Tindakan ini memerlukan pengesahan kata laluan demi keselamatan data anda.',
+          ),
+
+          _buildCategorySection('📚 Pembelajaran & Nota'),
+          _buildFAQItem(
+            'Bagaimana status "Done" dikira dalam Course?',
+            'Status "Done" akan dikemas kini secara automatik apabila anda mengklik butang "Start Learning" dan melihat kandungan nota atau video bagi setiap topik dalam halaman Course.',
+          ),
+          _buildFAQItem(
+            'Adakah nota boleh diakses secara luar talian (Offline)?',
+            'Ya. Nota yang telah dimuat turun di halaman "Material" akan disimpan secara lokal. Anda boleh membukanya semula bila-bila masa melalui butang "Open Folder" tanpa memerlukan internet.',
+          ),
+
+          _buildCategorySection('🤖 Kuiz & Pembantu AI'),
+          _buildFAQItem(
+            'Bagaimana AI menanda jawapan pendek saya?',
+            'Sistem kami menggunakan AI (Gemini) yang menilai maksud jawapan anda. Anda tidak perlu risau tentang perbezaan huruf besar atau sinonim; jika logik anda betul, AI akan memberikan markah.',
+          ),
+          _buildFAQItem(
+            'Apakah fungsi AI Study Buddy?',
+            'Ia adalah chatbot khas untuk membantu anda memahami Pengaturcaraan Java. Anda boleh bertanya soalan teknikal dan memberikan rating bintang terhadap kualiti jawapan yang diberikan.',
+          ),
+
+          _buildCategorySection('👨‍🏫 Alat Pengurusan Guru'),
+          _buildFAQItem(
+            'Apa yang ada dalam "Class Dashboard"?',
+            'Dashboard ini menyediakan analisis prestasi kelas secara visual termasuk carta pai taburan gred dan bar prestasi topik untuk mengenal pasti topik yang sukar bagi pelajar.',
+          ),
+          _buildFAQItem(
+            'Bolehkah Guru mengedit rekod kemajuan pelajar?',
+            'Guru boleh mengedit rekod yang dimasukkan secara manual. Walau bagaimanapun, rekod yang dijana secara automatik daripada kuiz adalah berkunci untuk integriti data.',
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySection(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 12, left: 4),
+      child: Text(
+        title,
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[900]),
+      ),
+    );
+  }
+
+  Widget _buildFAQItem(String question, String answer) {
+    return Card(
+      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ExpansionTile(
+        leading: const Icon(Icons.help_outline, color: Colors.lightBlue),
+        title: Text(
+          question,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Text(
+              answer,
+              style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
+            ),
+          ),
+        ],
       ),
     );
   }
