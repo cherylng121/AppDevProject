@@ -1002,28 +1002,16 @@ class InHomePage extends StatelessWidget {
         children: [
           // Logo Section
           Container(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            /*decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue[700]!, Colors.purple[400]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),*/
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Column(
               children: [
                 // App Logo 
                    Container(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-        /*decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-        ),*/
+        padding: const EdgeInsets.fromLTRB(35, 0, 20, 0),
         child: Image.asset(
           'assets/CBlogo.png',
-          height: 220,
-          width: 230,
+          height: 180,
+          width: 180,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             // Fallback to icon if image fails to load
@@ -1040,7 +1028,7 @@ class InHomePage extends StatelessWidget {
                     color: Colors.black,
                   ),
                 ),
-                //const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 const Text(
                   'Connect, Code and Challenge',
                   style: TextStyle(fontSize: 18, color: Colors.black),
@@ -1048,7 +1036,7 @@ class InHomePage extends StatelessWidget {
               ],
             ),   
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 8),
           
 
           // Welcome Message
@@ -1324,7 +1312,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
-    padding: const EdgeInsets.all(8.0),
+    padding: const EdgeInsets.only(left: 8.0),
     child: Image.asset(
       'assets/CodingBahasa.png',
       fit: BoxFit.contain,
@@ -1333,10 +1321,11 @@ class _HomePageState extends State<HomePage> {
       },
     ),
   ),
+  titleSpacing: 2,
   title: const Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('CodingBahasa', style: TextStyle(fontWeight: FontWeight.bold)),
+      Text('CodingBahasa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
       /*Text(
         'Connect, Code and Challenge',
         style: TextStyle(fontSize: 15, color: Colors.white70),
@@ -1355,12 +1344,6 @@ class _HomePageState extends State<HomePage> {
       },
     ),
     IconButton(
-      icon: const Icon(Icons.account_circle, size: 32),
-      tooltip: 'Profile',
-      onPressed: () => setState(() => selectedIndex = 9),
-    ),
-
-    IconButton(
   icon: const Icon(Icons.feedback_outlined),
   tooltip: 'Feedback',
   onPressed: () => Navigator.push(
@@ -1368,6 +1351,11 @@ class _HomePageState extends State<HomePage> {
     MaterialPageRoute(builder: (_) => const FeedbackPage()),
   ),
 ),
+IconButton(
+      icon: const Icon(Icons.account_circle, size: 32),
+      tooltip: 'Profile',
+      onPressed: () => setState(() => selectedIndex = 9),
+    ),
 
     const SizedBox(width: 10),
   ],
@@ -9300,112 +9288,132 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
- Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
-  try {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 75,
-    );
+  // Calculate course completion percentage from SharedPreferences
+  Future<double> _calculateCourseCompletionPercentage(String studentId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final totalTopics = systemQuizData.length;
+      int completedTopics = 0;
 
-    if (image == null) return null;
+      for (int i = 0; i < totalTopics; i++) {
+        final key = '${_kDoneStatusKeyPrefix}$i';
+        if (prefs.getBool(key) ?? false) {
+          completedTopics++;
+        }
+      }
 
-    // Show loading dialog
-    if (context.mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text('Uploading profile picture...'),
-            ],
-          ),
-        ),
-      );
+      return totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0.0;
+    } catch (e) {
+      print('Error calculating completion: $e');
+      return 0.0;
     }
-
-    // Get current user ID
-    final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) {
-      throw Exception('User not logged in');
-    }
-
-    // Read image bytes
-    final imageBytes = await image.readAsBytes();
-    
-    // Create unique filename
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final extension = image.path.split('.').last;
-    final fileName = 'profile_$timestamp.$extension';
-
-    print('📤 Uploading profile picture...');
-    print('   User ID: $userId');
-    print('   File: $fileName');
-    print('   Size: ${imageBytes.length} bytes');
-
-    // Upload to Firebase Storage
-    final storageRef = FirebaseStorage.instance
-        .ref()
-        .child('profile_pictures')
-        .child(userId)
-        .child(fileName);
-
-    final metadata = SettableMetadata(
-      contentType: 'image/${extension == 'jpg' ? 'jpeg' : extension}',
-      customMetadata: {
-        'uploadedAt': DateTime.now().toIso8601String(),
-      },
-    );
-
-    // ✅ FIX: Use putData directly without storing uploadTask
-    await storageRef.putData(imageBytes, metadata);
-
-    // Get download URL after upload completes
-    final downloadUrl = await storageRef.getDownloadURL();
-    
-    print('✅ Profile picture uploaded successfully!');
-    print('   URL: $downloadUrl');
-
-    if (context.mounted) {
-      Navigator.pop(context); // Close loading dialog
-    }
-
-    return downloadUrl;
-
-  } on FirebaseException catch (e) {
-    print('❌ Firebase error: ${e.code} - ${e.message}');
-    
-    if (context.mounted) {
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Upload failed: ${e.message}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    return null;
-    
-  } catch (e) {
-    print('❌ Upload error: $e');
-    
-    if (context.mounted) {
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Upload failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    return null;
   }
-}
+
+  Future<String?> _pickAndUploadProfilePicture(BuildContext context) async {
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+
+      if (image == null) return null;
+
+      // Show loading dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Text('Uploading profile picture...'),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Get current user ID
+      final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      // Read image bytes
+      final imageBytes = await image.readAsBytes();
+      
+      // Create unique filename
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final extension = image.path.split('.').last;
+      final fileName = 'profile_$timestamp.$extension';
+
+      print('📤 Uploading profile picture...');
+      print('   User ID: $userId');
+      print('   File: $fileName');
+      print('   Size: ${imageBytes.length} bytes');
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_pictures')
+          .child(userId)
+          .child(fileName);
+
+      final metadata = SettableMetadata(
+        contentType: 'image/${extension == 'jpg' ? 'jpeg' : extension}',
+        customMetadata: {
+          'uploadedAt': DateTime.now().toIso8601String(),
+        },
+      );
+
+      await storageRef.putData(imageBytes, metadata);
+
+      // Get download URL after upload completes
+      final downloadUrl = await storageRef.getDownloadURL();
+      
+      print('✅ Profile picture uploaded successfully!');
+      print('   URL: $downloadUrl');
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+      }
+
+      return downloadUrl;
+
+    } on FirebaseException catch (e) {
+      print('❌ Firebase error: ${e.code} - ${e.message}');
+      
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return null;
+      
+    } catch (e) {
+      print('❌ Upload error: $e');
+      
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return null;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -9506,9 +9514,9 @@ class ProfilePage extends StatelessWidget {
                               child:
                                   user.profilePicture == null ||
                                       user.profilePicture!.isEmpty ||
-             !user.profilePicture!.startsWith('http')
-          ? const Icon(Icons.person, size: 50, color: Colors.blue)
-          : null,
+                                      !user.profilePicture!.startsWith('http')
+                                  ? const Icon(Icons.person, size: 50, color: Colors.blue)
+                                  : null,
                             ),
                             Positioned(
                               bottom: 0,
@@ -9618,42 +9626,43 @@ class ProfilePage extends StatelessWidget {
                             color: Colors.amber,
                           ),
 
-                          // Badges Card (Students Only)
-                          /*_buildInfoCard(
-                            icon: Icons.emoji_events,
-                            title: 'Badges Earned',
-                            value: user.badges.length.toString(),
-                            color: Colors.orange,
-                          ),*/
+                          // Awards Card with Live Count
                           StreamBuilder<QuerySnapshot>(
                             stream: FirebaseFirestore.instance
                               .collection('achievements')
                               .where('studentId', isEqualTo: user.id)
                               .snapshots(),
                             builder: (context, snapshot) {
-                            int totalAchievements = 0;
-                            if (snapshot.hasData) {
-                              totalAchievements = snapshot.data!.docs.length;
-                            }
-                            
-                            return _buildInfoCard(
-                            icon: Icons.emoji_events,
-                            title: 'Total Achievements',
-                            value: totalAchievements.toString(),
-                            color: Colors.orange,
-                            );
-                          },
-                        ),
+                              int totalAchievements = 0;
+                              if (snapshot.hasData) {
+                                totalAchievements = snapshot.data!.docs.length;
+                              }
+                              
+                              return _buildInfoCard(
+                                icon: Icons.emoji_events,
+                                title: 'Awards',
+                                value: totalAchievements.toString(),
+                                color: Colors.orange,
+                              );
+                            },
+                          ),
 
-                          /*// Completion Level (Students Only)
-                          _buildInfoCard(
-                            icon: Icons.trending_up,
-                            title: 'Completion Level',
-                            value:
-                                '${(user.completionLevel * 100).toStringAsFixed(1)}%',
-                            color: Colors.green,
-                          ),*/
-                         /* if (user.badges.isNotEmpty) ...[
+                          // Completion Level - Connected to Real Course Progress
+                          FutureBuilder<double>(
+                            future: _calculateCourseCompletionPercentage(user.id),
+                            builder: (context, snapshot) {
+                              final completionPercentage = snapshot.data ?? 0.0;
+                              return _buildInfoCard(
+                                icon: Icons.trending_up,
+                                title: 'Completion Level',
+                                value: '${completionPercentage.toStringAsFixed(1)}%',
+                                color: Colors.green,
+                              );
+                            },
+                          ),
+
+                          /*// Your Badges Section (OLD SYSTEM - Still Available)
+                          if (user.badges.isNotEmpty) ...[
                             const SizedBox(height: 16),
                             Card(
                               child: Padding(
@@ -9690,119 +9699,93 @@ class ProfilePage extends StatelessWidget {
                             ),
                           ],*/
 
-                          // ✅ NEW: All Achievements Display (Badges, Certificates, Milestones)
-const SizedBox(height: 16),
-StreamBuilder<QuerySnapshot>(
-  stream: FirebaseFirestore.instance
-      .collection('achievements')
-      .where('studentId', isEqualTo: user.id)
-      .orderBy('dateEarned', descending: true)
-      .snapshots(),
-  builder: (context, snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
-      return const Center(child: CircularProgressIndicator());
-    }
+                          // ✅ MODIFIED: Achievements Display (No Empty State Card)
+                          const SizedBox(height: 16),
+                          StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('achievements')
+                                .where('studentId', isEqualTo: user.id)
+                                .orderBy('dateEarned', descending: true)
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
 
-    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Icon(Icons.emoji_events_outlined, 
-                size: 48, color: Colors.grey[400]),
-              const SizedBox(height: 8),
-              Text(
-                'No achievements yet',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Start completing quizzes to earn badges!',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[500],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+                              // ✅ CHANGED: Return nothing instead of "No achievements" card
+                              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
 
-    final achievements = snapshot.data!.docs;
-    
-    // Group achievements by type
-    final badges = achievements.where((doc) => 
-      doc['type']?.toString().toLowerCase().contains('badge') ?? false
-    ).toList();
-    
-    final certificates = achievements.where((doc) => 
-      doc['type']?.toString().toLowerCase().contains('certificate') ?? false
-    ).toList();
-    
-    final milestones = achievements.where((doc) => 
-      doc['type']?.toString().toLowerCase().contains('milestone') ?? false
-    ).toList();
-    
-    final others = achievements.where((doc) {
-      final type = doc['type']?.toString().toLowerCase() ?? '';
-      return !type.contains('badge') && 
-             !type.contains('certificate') && 
-             !type.contains('milestone');
-    }).toList();
+                              final achievements = snapshot.data!.docs;
+                              
+                              // Group achievements by type
+                              final badges = achievements.where((doc) => 
+                                doc['type']?.toString().toLowerCase().contains('badge') ?? false
+                              ).toList();
+                              
+                              final certificates = achievements.where((doc) => 
+                                doc['type']?.toString().toLowerCase().contains('certificate') ?? false
+                              ).toList();
+                              
+                              final milestones = achievements.where((doc) => 
+                                doc['type']?.toString().toLowerCase().contains('milestone') ?? false
+                              ).toList();
+                              
+                              final others = achievements.where((doc) {
+                                final type = doc['type']?.toString().toLowerCase() ?? '';
+                                return !type.contains('badge') && 
+                                       !type.contains('certificate') && 
+                                       !type.contains('milestone');
+                              }).toList();
 
-    return Column(
-      children: [
-        // Badges Section
-        if (badges.isNotEmpty)
-          _buildAchievementSection(
-            title: '🏅 Badges (${badges.length})',
-            achievements: badges,
-            color: Colors.amber,
-            icon: Icons.star,
-          ),
-        
-        // Certificates Section
-        if (certificates.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _buildAchievementSection(
-            title: '📜 Certificates (${certificates.length})',
-            achievements: certificates,
-            color: Colors.blue,
-            icon: Icons.workspace_premium,
-          ),
-        ],
-        
-        // Milestones Section
-        if (milestones.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _buildAchievementSection(
-            title: '🎯 Milestones (${milestones.length})',
-            achievements: milestones,
-            color: Colors.purple,
-            icon: Icons.flag,
-          ),
-        ],
-        
-        // Others Section
-        if (others.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _buildAchievementSection(
-            title: '⭐ Other Achievements (${others.length})',
-            achievements: others,
-            color: Colors.green,
-            icon: Icons.emoji_events,
-          ),
-        ],
-      ],
-    );
-  },
-),
-
+                              return Column(
+                                children: [
+                                  // Badges Section
+                                  if (badges.isNotEmpty)
+                                    _buildAchievementSection(
+                                      title: '🏅 Badges (${badges.length})',
+                                      achievements: badges,
+                                      color: Colors.amber,
+                                      icon: Icons.star,
+                                    ),
+                                  
+                                  // Certificates Section
+                                  if (certificates.isNotEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    _buildAchievementSection(
+                                      title: '📜 Certificates (${certificates.length})',
+                                      achievements: certificates,
+                                      color: Colors.blue,
+                                      icon: Icons.workspace_premium,
+                                    ),
+                                  ],
+                                  
+                                  // Milestones Section
+                                  if (milestones.isNotEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    _buildAchievementSection(
+                                      title: '🎯 Milestones (${milestones.length})',
+                                      achievements: milestones,
+                                      color: Colors.purple,
+                                      icon: Icons.flag,
+                                    ),
+                                  ],
+                                  
+                                  // Others Section
+                                  if (others.isNotEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    _buildAchievementSection(
+                                      title: '⭐ Other Achievements (${others.length})',
+                                      achievements: others,
+                                      color: Colors.green,
+                                      icon: Icons.emoji_events,
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
                         ],
                       ],
                     ),
@@ -9812,7 +9795,7 @@ StreamBuilder<QuerySnapshot>(
             ),
           ),
 
-          // ✅ NEW: Logout button at the bottom
+          // Logout button at the bottom
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -9846,7 +9829,6 @@ StreamBuilder<QuerySnapshot>(
     );
   }
 
-  // ✅ Keep the logout handler function as is
   void _handleLogout(BuildContext context) {
     showDialog(
       context: context,
@@ -10059,7 +10041,7 @@ StreamBuilder<QuerySnapshot>(
   }
 }
 
-// ✅ NEW: Helper method to build achievement sections
+// Helper method to build achievement sections
 Widget _buildAchievementSection({
   required String title,
   required List<QueryDocumentSnapshot> achievements,
@@ -11526,7 +11508,6 @@ class HelpPage extends StatelessWidget {
 
 
 // ---------- FEEDBACK PAGE ----------
-
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
