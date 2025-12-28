@@ -1002,46 +1002,53 @@ class InHomePage extends StatelessWidget {
         children: [
           // Logo Section
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            /*decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.blue[700]!, Colors.purple[400]!],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
-            ),
+            ),*/
             child: Column(
               children: [
                 // App Logo 
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Icon(Icons.code, size: 80, color: Colors.blue[700]),
-                ),
-                const SizedBox(height: 16),
+                   Container(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        /*decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+        ),*/
+        child: Image.asset(
+          'assets/CBlogo.png',
+          height: 220,
+          width: 230,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            // Fallback to icon if image fails to load
+            return Icon(Icons.code, size: 80, color: Colors.blue[700]);
+          },
+        ),
+      ),
+                //const SizedBox(height: 4),
                 const Text(
                   'CodingBahasa',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: Colors.black,
                   ),
                 ),
+                //const SizedBox(height: 4),
                 const Text(
                   'Connect, Code and Challenge',
-                  style: TextStyle(fontSize: 16, color: Colors.white70),
+                  style: TextStyle(fontSize: 18, color: Colors.black),
                 ),
               ],
-            ),
-            
-
-            
+            ),   
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 5),
           
 
           // Welcome Message
@@ -1049,7 +1056,7 @@ class InHomePage extends StatelessWidget {
             'Welcome back, ${user?.username ?? "User"}!',
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 5),
 
           // Stats Cards (Students Only)
           if (user?.userType == UserType.student) ...[
@@ -1316,14 +1323,24 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Padding(
+    padding: const EdgeInsets.all(8.0),
+    child: Image.asset(
+      'assets/CodingBahasa.png',
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return Icon(Icons.school, color: Colors.white);
+      },
+    ),
+  ),
   title: const Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text('CodingBahasa', style: TextStyle(fontWeight: FontWeight.bold)),
-      Text(
+      /*Text(
         'Connect, Code and Challenge',
         style: TextStyle(fontSize: 15, color: Colors.white70),
-      ),
+      ),*/
     ],
   ),
   actions: [
