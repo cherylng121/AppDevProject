@@ -9661,44 +9661,6 @@ class ProfilePage extends StatelessWidget {
                             },
                           ),
 
-                          /*// Your Badges Section (OLD SYSTEM - Still Available)
-                          if (user.badges.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Your Badges',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: user.badges
-                                          .map(
-                                            (badge) => Chip(
-                                              label: Text(badge),
-                                              avatar: const Icon(
-                                                Icons.emoji_events,
-                                                size: 16,
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],*/
-
                           // ✅ MODIFIED: Achievements Display (No Empty State Card)
                           const SizedBox(height: 16),
                           StreamBuilder<QuerySnapshot>(
