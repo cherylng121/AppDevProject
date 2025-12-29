@@ -7906,6 +7906,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                     fillColor: Colors.white,
                   ),
                   hint: const Text('All Activities'),
+                  isExpanded: true, 
                   items: [
                     const DropdownMenuItem(
                       value: null,
