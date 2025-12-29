@@ -576,21 +576,29 @@ class _LoginPageState extends State<LoginPage> {
                   padding: const EdgeInsets.all(24),
                   child: Form(
                     key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.school, size: 80, color: Colors.blue[700]),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'CodingBahasa',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                   child: Column(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    Image.asset(
+      'assets/CBlogo.png',  
+      height: 120,
+      width: 100,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return Icon(Icons.school, size: 80, color: Colors.blue[700]);
+      },
+    ),
+    const SizedBox(height: 0),
+    const Text(
+      'CodingBahasa',
+      style: TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
                         const Text(
                           'Connect, Code and Challenge',
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(color: Colors.black),
                         ),
                         const SizedBox(height: 32),
                         TextFormField(
