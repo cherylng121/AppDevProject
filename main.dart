@@ -7657,7 +7657,11 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
                     ..._availableActivities.map(
                       (activity) => DropdownMenuItem(
                         value: activity,
-                        child: Text(activity),
+                        child: Text(
+                          activity,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ),
                     ),
                   ],
