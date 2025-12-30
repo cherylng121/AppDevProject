@@ -550,7 +550,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  @override
+  /*@override
   Widget build(BuildContext context) {
     final userState = context.watch<FirebaseUserState>();
 
@@ -578,7 +578,35 @@ class _LoginPageState extends State<LoginPage> {
                     key: _formKey,
                    child: Column(
   mainAxisSize: MainAxisSize.min,
-  children: [
+  children: [*/
+  @override
+Widget build(BuildContext context) {
+  final userState = context.watch<FirebaseUserState>();
+
+  return Scaffold(
+    body: Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/1.png'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
     Image.asset(
       'assets/CBlogo.png',  
       height: 120,
@@ -773,7 +801,8 @@ class _RegisterPageState extends State<RegisterPage> {
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
@@ -959,6 +988,7 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -969,6 +999,27 @@ class HomePage extends StatefulWidget {
 
   @override
   State<HomePage> createState() => _HomePageState();
+}
+
+// Add this helper widget near the top of your file
+class BackgroundWrapper extends StatelessWidget {
+  final Widget child;
+  
+  const BackgroundWrapper({super.key, required this.child});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/2.png'),
+          fit: BoxFit.cover,
+          opacity: 0.3,
+        ),
+      ),
+      child: child,
+    );
+  }
 }
 
 // ========== IN HOME PAGE ==========
@@ -1003,7 +1054,11 @@ class InHomePage extends StatelessWidget {
 
       return totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0.0;
     }
-    return SingleChildScrollView(
+    /*return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(*/
+      return BackgroundWrapper(  // ✅ Add this wrapper
+    child: SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1199,6 +1254,7 @@ Align(
 const SizedBox(height: 30),
         ],
       ),
+    ),
     );
   }
 
@@ -1283,6 +1339,8 @@ const SizedBox(height: 30),
   }
 }
 
+
+// ========== HOME PAGE STATE ==========
 // ========== HOME PAGE STATE ==========
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
@@ -1320,92 +1378,92 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
-    padding: const EdgeInsets.only(left: 8.0),
-    child: Image.asset(
-      'assets/CodingBahasa.png',
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        return Icon(Icons.school, color: Colors.white);
-      },
-    ),
-  ),
-  titleSpacing: 2,
-  title: const Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text('CodingBahasa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-      /*Text(
-        'Connect, Code and Challenge',
-        style: TextStyle(fontSize: 15, color: Colors.white70),
-      ),*/
-    ],
-  ),
-  actions: [
-    IconButton(
-      icon: const Icon(Icons.help_outline, size: 28),
-      tooltip: 'Help',
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const HelpPage()),
-        );
-      },
-    ),
-    IconButton(
-  icon: const Icon(Icons.feedback_outlined),
-  tooltip: 'Feedback',
-  onPressed: () => Navigator.push(
-    context,
-    MaterialPageRoute(builder: (_) => const FeedbackPage()),
-  ),
-),
-IconButton(
-      icon: const Icon(Icons.account_circle, size: 32),
-      tooltip: 'Profile',
-      onPressed: () => setState(() => selectedIndex = 9),
-    ),
-
-    const SizedBox(width: 10),
-  ],
-),
-
-
-      body: Column(
-        children: [
-          Container(
-            color: Colors.grey[200],
-            height: 50,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Row(
-                children: [
-                  _buildMenuButton('Home', 0),
-                  _buildMenuButton('User', 1),
-                  _buildMenuButton('Course', 2),
-                  _buildMenuButton('Material', 3),
-                  _buildMenuButton('Quiz', 4),
-                  _buildMenuButton('Forum', 5),
-                  _buildMenuButton('AI Chatbot', 6),
-                  _buildMenuButton('Progress', 7),
-                  _buildMenuButton('Achievement', 8),
-                ],
-              ),
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Image.asset(
+            'assets/CodingBahasa.png',
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.school, color: Colors.white);
+            },
+          ),
+        ),
+        titleSpacing: 2,
+        title: const Text('CodingBahasa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline, size: 28),
+            tooltip: 'Help',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HelpPage()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.feedback_outlined),
+            tooltip: 'Feedback',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FeedbackPage()),
             ),
           ),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: Container(
-                key: ValueKey(selectedIndex),
-                color: Colors.white,
-                alignment: Alignment.center,
-                child: page,
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.account_circle, size: 32),
+            tooltip: 'Profile',
+            onPressed: () => setState(() => selectedIndex = 9),
           ),
+          const SizedBox(width: 10),
         ],
+      ),
+      body: Container(
+        // This decoration ensures the background image is applied to the entire screen
+        // behind whichever sub-page is currently active.
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/2.png'), // Ensure this asset exists
+            fit: BoxFit.cover,
+            opacity: 0.1, // Low opacity ensures text remains readable on all pages
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              color: Colors.grey[200],
+              height: 50,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    _buildMenuButton('Home', 0),
+                    _buildMenuButton('User', 1),
+                    _buildMenuButton('Course', 2),
+                    _buildMenuButton('Material', 3),
+                    _buildMenuButton('Quiz', 4),
+                    _buildMenuButton('Forum', 5),
+                    _buildMenuButton('AI Chatbot', 6),
+                    _buildMenuButton('Progress', 7),
+                    _buildMenuButton('Achievement', 8),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                // Transparent color allows the Scaffold background to show through
+                child: Container(
+                  key: ValueKey(selectedIndex),
+                  color: Colors.transparent, 
+                  alignment: Alignment.center,
+                  child: page,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1658,7 +1716,7 @@ Widget build(BuildContext context) {
   final currentUser = context.watch<FirebaseUserState>().currentUser;
 
   return Scaffold(
-    backgroundColor: Colors.white,
+    //backgroundColor: Colors.white,
     appBar: AppBar(
       title: const Text('🔍 Search User'),
       backgroundColor: Colors.lightBlue,
@@ -1680,7 +1738,8 @@ Widget build(BuildContext context) {
         ],
       ],
     ),
-    body: Column(
+    body: BackgroundWrapper(
+    child: Column(
       children: [
         // ✅ Search bar - ACCESSIBLE TO EVERYONE
         Padding(
@@ -1871,6 +1930,7 @@ Expanded(
             ),
 ),
       ],
+    ),
     ),
   );
 }
@@ -2533,7 +2593,7 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
   Widget build(BuildContext context) {
     final filteredTopics = _getFilteredAndSortedTopics();
     return Scaffold(
-      backgroundColor: Colors.white,
+      //backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('📖 Course${_getFilterStatusText()}'),
         backgroundColor: Colors.lightBlue,
@@ -2564,7 +2624,8 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
           ),
         ],
       ),
-       body: Column(
+      body: BackgroundWrapper(
+       child: Column(
         children: [
           // Show active filters when expanded
           if (_showFilters) _buildFilterChips(),
@@ -2683,6 +2744,7 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -2728,7 +2790,8 @@ class _DetailsPageState extends State<DetailsPage> {
         title: Text(widget.title),
         backgroundColor: Colors.lightBlue,
       ),
-      body: Padding(
+      body: BackgroundWrapper(
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
@@ -2740,6 +2803,7 @@ class _DetailsPageState extends State<DetailsPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -3546,11 +3610,13 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
           ),
         ],
       ),
-      body: Column(
+      body: BackgroundWrapper(
+      child: Column(
         children: [
           if (_showFilters) _buildFilterSection(),
           Expanded(child: _buildAssessmentsList()),
         ],
+      ),
       ),
     );
   }
@@ -4036,7 +4102,8 @@ class _QuizPageState extends State<QuizPage> {
             ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4251,6 +4318,7 @@ const Divider(height: 30, thickness: 1),
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -4279,7 +4347,8 @@ class SystemQuizListPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('System-Generated Quizzes')),
-      body: ListView.builder(
+      body: BackgroundWrapper(
+      child: ListView.builder(
         itemCount: systemQuizData.length,
         itemBuilder: (context, index) {
           final topicTitle = systemQuizData.keys.elementAt(index);
@@ -4320,6 +4389,7 @@ class SystemQuizListPage extends StatelessWidget {
           );
         },
       ),
+      ),
     );
   }
 }
@@ -4342,7 +4412,8 @@ class ReviewQuizPage extends StatelessWidget {
         title: Text('Review: $quizTitle'),
         backgroundColor: Colors.orange[700],
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4423,6 +4494,7 @@ class ReviewQuizPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -4888,7 +4960,8 @@ void _showEditQuestionDialog(int index) {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Edit Quiz' : 'Create New Quiz')),
-      body: _isLoading
+      body: BackgroundWrapper(
+      child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
@@ -5108,6 +5181,7 @@ void _showEditQuestionDialog(int index) {
                 ),
               ),
             ),
+      ),
     );
   }
 }
@@ -5431,7 +5505,8 @@ Future<void> _saveQuizAttemptToFirestore(QuizAttempt attempt) async {
           ),
         ),
       ),
-      body: PageView.builder(
+      body: BackgroundWrapper(
+      child: PageView.builder(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(), // Disable swiping
         itemCount: widget.questions.length,
@@ -5440,6 +5515,7 @@ Future<void> _saveQuizAttemptToFirestore(QuizAttempt attempt) async {
           return _buildQuestionPage(question, index);
         },
         onPageChanged: (index) => setState(() => _currentPage = index),
+      ),
       ),
       bottomNavigationBar: BottomAppBar(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -5559,7 +5635,8 @@ class QuizResultsPage extends StatelessWidget {
         title: Text('Results: ${attempt.quizTitle}'),
         automaticallyImplyLeading: false, // No back button
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -5686,6 +5763,7 @@ class QuizResultsPage extends StatelessWidget {
 ],
 ),
 ),
+      ),
       bottomNavigationBar: BottomAppBar(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -5711,14 +5789,16 @@ class AIChatbotPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => ChatBloc(),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        //backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('🤖 AI Study Buddy'),
           backgroundColor: Colors.lightBlue,
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        body: const _ChatBody(),
+        body: BackgroundWrapper(
+       child: const _ChatBody(),
+      ),
       ),
     );
   }
@@ -5942,7 +6022,7 @@ class _ChatBodyState extends State<_ChatBody> {
         ),
 
         // ---- Rating + End Conversation Row ----
-        Container(
+       /* Container(
           color: Colors.grey[100],
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           child: Row(
@@ -5998,7 +6078,68 @@ class _ChatBodyState extends State<_ChatBody> {
               ),
             ],
           ),
+        ),*/
+        Container(
+  color: Colors.grey[100],
+  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+  child: Row(
+    children: [
+      // ⭐ Rating Section (flexible)
+      Expanded(
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
+          children: [
+            const Text('Rate chatbot:'),
+            for (int s = 1; s <= 5; s++)
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  s <= lastRating ? Icons.star : Icons.star_border,
+                  color: Colors.orange,
+                  size: 24,
+                ),
+                onPressed: () {
+                  setState(() => lastRating = s);
+
+                  context.read<ChatBloc>()
+                      .add(SubmitChatRatingEvent(s));
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Thanks! You rated the bot $s star(s).',
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+          ],
         ),
+      ),
+
+      // ⛔ Stop Button (fixed)
+      IconButton(
+        icon: const Icon(
+          Icons.stop_circle,
+          color: Colors.red,
+          size: 28,
+        ),
+        tooltip: 'End Conversation',
+        onPressed: () {
+          context.read<ChatBloc>().add(ClearChatEvent());
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Perbualan telah tamat. Memulakan semula'),
+            ),
+          );
+        },
+      ),
+    ],
+  ),
+),
       ],
     );
   }
@@ -6823,8 +6964,8 @@ String? _validateComments(String? value) {
     ],
   ],
 ),
-
-      body: SingleChildScrollView(
+body: BackgroundWrapper( 
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -7605,6 +7746,7 @@ if (!isTeacher)
           ],
         ),
       ),
+),
     );
   }
 }
@@ -7846,7 +7988,8 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
     if (!isTeacher) {
       return Scaffold(
         appBar: AppBar(title: const Text('Access Denied')),
-        body: const Center(
+        body: BackgroundWrapper( 
+        child: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -7859,6 +8002,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
             ],
           ),
         ),
+        ),
       );
     }
 
@@ -7868,7 +8012,8 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      body: Column(
+      body: BackgroundWrapper(
+      child: Column(
         children: [
           // Search and Filter Section
           Container(
@@ -8111,6 +8256,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -8145,7 +8291,8 @@ class ClassDashboardPage extends StatelessWidget {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: BackgroundWrapper(
+      child: StreamBuilder<QuerySnapshot>(
         stream: fs.collection('progress_records').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
@@ -8193,6 +8340,7 @@ class ClassDashboardPage extends StatelessWidget {
             },
           );
         },
+      ),
       ),
     );
   }
@@ -8733,10 +8881,12 @@ class _AchievementsPageState extends State<AchievementsPage> {
           backgroundColor: Colors.amber,
           foregroundColor: Colors.white,
         ),
-        body: const Center(
+        body: BackgroundWrapper(
+        child: const Center(
           child: Text(
             'Please log in to view personalized achievements or community feed.',
           ),
+        ),
         ),
       );
     }
@@ -8773,7 +8923,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
       ),
   ],
       ),
-      body: Column(
+      body: BackgroundWrapper(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Logic to show the 'unlocked message'
@@ -8889,6 +9040,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -9190,7 +9342,8 @@ Future<List<AppUser>> _getStudentsList() async {
         title: const Text('Manual Achievement Award'),
         backgroundColor: Colors.amber,
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
@@ -9288,6 +9441,7 @@ Future<List<AppUser>> _getStudentsList() async {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -9459,7 +9613,8 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
         title: const Text('Edit Achievement'),
         backgroundColor: Colors.amber, // Matches the Add page's AppBar color
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
@@ -9588,6 +9743,7 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -9735,7 +9891,7 @@ class ProfilePage extends StatelessWidget {
     final isTeacher = user.userType == UserType.teacher;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      //backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('👤 User Profile'),
         backgroundColor: Colors.lightBlue,
@@ -9791,7 +9947,8 @@ class ProfilePage extends StatelessWidget {
           ),
         ],
       ),
-      body: Column(
+      body: BackgroundWrapper(
+      child: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
@@ -9813,7 +9970,7 @@ class ProfilePage extends StatelessWidget {
                           children: [
                             CircleAvatar(
                               radius: 50,
-                              backgroundColor: Colors.white,
+                              //backgroundColor: Colors.white,
                               backgroundImage:
                                   user.profilePicture != null &&
                                       user.profilePicture!.isNotEmpty &&
@@ -10096,6 +10253,7 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -10478,7 +10636,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
@@ -10565,6 +10724,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -10869,7 +11029,8 @@ class _MaterialsPageState extends State<MaterialsPage> {
             ),
         ],
       ),
-      body: Padding(
+      body: BackgroundWrapper(
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -11082,6 +11243,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -11418,7 +11580,8 @@ class _UploadPageState extends State<UploadPage> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
-      body: Padding(
+      body: BackgroundWrapper(
+      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
@@ -11532,6 +11695,7 @@ class _UploadPageState extends State<UploadPage> {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -11543,14 +11707,15 @@ class FAQPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      //backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('❓ FAQ'),
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: ListView(
+      body: BackgroundWrapper(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildCategorySection('👤 Akaun & Profil'),
@@ -11595,6 +11760,7 @@ class FAQPage extends StatelessWidget {
 
           const SizedBox(height: 32),
         ],
+      ),
       ),
     );
   }
@@ -11646,14 +11812,15 @@ class HelpPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      //backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('🆘 Help'),
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: ListView(
+      body: BackgroundWrapper(
+      child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _buildSectionTitle('📌 Pengenalan App'),
@@ -11731,6 +11898,7 @@ class HelpPage extends StatelessWidget {
 
           const SizedBox(height: 32),
         ],
+      ),
       ),
     );
   }
@@ -11823,7 +11991,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
         backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
+      body: BackgroundWrapper(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -11891,6 +12060,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
