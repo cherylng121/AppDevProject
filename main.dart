@@ -600,51 +600,73 @@ Widget build(BuildContext context) {
                           style: TextStyle(color: Colors.black),
                         ),
                         const SizedBox(height: 32),
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: const Icon(Icons.email),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter email';
-                            }
-                            if (!value.contains('@')) {
-                              return 'Please enter a valid email';
-                            }
-                            return null;
-                          },
-                        ),
+                       TextFormField(
+  controller: _emailController,
+  keyboardType: TextInputType.emailAddress,
+  decoration: InputDecoration(
+    labelText: 'Email',
+    prefixIcon: const Icon(Icons.email),
+    suffixIcon: Tooltip(
+      message: 'Enter your registered email address',
+      child: Icon(
+        Icons.info_outline,
+        color: Colors.blue[700],
+        size: 20,
+      ),
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+  validator: (value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter email';
+    }
+    if (!value.contains('@')) {
+      return 'Please enter a valid email';
+    }
+    return null;
+  },
+),
                         const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          validator: (value) => value == null || value.isEmpty
-                              ? 'Please enter password'
-                              : null,
-                        ),
+                     TextFormField(
+  controller: _passwordController,
+  obscureText: _obscurePassword,
+  decoration: InputDecoration(
+    labelText: 'Password',
+    prefixIcon: const Icon(Icons.lock),
+    suffixIcon: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Tooltip(
+          message: 'Enter your account password (min. 6 characters)',
+          child: Icon(
+            Icons.info_outline,
+            color: Colors.blue[700],
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: Icon(
+            _obscurePassword
+                ? Icons.visibility
+                : Icons.visibility_off,
+          ),
+          onPressed: () => setState(
+            () => _obscurePassword = !_obscurePassword,
+          ),
+        ),
+      ],
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+  validator: (value) => value == null || value.isEmpty
+      ? 'Please enter password'
+      : null,
+),
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
@@ -824,35 +846,77 @@ class _RegisterPageState extends State<RegisterPage> {
                 },
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
+          TextFormField(
+  controller: _passwordController,
+  obscureText: _obscurePassword,
+  decoration: InputDecoration(
+    labelText: 'Password',
+    prefixIcon: const Icon(Icons.lock),
+    suffixIcon: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(
+            Icons.info_outline,
+            color: Colors.blue[700],
+            size: 20,
+          ),
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Row(
+                  children: [
+                    Icon(Icons.lock, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Expanded( 
+                      child: Text('Requirements'),
                     ),
-                    onPressed: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  ],
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
+                content: const Text(
+                  'Your password must be:\n\n'
+                  '• At least 6 characters long\n'
+                  '• A combination of letters and numbers is recommended\n'
+                  '• Keep it secure and memorable',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Got it'),
+                  ),
+                ],
               ),
+            );
+          },
+        ),
+        IconButton(
+          icon: Icon(
+            _obscurePassword
+                ? Icons.visibility
+                : Icons.visibility_off,
+          ),
+          onPressed: () =>
+              setState(() => _obscurePassword = !_obscurePassword),
+        ),
+      ],
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    helperText: 'Tap ℹ️ for password requirements',
+    helperStyle: TextStyle(color: Colors.blue[600], fontSize: 12),
+  ),
+  validator: (value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter password';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
+  },
+),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _confirmPasswordController,
