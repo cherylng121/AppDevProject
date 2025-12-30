@@ -6022,73 +6022,16 @@ class _ChatBodyState extends State<_ChatBody> {
         ),
 
         // ---- Rating + End Conversation Row ----
-       /* Container(
-          color: Colors.grey[100],
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // --- Rating Section ---
-              Row(
-                children: [
-                  const Text('Rate chatbot:'),
-                  const SizedBox(width: 8),
-                  for (int s = 1; s <= 5; s++)
-                    IconButton(
-                      icon: Icon(
-                        s <= lastRating ? Icons.star : Icons.star_border,
-                        color: Colors.orange,
-                      ),
-                      onPressed: () {
-                        setState(() => lastRating = s);
-
-                        context.read<ChatBloc>().add(
-            SubmitChatRatingEvent(s),
-          );
-          
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Thanks! You rated the bot $s star(s).',
-                            ),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                ],
-              ),
-
-              // --- Stop Conversation Button ---
-              IconButton(
-                icon: const Icon(
-                  Icons.stop_circle,
-                  color: Colors.red,
-                  size: 32,
-                ),
-                tooltip: 'End Conversation',
-                onPressed: () {
-                  context.read<ChatBloc>().add(ClearChatEvent());
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Perbualan telah tamat. Memulakan semula'),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),*/
         Container(
   color: Colors.grey[100],
-  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+  padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
   child: Row(
     children: [
       // ⭐ Rating Section (flexible)
       Expanded(
         child: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 4,
+          spacing: 2,
           children: [
             const Text('Rate chatbot:'),
             for (int s = 1; s <= 5; s++)
