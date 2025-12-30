@@ -550,35 +550,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /*@override
-  Widget build(BuildContext context) {
-    final userState = context.watch<FirebaseUserState>();
-
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue[700]!, Colors.blue[300]!],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Card(
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Form(
-                    key: _formKey,
-                   child: Column(
-  mainAxisSize: MainAxisSize.min,
-  children: [*/
   @override
 Widget build(BuildContext context) {
   final userState = context.watch<FirebaseUserState>();
@@ -1002,6 +973,7 @@ class HomePage extends StatefulWidget {
 }
 
 // Add this helper widget near the top of your file
+// ========== BACKGROUND WRAPPER ==========
 class BackgroundWrapper extends StatelessWidget {
   final Widget child;
   
@@ -1009,15 +981,22 @@ class BackgroundWrapper extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/2.png'),
-          fit: BoxFit.cover,
-          opacity: 0.3,
+    return Stack(
+      fit: StackFit.expand, // <--- CRITICAL FIX: Forces the background to fill the screen
+      children: [
+        // 1. Background Image
+        Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/2.png'),
+              fit: BoxFit.cover,
+              opacity: 0.3,
+            ),
+          ),
         ),
-      ),
-      child: child,
+        // 2. The Content
+        child,
+      ],
     );
   }
 }
@@ -1054,10 +1033,8 @@ class InHomePage extends StatelessWidget {
 
       return totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0.0;
     }
-    /*return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(*/
-      return BackgroundWrapper(  // ✅ Add this wrapper
+  
+      return BackgroundWrapper(  
     child: SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1082,7 +1059,6 @@ class InHomePage extends StatelessWidget {
           },
         ),
       ),
-                //const SizedBox(height: 4),
                 const Text(
                   'CodingBahasa',
                   style: TextStyle(
@@ -1251,12 +1227,66 @@ Align(
     ),
   ),
 ),
+const SizedBox(height: 12),
+Align(
+  alignment: Alignment.center,
+  child: SizedBox(
+    width: MediaQuery.of(context).size.width * 0.7,
+    child: Card(
+      elevation: 2,
+      color: Colors.grey[50], 
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey[200]!),
+      ),
+      child: InkWell(
+        onTap: () => _launchYouTubeVideo(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.play_circle_filled, color: Colors.blue[700], size: 24),
+              const SizedBox(width: 12),
+              const Text(
+                'User Manual Video',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  ),
+),
 const SizedBox(height: 30),
         ],
       ),
     ),
     );
   }
+
+void _launchYouTubeVideo(BuildContext context) async {
+  const url = 'https://www.youtube.com/watch?v=qoc_STKEf1o&t=332s'; 
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open video link'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
 
   Widget _buildStatCard({
     required IconData icon,
@@ -1339,8 +1369,6 @@ const SizedBox(height: 30),
   }
 }
 
-
-// ========== HOME PAGE STATE ==========
 // ========== HOME PAGE STATE ==========
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
@@ -11987,6 +12015,32 @@ class _FeedbackPageState extends State<FeedbackPage> {
                   );
                 }),
               ),
+              const SizedBox(height: 12),
+SizedBox(
+  width: double.infinity,
+  child: OutlinedButton.icon(
+    onPressed: () {
+      _formKey.currentState!.reset();
+      _nameController.clear();
+      _emailController.clear();
+      _feedbackController.clear();
+      setState(() {
+        _rating = 0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Form has been refreshed'),
+        backgroundColor: Colors.green)
+      );
+    },
+    icon: const Icon(Icons.refresh),
+    label: const Text('Refresh', style: TextStyle(fontSize: 16)),
+    style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+  ),
+),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -11997,9 +12051,10 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text('Hantar Maklum Balas', style: TextStyle(fontSize: 16)),
+                  child: const Text('Hantar Maklum Balas',style: TextStyle(fontSize: 16)),
                 ),
               ),
+              
             ],
           ),
         ),
