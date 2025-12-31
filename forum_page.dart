@@ -321,22 +321,56 @@ setState(() {
 )
 
         ]),
-        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          Tooltip(message: 'Buka topik', child: IconButton(icon: const Icon(Icons.open_in_new, size: 22), onPressed: () => _openPostDetailsById(id))),
-          // Edit/Delete only for owner or teacher
-          if (_currentUid != null && (_currentUid == creatorId || _currentUserRole == 'teacher')) ...[
-            Tooltip(message: 'Edit topik', child: IconButton(icon: const Icon(Icons.edit, size: 22, color: Colors.blue), onPressed: () => _editTopicById(id))),
-            Tooltip(message: 'Padam topik', child: IconButton(icon: const Icon(Icons.delete, size: 22, color: Colors.red), onPressed: () => _tryDeleteTopicById(id))),
-          ],
-          // Pin only for teacher
-          if (_currentUserRole == 'teacher')
-            Tooltip(
-              message: pinned ? 'Unpin topik' : 'Pin topik',
-              child: IconButton(icon: Icon(pinned ? Icons.push_pin : Icons.push_pin_outlined, color: Colors.orange), onPressed: () => _togglePinById(id, pinned)),
-            ),
-          const SizedBox(width: 6),
-          const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-        ]),
+        trailing: Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    // Open topic (everyone)
+    Tooltip(
+      message: 'Buka topik',
+      child: IconButton(
+        icon: const Icon(Icons.open_in_new, size: 22),
+        onPressed: () => _openPostDetailsById(id),
+      ),
+    ),
+
+    // ✏️ Edit — OWNER ONLY
+    if (_currentUid != null && _currentUid == creatorId)
+      Tooltip(
+        message: 'Edit topik',
+        child: IconButton(
+          icon: const Icon(Icons.edit, size: 22, color: Colors.blue),
+          onPressed: () => _editTopicById(id),
+        ),
+      ),
+
+    // 🗑 Delete — OWNER ONLY
+    if (_currentUid != null && _currentUid == creatorId)
+      Tooltip(
+        message: 'Padam topik',
+        child: IconButton(
+          icon: const Icon(Icons.delete, size: 22, color: Colors.red),
+          onPressed: () => _tryDeleteTopicById(id),
+        ),
+      ),
+
+    // 📌 Pin / Unpin — TEACHER ONLY
+    if (_currentUserRole == 'teacher')
+      Tooltip(
+        message: pinned ? 'Unpin topik' : 'Pin topik',
+        child: IconButton(
+          icon: Icon(
+            pinned ? Icons.push_pin : Icons.push_pin_outlined,
+            color: Colors.orange,
+          ),
+          onPressed: () => _togglePinById(id, pinned),
+        ),
+      ),
+
+    const SizedBox(width: 6),
+    const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+  ],
+),
+
         onTap: () => _openPostDetailsById(id),
       ),
     );
@@ -617,7 +651,7 @@ setState(() {
             Text('FAQ (singkat):'),
             SizedBox(height: 8),
             Text('- Cipta Topik: Tekan ikon + di atas kanan.'),
-            Text('- Edit/Padam: Hanya pemilik topik atau teacher.'),
+            Text('- Edit/Padam: Hanya pemilik topik.'),
             Text('- Pin: Hanya teacher.'),
             SizedBox(height: 12),
             Text('Tooltips: Sentuh ikon untuk melihat fungsi.'),
