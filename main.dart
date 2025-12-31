@@ -1036,7 +1036,6 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-// Add this helper widget near the top of your file
 // ========== BACKGROUND WRAPPER ==========
 class BackgroundWrapper extends StatelessWidget {
   final Widget child;
@@ -1046,7 +1045,7 @@ class BackgroundWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
-      fit: StackFit.expand, // <--- CRITICAL FIX: Forces the background to fill the screen
+      fit: StackFit.expand, // 
       children: [
         // 1. Background Image
         Container(
@@ -1109,7 +1108,6 @@ class InHomePage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
             child: Column(
               children: [
-                // App Logo 
                    Container(
         padding: const EdgeInsets.fromLTRB(35, 0, 20, 0),
         child: Image.asset(
@@ -1118,7 +1116,6 @@ class InHomePage extends StatelessWidget {
           width: 180,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
-            // Fallback to icon if image fails to load
             return Icon(Icons.code, size: 80, color: Colors.blue[700]);
           },
         ),
@@ -1155,7 +1152,7 @@ class InHomePage extends StatelessWidget {
               children: [
                 Expanded(
                   child: InkWell(
-                    onTap: () => navigateToPage(8), // Navigate to Achievements
+                    onTap: () => navigateToPage(8), 
                     child: _buildStatCard(
                       icon: Icons.star,
                       title: 'Points',
@@ -1167,7 +1164,7 @@ class InHomePage extends StatelessWidget {
                 const SizedBox(width: 12),
                Expanded(
                   child: InkWell(
-                    onTap: () => navigateToPage(8), // Navigate to Achievements
+                    onTap: () => navigateToPage(8), 
                     child: StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('achievements')
@@ -1194,7 +1191,7 @@ class InHomePage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             InkWell(
-              onTap: () => navigateToPage(7), // Navigate to Progress
+              onTap: () => navigateToPage(7), 
               child: FutureBuilder<double>(
                 future: calculateCompletionPercentage(),  
                 builder: (context, snapshot) {
@@ -1509,13 +1506,11 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: Container(
-        // This decoration ensures the background image is applied to the entire screen
-        // behind whichever sub-page is currently active.
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/2.png'), // Ensure this asset exists
+            image: AssetImage('assets/2.png'), 
             fit: BoxFit.cover,
-            opacity: 0.1, // Low opacity ensures text remains readable on all pages
+            opacity: 0.1, 
           ),
         ),
         child: Column(
@@ -1545,7 +1540,6 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
-                // Transparent color allows the Scaffold background to show through
                 child: Container(
                   key: ValueKey(selectedIndex),
                   color: Colors.transparent, 
@@ -2325,36 +2319,29 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
   @override
   void initState() {
     super.initState();
-    // Inisialisasi awal dengan false, kemudian muatkan status yang disimpan
     _isDone = List<bool>.filled(topics.length, false);
     _loadDoneStatus();
   }
 
-  // Muatkan status selesai dari SharedPreferences
   Future<void> _loadDoneStatus() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       for (int i = 0; i < topics.length; i++) {
-        // Bina key unik untuk setiap topik
         final key = '$_kDoneStatusKeyPrefix$i';
-        // Dapatkan status. Jika tiada status, nilai lalai adalah false.
         _isDone[i] = prefs.getBool(key) ?? false;
       }
     });
   }
 
-  // Simpan status selesai ke SharedPreferences
   Future<void> _saveDoneStatus(int index, bool status) async {
     final prefs = await SharedPreferences.getInstance();
     final key = '$_kDoneStatusKeyPrefix$index';
     await prefs.setBool(key, status);
   }
 
-  // Fungsi untuk menavigasi dan mengemas kini status
 void _navigateToDetails(BuildContext context, int originalIndex) async {
     final topic = topics[originalIndex];
 
-    // Navigasi ke laman butiran dan tunggu sehingga pengguna kembali
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -2366,12 +2353,9 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
       ),
     );
 
-    // Apabila pengguna kembali (pop dari DetailsPage), 
-    // kemas kini state di memori dan simpan ke penyimpanan tempatan
     setState(() {
       _isDone[originalIndex] = true;
     });
-    // Simpan status baharu secara kekal
     _saveDoneStatus(originalIndex, true); 
     await _syncCompletionToFirestore();
   }
@@ -2383,7 +2367,6 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
   if (user == null || user.userType != UserType.student) return;
 
   try {
-    // Calculate completion percentage
     final prefs = await SharedPreferences.getInstance();
     final totalTopics = systemQuizData.length;
     int completedTopics = 0;
@@ -2399,7 +2382,6 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
         ? (completedTopics / totalTopics) * 100 
         : 0.0;
 
-    // ✅ Update Firestore
     await FirebaseFirestore.instance
         .collection('users')
         .doc(user.id)
@@ -2420,7 +2402,6 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
       indexedTopics.add(MapEntry(i, topics[i]));
     }
 
-    // Filter based on progress status
     List<MapEntry<int, Map<String, String>>> filtered;
     switch (_currentFilter) {
       case FilterStatus.toView:
@@ -2434,7 +2415,6 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
         filtered = indexedTopics;
     }
 
-    // Sort by topic
     filtered.sort((a, b) {
       int comparison = a.value["title"]!.compareTo(b.value["title"]!);
       return _currentSort == SortOption.topicAscending ? comparison : -comparison;
@@ -2609,7 +2589,6 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                     },
                   ),
                 
-                // Sort chip
                 InputChip(
                   label: Text(
                     _currentSort == SortOption.topicAscending ? 'Sort: A-Z' : 'Sort: Z-A',
@@ -2623,7 +2602,6 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                   },
                 ),
                 
-                // Clear all button
                 if (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending)
                   ActionChip(
                     label: const Text('Clear All'),
@@ -2719,10 +2697,8 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
       body: BackgroundWrapper(
        child: Column(
         children: [
-          // Show active filters when expanded
           if (_showFilters) _buildFilterChips(),
           
-          // Show filter summary when not expanded but filters are active
           if (!_showFilters && (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending))
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2802,7 +2778,6 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                           
                             const Divider(height: 1, color: Colors.grey),
                             
-                            // Action button
                             Padding(
                               padding: const EdgeInsets.all(12),
                               child: ElevatedButton(
@@ -10911,7 +10886,6 @@ class _MaterialsPageState extends State<MaterialsPage> {
     return '${directory.path}/$fileName';
   }
 
-  // ----- downloadFile -----
   Future<void> _downloadFile(BuildContext context, LearningMaterial material,
       {bool openAfterDownload = true}) async {
     final filePath = material.file;
@@ -10919,10 +10893,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
     if (!filePath.startsWith('http')) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error: Only cloud files can be downloaded.'),
-            backgroundColor: Colors.red,
-          ),
+          const SnackBar(content: Text('Error: Only cloud files can be downloaded.'), backgroundColor: Colors.red),
         );
       }
       return;
@@ -10931,7 +10902,6 @@ class _MaterialsPageState extends State<MaterialsPage> {
     final savePath = await _getLocalFilePath(material);
     final downloadFile = File(savePath);
 
-    // 1. Check local status first
     if (await downloadFile.exists()) {
       if (openAfterDownload) {
         await OpenFile.open(downloadFile.path);
@@ -10939,10 +10909,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
       return;
     }
 
-    // 2. CHECK INTERNET BEFORE SHOWING DIALOG
-    var connectivityResult = await (Connectivity().checkConnectivity());
-    if (connectivityResult == ConnectivityResult.none) {
+    List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
+    if (connectivityResult.contains(ConnectivityResult.none) || connectivityResult.isEmpty) {
       if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars(); // Clear queue
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('No Internet Connection. Cannot download file.'),
@@ -10976,11 +10946,14 @@ class _MaterialsPageState extends State<MaterialsPage> {
 
       if (context.mounted) {
         Navigator.pop(context); // Close dialog
+        
+        ScaffoldMessenger.of(context).clearSnackBars(); 
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Material downloaded successfully!'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 5),
+            duration: Duration(seconds: openAfterDownload ? 2 : 5),
             action: SnackBarAction(
               label: 'OPEN',
               textColor: Colors.white,
@@ -10997,10 +10970,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
       if (context.mounted) {
         if (Navigator.of(context).canPop()) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Download failed: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Download failed: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -11199,7 +11169,6 @@ class _MaterialsPageState extends State<MaterialsPage> {
                                     },
                                   ),
 
-                                  // Teacher actions
                                   if (userType == UserType.teacher.toString()) ...[
                                     IconButton(
                                       icon: const Icon(Icons.edit,
@@ -11436,11 +11405,9 @@ class _UploadPageState extends State<UploadPage> {
 
       String downloadUrl;
 
-      // If editing and no new file selected, keep existing URL
       if (isEditing && _pickedFile == null && widget.existingMaterial!.file.startsWith('http')) {
         downloadUrl = widget.existingMaterial!.file;
       } else if (_pickedFile != null) {
-        // Get file bytes
         Uint8List? fileBytes;
         
         if (kIsWeb) {
@@ -11467,7 +11434,6 @@ class _UploadPageState extends State<UploadPage> {
             .replaceAll(RegExp(r'[^\w\s\-\.]'), '_')
             .replaceAll(RegExp(r'\s+'), '_');
         
-        // Create unique filename with timestamp
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final fileName = '${timestamp}_$cleanFileName';
 
@@ -11480,7 +11446,6 @@ class _UploadPageState extends State<UploadPage> {
             .child('learning_materials')
             .child(fileName);
 
-        // Create metadata
         final metadata = SettableMetadata(
           contentType: _getContentType(_pickedFile!.name),
           customMetadata: {
@@ -11493,7 +11458,6 @@ class _UploadPageState extends State<UploadPage> {
 
         print('🚀 Starting upload...');
 
-        // Upload file
         final uploadTask = await storageRef.putData(fileBytes, metadata);
 
         print('   Upload state: ${uploadTask.state}');
@@ -11503,7 +11467,6 @@ class _UploadPageState extends State<UploadPage> {
           throw Exception('Upload failed with state: ${uploadTask.state}');
         }
 
-        // Get download URL
         downloadUrl = await uploadTask.ref.getDownloadURL();
         print('✅ Upload successful!');
         print('   Download URL: $downloadUrl');
@@ -11511,7 +11474,6 @@ class _UploadPageState extends State<UploadPage> {
         throw Exception('No file selected for upload');
       }
 
-      // Save to Firestore
       final appState = context.read<MaterialAppState>();
       final newMaterial = LearningMaterial(
         id: widget.existingMaterial?.id ?? '',
@@ -11546,7 +11508,6 @@ class _UploadPageState extends State<UploadPage> {
 
         String errorMessage = 'Upload failed: ${e.message ?? e.code}';
 
-        // Specific error handling
         switch (e.code) {
           case 'object-not-found':
             errorMessage = '❌ Storage bucket not found.\n\n'
@@ -11622,7 +11583,6 @@ class _UploadPageState extends State<UploadPage> {
           key: _formKey,
           child: ListView(
             children: [
-              // Name field
               TextFormField(
                 initialValue: name,
                 decoration: InputDecoration(
@@ -11636,7 +11596,6 @@ class _UploadPageState extends State<UploadPage> {
               ),
               const SizedBox(height: 16),
 
-              // Description field
               TextFormField(
                 initialValue: description,
                 decoration: InputDecoration(
@@ -11651,7 +11610,6 @@ class _UploadPageState extends State<UploadPage> {
               ),
               const SizedBox(height: 16),
 
-              // File picker
               Card(
                 elevation: 2,
                 child: Padding(
@@ -11709,7 +11667,6 @@ class _UploadPageState extends State<UploadPage> {
               ),
               const SizedBox(height: 24),
 
-              // Submit button
               ElevatedButton.icon(
                 onPressed: () => submit(context),
                 icon: Icon(isEditing ? Icons.save : Icons.cloud_upload),
@@ -11742,7 +11699,6 @@ class FAQPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('❓ FAQ'),
         backgroundColor: Colors.lightBlue,
@@ -11838,9 +11794,8 @@ class FAQPage extends StatelessWidget {
   }
 }
 
+
 // ---------- HELP PAGE ----------
-
-
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
 
