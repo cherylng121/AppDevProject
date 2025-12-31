@@ -10,6 +10,26 @@ class ForumPage extends StatefulWidget {
   @override
   State<ForumPage> createState() => _ForumPageState();
 }
+// Add this helper widget near the top of your file
+class BackgroundWrapper extends StatelessWidget {
+  final Widget child;
+  
+  const BackgroundWrapper({super.key, required this.child});
+  
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/2.png'),
+          fit: BoxFit.cover,
+          opacity: 0.3,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
 
 class _ForumPageState extends State<ForumPage> {
   // Firestore / Auth
@@ -75,18 +95,16 @@ class _ForumPageState extends State<ForumPage> {
       final doc = await _db.collection('users').doc(_currentUid).get();
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
-        final rawRole = (data['userType'] ?? 'student').toString();
-
-// Normalize role (handles "UserType.teacher" OR "teacher")
-final loadedRole = rawRole.contains('.')
-    ? rawRole.split('.').last.toLowerCase()
-    : rawRole.toLowerCase();
-
-setState(() {
-  _currentUserRole = loadedRole; // now "teacher" or "student"
-  _isLoadingUser = false;
-});
-
+        final loadedRole = (data['role'] ?? 'student').toString().toLowerCase();
+        setState(() {
+          _currentUserRole = loadedRole;
+          _isLoadingUser = false;
+        });
+      } else {
+        setState(() {
+          _currentUserRole = 'student';
+          _isLoadingUser = false;
+        });
       }
     } catch (e) {
       // fallback to student role if anything fails
@@ -145,7 +163,8 @@ setState(() {
           ),
         ],
       ),
-      body: Column(
+      body: BackgroundWrapper(
+      child: Column(
         children: [
           // Search
           Padding(
@@ -243,6 +262,7 @@ setState(() {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -466,7 +486,7 @@ setState(() {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Confirm Deletion'),
-        content: const Text('Are you sure you want to delete this topic?'),
+        content: const Text('Adakah anda pasti mahu memadam topik ini?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
@@ -483,7 +503,7 @@ setState(() {
       }
       batch.delete(_db.collection('forumTopics').doc(docId));
       await batch.commit();
-      _showToast('The topic has been deleted.');
+      _showToast('Topik dipadamkan.');
     }
   }
 
@@ -656,7 +676,8 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
     final topicRef = _db.collection('forumTopics').doc(widget.topicId);
     return Scaffold(
       appBar: AppBar(title: const Text('Topic')),
-      body: Column(
+      body: BackgroundWrapper(
+      child: Column(
         children: [
           StreamBuilder<DocumentSnapshot>(
             stream: topicRef.snapshots(),
@@ -751,6 +772,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
