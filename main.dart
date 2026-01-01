@@ -1333,7 +1333,7 @@ const SizedBox(height: 30),
   }
 
 void _launchYouTubeVideo(BuildContext context) async {
-  const url = 'https://www.youtube.com/watch?v=qoc_STKEf1o&t=332s'; 
+  const url = 'https://youtu.be/EYSO2wKFIUM'; 
   final uri = Uri.parse(url);
   if (await canLaunchUrl(uri)) {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
