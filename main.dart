@@ -12,7 +12,7 @@ import 'forum_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:firebase_ai/firebase_ai.dart';
+//import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
@@ -21,6 +21,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 
 
 // ========== MAIN FUNCTION WITH FIREBASE ==========
@@ -5275,7 +5276,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
 
   // AI Model for marking
   late final GenerativeModel _markingModel;
-
+  
   @override
   void initState() {
     super.initState();
@@ -5287,9 +5288,12 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     }
 
     // Initialize AI model for marking
-    final googleAI = FirebaseAI.googleAI();
-    _markingModel = googleAI.generativeModel(
+    //final googleAI = FirebaseAI.googleAI();
+
+    const apiKey = 'AIzaSyCg5ik-nabI0eICXgyX1lFb-3WZ5TO0Uec';
+    _markingModel = GenerativeModel(
       model: 'gemini-2.5-flash',
+      apiKey: apiKey,
       systemInstruction: Content.system(
         'Anda adalah AI yang menandakan kuiz. Anda akan diberi jawapan yang dijangka dan jawapan pengguna. '
       'Bandingkan keduanya untuk kesamaan semantik, bukan hanya padanan teks tepat, termasuk sinonim dan variasi, serta perbezaan huruf besar dan kecil. '
@@ -6269,11 +6273,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   ChatBloc() : super(ChatInitial()) {
     // Initialize the Gemini API
-    final googleAI = FirebaseAI.googleAI();
+    //final googleAI = FirebaseAI.googleAI();
+    const apiKey = 'AIzaSyCg5ik-nabI0eICXgyX1lFb-3WZ5TO0Uec';
 
     // ✅ FIXED: Use _model instead of aiModel
-    _model = googleAI.generativeModel(
+    _model = GenerativeModel(
       model: 'gemini-2.5-flash',
+      apiKey: apiKey,
       systemInstruction: Content.system(
         'Anda adalah seorang tutor AI yang membantu dalam pengaturcaraan Java untuk pelajar Malaysia. '
         'Jawab soalan tentang konsep Java, sintaks, prinsip OOP, dan bantu dengan masalah pengaturcaraan. '
