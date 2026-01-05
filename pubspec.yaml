@@ -4,11 +4,10 @@ publish_to: "none"
 version: 0.1.0
 
 environment:
-  sdk: ^3.9.0
+  sdk: 3.10.3
 
 dependencies:
   flutter:
-
     sdk: flutter
   fl_chart: ^1.1.1
   shared_preferences: ^2.2.2
@@ -23,11 +22,11 @@ dependencies:
   # Firebase packages
   firebase_core: ^4.2.1
   firebase_auth: ^6.1.2
-  cloud_firestore: ^6.1.0
+  cloud_firestore: 6.1.1
   firebase_ai: ^3.5.0
-
+  
   # File handling
-  file_picker: ^10.3.3
+  file_picker: ^10.3.8
   open_file: ^3.3.2
   image_picker: ^1.0.1
   firebase_storage: ^13.0.5
