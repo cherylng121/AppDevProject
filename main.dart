@@ -15,9 +15,6 @@ import 'dart:io';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart'; 
-import 'package:device_info_plus/device_info_plus.dart';
-import 'dart:typed_data'; // For Uint8List
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:intl/intl.dart';
@@ -2208,14 +2205,14 @@ PEMBOLEH UBAH SEJAGAT 🆚 SETEMPAT
 • NOT (Cth : if(!lulus))
 
 while (<syarat boolean>){
-  <Blok kenyataan berulang>
-  <kemas kini nilai dalam syarat>
+  <Blok kenyataan berulang>
+  <kemas kini nilai dalam syarat>
 }
 i+=1 🟰 i = i + 1
 
 while (<syarat boolean>){
-  <Blok kenyataan berulang>
-  <kemas kini nilai dalam syarat>
+  <Blok kenyataan berulang>
+  <kemas kini nilai dalam syarat>
 }
 i-=1 🟰 i = i – 1
 """,
@@ -2235,14 +2232,14 @@ Pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghas
 
 ❌ (3) JENIS RALAT
 1. Sintaks
-   • Kesalahan tatabahasa 
-   • Penggunaan aksara yang tidak dikenali
+   • Kesalahan tatabahasa 
+   • Penggunaan aksara yang tidak dikenali
 2. Masa Larian 
-   • Pengiraan data bukan berangka
-   • Pembahagian dengan digit 0
-   • Mencari punca kuasa dua bagi nombor negatif
+   • Pengiraan data bukan berangka
+   • Pembahagian dengan digit 0
+   • Mencari punca kuasa dua bagi nombor negatif
 3. Logik
-   • Atur cara tidak berfungsi seperti yang diingini
+   • Atur cara tidak berfungsi seperti yang diingini
 """,
       "video": "https://youtu.be/E0i_O5RXqtM?si=W4BkFsV43DNSPb_N"
     },
@@ -2290,8 +2287,8 @@ PARAMETER
 • parameter rasmi (formal parameter) - Merujuk parameter bagi subatur cara
 • parameter sebenar (actual parameter) - Merujuk pemboleh ubah di dalam subatur cara pemanggil
 • Cth : 
-  Tiada parameter : static void subAtur01 (){}
-  Menerima parameter : static void subAtur01 (int x){}
+  Tiada parameter : static void subAtur01 (){}
+  Menerima parameter : static void subAtur01 (int x){}
 """,
       "video": "https://youtu.be/1kw_OQmxU5c?si=JfuQ2-Z-GFL7-B_9"
     },
@@ -5292,7 +5289,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     // Initialize AI model for marking
     final googleAI = FirebaseAI.googleAI();
     _markingModel = googleAI.generativeModel(
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash',
       systemInstruction: Content.system(
         'Anda adalah AI yang menandakan kuiz. Anda akan diberi jawapan yang dijangka dan jawapan pengguna. '
       'Bandingkan keduanya untuk kesamaan semantik, bukan hanya padanan teks tepat, termasuk sinonim dan variasi, serta perbezaan huruf besar dan kecil. '
@@ -6276,7 +6273,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
     // ✅ FIXED: Use _model instead of aiModel
     _model = googleAI.generativeModel(
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash',
       systemInstruction: Content.system(
         'Anda adalah seorang tutor AI yang membantu dalam pengaturcaraan Java untuk pelajar Malaysia. '
         'Jawab soalan tentang konsep Java, sintaks, prinsip OOP, dan bantu dengan masalah pengaturcaraan. '
