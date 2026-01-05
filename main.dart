@@ -5289,7 +5289,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     // Initialize AI model for marking
     final googleAI = FirebaseAI.googleAI();
     _markingModel = googleAI.generativeModel(
-      model: 'gemini-3-flash',
+      model: 'gemini-2.5-flash',
       systemInstruction: Content.system(
         'Anda adalah AI yang menandakan kuiz. Anda akan diberi jawapan yang dijangka dan jawapan pengguna. '
       'Bandingkan keduanya untuk kesamaan semantik, bukan hanya padanan teks tepat, termasuk sinonim dan variasi, serta perbezaan huruf besar dan kecil. '
@@ -6273,7 +6273,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
     // ✅ FIXED: Use _model instead of aiModel
     _model = googleAI.generativeModel(
-      model: 'gemini-3-flash',
+      model: 'gemini-2.5-flash',
       systemInstruction: Content.system(
         'Anda adalah seorang tutor AI yang membantu dalam pengaturcaraan Java untuk pelajar Malaysia. '
         'Jawab soalan tentang konsep Java, sintaks, prinsip OOP, dan bantu dengan masalah pengaturcaraan. '
