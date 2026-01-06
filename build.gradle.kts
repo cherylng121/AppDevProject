@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.codingbahasa"
+    namespace = "codingbahasa.softwaresymphony"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.codingbahasa"
+        applicationId = "codingbahasa.softwaresymphony"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -45,8 +45,12 @@ flutter {
 }
 
 dependencies {
-  // Import the Firebase BoM
-  implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
+   // Import the BoM for the Firebase platform
+    implementation(platform("com.google.firebase:firebase-bom:34.7.0"))
+
+    // Add the dependency for the Cloud Storage library
+    // When using the BoM, you don't specify versions in Firebase library dependencies
+    implementation("com.google.firebase:firebase-storage")
 
 
   // TODO: Add the dependencies for Firebase products you want to use
