@@ -41,49 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyB2twFMSRnLwzgkpVun6XZ5YbZCs-UqPao',
-    appId: '1:551649646330:web:681170e8bd261025435b43',
-    messagingSenderId: '551649646330',
-    projectId: 'codingbahasa-app',
-    authDomain: 'codingbahasa-app.firebaseapp.com',
-    storageBucket: 'codingbahasa-app.firebasestorage.app',
-    measurementId: 'G-XGZDWV4QSJ',
+    apiKey: 'AIzaSyD0VNFwEj-L0RIksayV4X--XKp3H8pLAF8',
+    appId: '1:499920585403:web:c17cbdf7bf2c3f5f45df9e',
+    messagingSenderId: '499920585403',
+    projectId: 'coding-bahasa',
+    authDomain: 'coding-bahasa.firebaseapp.com',
+    storageBucket: 'coding-bahasa.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB1r3M1qQRYRSxAP5bEITdW75OtzZptV1Y',
-    appId: '1:551649646330:android:ac01a5f7230d3faf435b43',
-    messagingSenderId: '551649646330',
-    projectId: 'codingbahasa-app',
-    storageBucket: 'codingbahasa-app.firebasestorage.app',
+    apiKey: 'AIzaSyAt2sE7Hm6v5v8_6eGwbBs7GbCZPPXe78w',
+    appId: '1:499920585403:android:f0c5c5f5f4084c4a45df9e',
+    messagingSenderId: '499920585403',
+    projectId: 'coding-bahasa',
+    storageBucket: 'coding-bahasa.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCFcPeE6b5NuULHUHJudwKSs_3WjnJkUJA',
-    appId: '1:551649646330:ios:1942388fdb3d65bb435b43',
-    messagingSenderId: '551649646330',
-    projectId: 'codingbahasa-app',
-    storageBucket: 'codingbahasa-app.firebasestorage.app',
+    apiKey: 'AIzaSyDhAwOy_LZEqBweW3wQxN8EdeLtd-vHswI',
+    appId: '1:499920585403:ios:40bc83f8e856074a45df9e',
+    messagingSenderId: '499920585403',
+    projectId: 'coding-bahasa',
+    storageBucket: 'coding-bahasa.firebasestorage.app',
     iosBundleId: 'com.example.codingbahasa',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCFcPeE6b5NuULHUHJudwKSs_3WjnJkUJA',
-    appId: '1:551649646330:ios:1942388fdb3d65bb435b43',
-    messagingSenderId: '551649646330',
-    projectId: 'codingbahasa-app',
-    storageBucket: 'codingbahasa-app.firebasestorage.app',
+    apiKey: 'AIzaSyDhAwOy_LZEqBweW3wQxN8EdeLtd-vHswI',
+    appId: '1:499920585403:ios:40bc83f8e856074a45df9e',
+    messagingSenderId: '499920585403',
+    projectId: 'coding-bahasa',
+    storageBucket: 'coding-bahasa.firebasestorage.app',
     iosBundleId: 'com.example.codingbahasa',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyB2twFMSRnLwzgkpVun6XZ5YbZCs-UqPao',
-    appId: '1:551649646330:web:e14bc0ec36256011435b43',
-    messagingSenderId: '551649646330',
-    projectId: 'codingbahasa-app',
-    authDomain: 'codingbahasa-app.firebaseapp.com',
-    storageBucket: 'codingbahasa-app.firebasestorage.app',
-    measurementId: 'G-QDH08SYEXT',
+    apiKey: 'AIzaSyD0VNFwEj-L0RIksayV4X--XKp3H8pLAF8',
+    appId: '1:499920585403:web:1524e32a293fcf8245df9e',
+    messagingSenderId: '499920585403',
+    projectId: 'coding-bahasa',
+    authDomain: 'coding-bahasa.firebaseapp.com',
+    storageBucket: 'coding-bahasa.firebasestorage.app',
   );
-
 }
