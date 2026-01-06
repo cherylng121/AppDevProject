@@ -5290,7 +5290,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     // Initialize AI model for marking
     //final googleAI = FirebaseAI.googleAI();
 
-    const apiKey = 'AIzaSyCg5ik-nabI0eICXgyX1lFb-3WZ5TO0Uec';
+    const apiKey = 'AIzaSyDhahKENR0f9FuxRykug1KHYfVunV2SJJw';
     _markingModel = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
@@ -6274,7 +6274,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc() : super(ChatInitial()) {
     // Initialize the Gemini API
     //final googleAI = FirebaseAI.googleAI();
-    const apiKey = 'AIzaSyCg5ik-nabI0eICXgyX1lFb-3WZ5TO0Uec';
+    const apiKey = 'AIzaSyDhahKENR0f9FuxRykug1KHYfVunV2SJJw';
 
     // ✅ FIXED: Use _model instead of aiModel
     _model = GenerativeModel(
