@@ -12,7 +12,6 @@ import 'forum_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-//import 'package:firebase_ai/firebase_ai.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
@@ -5290,7 +5289,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
     // Initialize AI model for marking
     //final googleAI = FirebaseAI.googleAI();
 
-    const apiKey = 'AIzaSyDhahKENR0f9FuxRykug1KHYfVunV2SJJw';
+    const apiKey = 'AIzaSyCuK3UhKRM3oHAUcB8J7TGp3YU4kYSOQxo';
     _markingModel = GenerativeModel(
       model: 'gemini-2.5-flash',
       apiKey: apiKey,
@@ -6274,7 +6273,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc() : super(ChatInitial()) {
     // Initialize the Gemini API
     //final googleAI = FirebaseAI.googleAI();
-    const apiKey = 'AIzaSyDhahKENR0f9FuxRykug1KHYfVunV2SJJw';
+    const apiKey = 'AIzaSyB4VA3NttG54Csr0NNg-5fJCjC1O7z5WRo';
 
     // ✅ FIXED: Use _model instead of aiModel
     _model = GenerativeModel(
