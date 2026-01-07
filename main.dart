@@ -22,7 +22,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
-
 // ========== MAIN FUNCTION WITH FIREBASE ==========
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -167,62 +166,62 @@ class FirebaseUserState extends ChangeNotifier {
     }
   }
 
-// ----- registerUser -----
-Future<bool> registerUser({
-  required String username,
-  required String email,
-  required String password,
-  required UserType userType,
-  String? className,
-  String? formLevel,
-}) async {
-  _isLoading = true;
-  _errorMessage = null;
-  notifyListeners();
-
-  try {
-    // ✅ CREATE USER FIRST
-    final userCredential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    print('Firebase Auth user created: ${userCredential.user!.uid}');
-
-    final newUser = AppUser(
-      id: userCredential.user!.uid,
-      username: username,
-      email: email,
-      userType: userType,
-      className: className,
-      formLevel: formLevel,
-    );
-
-    // ✅ THEN SAVE TO FIRESTORE
-    await _firestore
-        .collection('users')
-        .doc(userCredential.user!.uid)
-        .set(newUser.toMap());
-
-    _currentUser = newUser;
-    _isLoading = false;
+  // ----- registerUser -----
+  Future<bool> registerUser({
+    required String username,
+    required String email,
+    required String password,
+    required UserType userType,
+    String? className,
+    String? formLevel,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
-    return true;
-  } on firebase_auth.FirebaseAuthException catch (e) {
-    _errorMessage = _getAuthErrorMessage(e.code);
-    print('Error during registration: $_errorMessage');
-    _isLoading = false;
-    notifyListeners();
-    return false;
-  } catch (e) {
-    // ✅ ADD GENERAL ERROR HANDLING
-    _errorMessage = 'Registration failed: $e';
-    print('Error during registration: $_errorMessage');
-    _isLoading = false;
-    notifyListeners();
-    return false;
+
+    try {
+      // ✅ CREATE USER FIRST
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      print('Firebase Auth user created: ${userCredential.user!.uid}');
+
+      final newUser = AppUser(
+        id: userCredential.user!.uid,
+        username: username,
+        email: email,
+        userType: userType,
+        className: className,
+        formLevel: formLevel,
+      );
+
+      // ✅ THEN SAVE TO FIRESTORE
+      await _firestore
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .set(newUser.toMap());
+
+      _currentUser = newUser;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      _errorMessage = _getAuthErrorMessage(e.code);
+      print('Error during registration: $_errorMessage');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      // ✅ ADD GENERAL ERROR HANDLING
+      _errorMessage = 'Registration failed: $e';
+      print('Error during registration: $_errorMessage');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
-}
 
   // ----- login -----
   Future<bool> login(String email, String password) async {
@@ -362,51 +361,52 @@ Future<bool> registerUser({
     }
   }
 
-Future<List<AppUser>> searchUserByName(String query) async {
-  try {
-    final snapshot = await _firestore
-        .collection('users')
-        .limit(50)  // ✅ Added explicit limit
-        .get();
-    
-    return snapshot.docs
-        .map((doc) => AppUser.fromMap(doc.id, doc.data()))
-        .where(
-          (user) => user.username.toLowerCase().contains(query.toLowerCase()),
-        )
-        .toList();
-  } catch (e) {
-    print('❌ Search error: $e');
-    return [];
-  }
-}
+  Future<List<AppUser>> searchUserByName(String query) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .limit(50) // ✅ Added explicit limit
+          .get();
 
- // ----- filterUsers -----
-Future<List<AppUser>> filterUsers({
-  String? className,
-  String? formLevel,
-}) async {
-  try {
-    Query query = _firestore.collection('users').limit(50);  // ✅ Added limit
-    
-    if (className != null) {
-      query = query.where('className', isEqualTo: className);
+      return snapshot.docs
+          .map((doc) => AppUser.fromMap(doc.id, doc.data()))
+          .where(
+            (user) => user.username.toLowerCase().contains(query.toLowerCase()),
+          )
+          .toList();
+    } catch (e) {
+      print('❌ Search error: $e');
+      return [];
     }
-    if (formLevel != null) {
-      query = query.where('formLevel', isEqualTo: formLevel);
-    }
-
-    final snapshot = await query.get();
-    return snapshot.docs
-        .map(
-          (doc) => AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>),
-        )
-        .toList();
-  } catch (e) {
-    print('❌ Filter error: $e');
-    return [];
   }
-}
+
+  // ----- filterUsers -----
+  Future<List<AppUser>> filterUsers({
+    String? className,
+    String? formLevel,
+  }) async {
+    try {
+      Query query = _firestore.collection('users').limit(50); // ✅ Added limit
+
+      if (className != null) {
+        query = query.where('className', isEqualTo: className);
+      }
+      if (formLevel != null) {
+        query = query.where('formLevel', isEqualTo: formLevel);
+      }
+
+      final snapshot = await query.get();
+      return snapshot.docs
+          .map(
+            (doc) =>
+                AppUser.fromMap(doc.id, doc.data() as Map<String, dynamic>),
+          )
+          .toList();
+    } catch (e) {
+      print('❌ Filter error: $e');
+      return [];
+    }
+  }
 
   // ----- addPoints -----
   Future<void> addPoints(int points) async {
@@ -548,122 +548,127 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
-Widget build(BuildContext context) {
-  final userState = context.watch<FirebaseUserState>();
+  Widget build(BuildContext context) {
+    final userState = context.watch<FirebaseUserState>();
 
-  return Scaffold(
-    body: Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/1.png'),
-          fit: BoxFit.cover,
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/1.png'),
+            fit: BoxFit.cover,
+          ),
         ),
-      ),
-      child: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-    Image.asset(
-      'assets/CBlogo.png',  
-      height: 120,
-      width: 100,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        return Icon(Icons.school, size: 80, color: Colors.blue[700]);
-      },
-    ),
-    const SizedBox(height: 0),
-    const Text(
-      'CodingBahasa',
-      style: TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Card(
+                elevation: 8,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/CBlogo.png',
+                          height: 120,
+                          width: 100,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.school,
+                              size: 80,
+                              color: Colors.blue[700],
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 0),
+                        const Text(
+                          'CodingBahasa',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const Text(
                           'Connect, Code and Challenge',
                           style: TextStyle(color: Colors.black),
                         ),
                         const SizedBox(height: 32),
-                       TextFormField(
-  controller: _emailController,
-  keyboardType: TextInputType.emailAddress,
-  decoration: InputDecoration(
-    labelText: 'Email',
-    prefixIcon: const Icon(Icons.email),
-    suffixIcon: Tooltip(
-      message: 'Enter your registered email address',
-      child: Icon(
-        Icons.info_outline,
-        color: Colors.blue[700],
-        size: 20,
-      ),
-    ),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-  ),
-  validator: (value) {
-    if (value == null || value.isEmpty) {
-      return 'Please enter email';
-    }
-    if (!value.contains('@')) {
-      return 'Please enter a valid email';
-    }
-    return null;
-  },
-),
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: const Icon(Icons.email),
+                            suffixIcon: Tooltip(
+                              message: 'Enter your registered email address',
+                              child: Icon(
+                                Icons.info_outline,
+                                color: Colors.blue[700],
+                                size: 20,
+                              ),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter email';
+                            }
+                            if (!value.contains('@')) {
+                              return 'Please enter a valid email';
+                            }
+                            return null;
+                          },
+                        ),
                         const SizedBox(height: 16),
-                     TextFormField(
-  controller: _passwordController,
-  obscureText: _obscurePassword,
-  decoration: InputDecoration(
-    labelText: 'Password',
-    prefixIcon: const Icon(Icons.lock),
-    suffixIcon: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Tooltip(
-          message: 'Enter your account password (min. 6 characters)',
-          child: Icon(
-            Icons.info_outline,
-            color: Colors.blue[700],
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          icon: Icon(
-            _obscurePassword
-                ? Icons.visibility
-                : Icons.visibility_off,
-          ),
-          onPressed: () => setState(
-            () => _obscurePassword = !_obscurePassword,
-          ),
-        ),
-      ],
-    ),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-  ),
-  validator: (value) => value == null || value.isEmpty
-      ? 'Please enter password'
-      : null,
-),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock),
+                            suffixIcon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Tooltip(
+                                  message:
+                                      'Enter your account password (min. 6 characters)',
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    color: Colors.blue[700],
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                  ),
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (value) => value == null || value.isEmpty
+                              ? 'Please enter password'
+                              : null,
+                        ),
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
@@ -792,234 +797,243 @@ class _RegisterPageState extends State<RegisterPage> {
         foregroundColor: Colors.white,
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Register New Account',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  prefixIcon: const Icon(Icons.person),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Register New Account',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter username';
-                  }
-                  if (value.length < 3) {
-                    return 'Username must be at least 3 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter email';
-                  }
-                  if (!value.contains('@')) return 'Please enter a valid email';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-          TextFormField(
-  controller: _passwordController,
-  obscureText: _obscurePassword,
-  decoration: InputDecoration(
-    labelText: 'Password',
-    prefixIcon: const Icon(Icons.lock),
-    suffixIcon: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(
-            Icons.info_outline,
-            color: Colors.blue[700],
-            size: 20,
-          ),
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Row(
-                  children: [
-                    Icon(Icons.lock, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Expanded( 
-                      child: Text('Requirements'),
-                    ),
-                  ],
-                ),
-                content: const Text(
-                  'Your password must be:\n\n'
-                  '• At least 6 characters long\n'
-                  '• A combination of letters and numbers is recommended\n'
-                  '• Keep it secure and memorable',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Got it'),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        IconButton(
-          icon: Icon(
-            _obscurePassword
-                ? Icons.visibility
-                : Icons.visibility_off,
-          ),
-          onPressed: () =>
-              setState(() => _obscurePassword = !_obscurePassword),
-        ),
-      ],
-    ),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    helperText: 'Tap ℹ️ for password requirements',
-    helperStyle: TextStyle(color: Colors.blue[600], fontSize: 12),
-  ),
-  validator: (value) {
-    if (value == null || value.isEmpty) {
-      return 'Please enter password';
-    }
-    if (value.length < 6) {
-      return 'Password must be at least 6 characters';
-    }
-    return null;
-  },
-),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
-                decoration: InputDecoration(
-                  labelText: 'Confirm Password',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
-                    ),
-                    onPressed: () => setState(
-                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
-                    ),
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                validator: (value) => value != _passwordController.text
-                    ? 'Passwords do not match'
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'User Type',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<UserType>(
-                      title: const Text('Student'),
-                      value: UserType.student,
-                      groupValue: _selectedUserType,
-                      onChanged: (value) =>
-                          setState(() => _selectedUserType = value!),
-                    ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<UserType>(
-                      title: const Text('Teacher'),
-                      value: UserType.teacher,
-                      groupValue: _selectedUserType,
-                      onChanged: (value) =>
-                          setState(() => _selectedUserType = value!),
-                    ),
-                  ),
-                ],
-              ),
-              if (_selectedUserType == UserType.student) ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedFormLevel,
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _usernameController,
                   decoration: InputDecoration(
-                    labelText: 'Form Level',
-                    prefixIcon: const Icon(Icons.school),
+                    labelText: 'Username',
+                    prefixIcon: const Icon(Icons.person),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  items: ['Form 4', 'Form 5']
-                      .map(
-                        (level) =>
-                            DropdownMenuItem(value: level, child: Text(level)),
-                      )
-                      .toList(),
-                  onChanged: (value) =>
-                      setState(() => _selectedFormLevel = value),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter username';
+                    }
+                    if (value.length < 3) {
+                      return 'Username must be at least 3 characters';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _classNameController,
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Class Name (Optional)',
-                    prefixIcon: const Icon(Icons.class_),
+                    labelText: 'Email',
+                    prefixIcon: const Icon(Icons.email),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter email';
+                    }
+                    if (!value.contains('@'))
+                      return 'Please enter a valid email';
+                    return null;
+                  },
                 ),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: userState.isLoading ? null : _handleRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.info_outline,
+                            color: Colors.blue[700],
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Row(
+                                  children: [
+                                    Icon(Icons.lock, color: Colors.blue),
+                                    SizedBox(width: 8),
+                                    Expanded(child: Text('Requirements')),
+                                  ],
+                                ),
+                                content: const Text(
+                                  'Your password must be:\n\n'
+                                  '• At least 6 characters long\n'
+                                  '• A combination of letters and numbers is recommended\n'
+                                  '• Keep it secure and memorable',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Got it'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                        ),
+                      ],
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    helperText: 'Tap ℹ️ for password requirements',
+                    helperStyle: TextStyle(
+                      color: Colors.blue[600],
+                      fontSize: 12,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(
+                        () =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword,
+                      ),
+                    ),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: userState.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Register', style: TextStyle(fontSize: 16)),
+                  validator: (value) => value != _passwordController.text
+                      ? 'Passwords do not match'
+                      : null,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                const Text(
+                  'User Type',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: RadioListTile<UserType>(
+                        title: const Text('Student'),
+                        value: UserType.student,
+                        groupValue: _selectedUserType,
+                        onChanged: (value) =>
+                            setState(() => _selectedUserType = value!),
+                      ),
+                    ),
+                    Expanded(
+                      child: RadioListTile<UserType>(
+                        title: const Text('Teacher'),
+                        value: UserType.teacher,
+                        groupValue: _selectedUserType,
+                        onChanged: (value) =>
+                            setState(() => _selectedUserType = value!),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_selectedUserType == UserType.student) ...[
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedFormLevel,
+                    decoration: InputDecoration(
+                      labelText: 'Form Level',
+                      prefixIcon: const Icon(Icons.school),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    items: ['Form 4', 'Form 5']
+                        .map(
+                          (level) => DropdownMenuItem(
+                            value: level,
+                            child: Text(level),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _selectedFormLevel = value),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _classNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Class Name (Optional)',
+                      prefixIcon: const Icon(Icons.class_),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: userState.isLoading ? null : _handleRegister,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: userState.isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Register',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1036,13 +1050,13 @@ class HomePage extends StatefulWidget {
 // ========== BACKGROUND WRAPPER ==========
 class BackgroundWrapper extends StatelessWidget {
   final Widget child;
-  
+
   const BackgroundWrapper({super.key, required this.child});
-  
+
   @override
   Widget build(BuildContext context) {
     return Stack(
-      fit: StackFit.expand, // 
+      fit: StackFit.expand, //
       children: [
         // 1. Background Image
         Container(
@@ -1078,6 +1092,7 @@ class InHomePage extends StatelessWidget {
         });
       }
     }
+
     // ----- calculateCompletionPercentage -----
     Future<double> calculateCompletionPercentage() async {
       final prefs = await SharedPreferences.getInstance();
@@ -1093,258 +1108,275 @@ class InHomePage extends StatelessWidget {
 
       return totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0.0;
     }
-  
-      return BackgroundWrapper(  
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Logo Section
-          Container(
+
+    return BackgroundWrapper(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Logo Section
+            Container(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Column(
-              children: [
-                   Container(
-        padding: const EdgeInsets.fromLTRB(35, 0, 20, 0),
-        child: Image.asset(
-          'assets/CBlogo.png',
-          height: 180,
-          width: 180,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(Icons.code, size: 80, color: Colors.blue[700]);
-          },
-        ),
-      ),
-                const Text(
-                  'CodingBahasa',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Connect, Code and Challenge',
-                  style: TextStyle(fontSize: 18, color: Colors.black),
-                ),
-              ],
-            ),   
-          ),
-          const SizedBox(height: 8),
-          
-
-          // Welcome Message
-          Text(
-            'Welcome back, ${user?.username ?? "User"}!',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 5),
-
-          // Stats Cards (Students Only)
-          if (user?.userType == UserType.student) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () => navigateToPage(8), 
-                    child: _buildStatCard(
-                      icon: Icons.star,
-                      title: 'Points',
-                      value: user!.points.toString(),
-                      color: Colors.amber,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-               Expanded(
-                  child: InkWell(
-                    onTap: () => navigateToPage(8), 
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('achievements')
-                          .where('studentId', isEqualTo: user.id)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        int badgeCount = 0;
-                        
-                        if (snapshot.hasData) {
-                          badgeCount = snapshot.data!.docs.length;
-                        }
-                        
-                        return _buildStatCard(
-                          icon: Icons.emoji_events,
-                          title: 'Awards',
-                          value: badgeCount.toString(),
-                          color: Colors.orange,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(35, 0, 20, 0),
+                    child: Image.asset(
+                      'assets/CBlogo.png',
+                      height: 180,
+                      width: 180,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.code,
+                          size: 80,
+                          color: Colors.blue[700],
                         );
                       },
                     ),
                   ),
+                  const Text(
+                    'CodingBahasa',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Connect, Code and Challenge',
+                    style: TextStyle(fontSize: 18, color: Colors.black),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Welcome Message
+            Text(
+              'Welcome back, ${user?.username ?? "User"}!',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 5),
+
+            // Stats Cards (Students Only)
+            if (user?.userType == UserType.student) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => navigateToPage(8),
+                      child: _buildStatCard(
+                        icon: Icons.star,
+                        title: 'Points',
+                        value: user!.points.toString(),
+                        color: Colors.amber,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => navigateToPage(8),
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('achievements')
+                            .where('studentId', isEqualTo: user.id)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          int badgeCount = 0;
+
+                          if (snapshot.hasData) {
+                            badgeCount = snapshot.data!.docs.length;
+                          }
+
+                          return _buildStatCard(
+                            icon: Icons.emoji_events,
+                            title: 'Awards',
+                            value: badgeCount.toString(),
+                            color: Colors.orange,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () => navigateToPage(7),
+                child: FutureBuilder<double>(
+                  future: calculateCompletionPercentage(),
+                  builder: (context, snapshot) {
+                    final completionPercent = snapshot.data ?? 0.0;
+                    return _buildStatCard(
+                      icon: Icons.trending_up,
+                      title: 'Completion',
+                      value: '${completionPercent.toStringAsFixed(0)}%',
+                      color: Colors.green,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
+
+            // Quick Actions
+            const Text(
+              'Quick Actions',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              children: [
+                _buildQuickActionCard(
+                  icon: Icons.book,
+                  title: 'Course',
+                  color: Colors.blue,
+                  onTap: () => navigateToPage(2),
+                ),
+                _buildQuickActionCard(
+                  icon: Icons.folder,
+                  title: 'Material',
+                  color: Colors.orange,
+                  onTap: () => navigateToPage(3),
+                ),
+                _buildQuickActionCard(
+                  icon: Icons.quiz,
+                  title: 'Quiz',
+                  color: Colors.purple,
+                  onTap: () => navigateToPage(4),
+                ),
+                _buildQuickActionCard(
+                  icon: Icons.chat,
+                  title: 'AI Chatbot',
+                  color: Colors.teal,
+                  onTap: () => navigateToPage(6),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: () => navigateToPage(7), 
-              child: FutureBuilder<double>(
-                future: calculateCompletionPercentage(),  
-                builder: (context, snapshot) {
-                  final completionPercent = snapshot.data ?? 0.0;
-                  return _buildStatCard(
-                    icon: Icons.trending_up,
-                    title: 'Completion',
-                    value: '${completionPercent.toStringAsFixed(0)}%',
-                    color: Colors.green,
-                    );
-                    },
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+
+            Align(
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.7,
+                child: Card(
+                  elevation: 2,
+                  color: Colors.grey[50],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey[200]!),
+                  ),
+                  child: InkWell(
+                    onTap: () => navigateToPage(10),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.help_center_rounded,
+                            color: Colors.red,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Need Help? FAQ',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.7,
+                child: Card(
+                  elevation: 2,
+                  color: Colors.grey[50],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey[200]!),
+                  ),
+                  child: InkWell(
+                    onTap: () => _launchYouTubeVideo(context),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 16,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.play_circle_filled,
+                            color: Colors.blue[700],
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'User Manual Video',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 30),
           ],
-
-          // Quick Actions
-          const Text(
-            'Quick Actions',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            children: [
-              _buildQuickActionCard(
-                icon: Icons.book,
-                title: 'Course',
-                color: Colors.blue,
-                onTap: () => navigateToPage(2),
-              ),
-              _buildQuickActionCard(
-                icon: Icons.folder,
-                title: 'Material',
-                color: Colors.orange,
-                onTap: () => navigateToPage(3),
-              ),
-              _buildQuickActionCard(
-                icon: Icons.quiz,
-                title: 'Quiz',
-                color: Colors.purple,
-                onTap: () => navigateToPage(4),
-              ),
-              _buildQuickActionCard(
-                icon: Icons.chat,
-                title: 'AI Chatbot',
-                color: Colors.teal,
-                onTap: () => navigateToPage(6),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24), 
-const Divider(), 
-const SizedBox(height: 16),
-
-Align(
-  alignment: Alignment.center,
-  child: SizedBox(
-    width: MediaQuery.of(context).size.width * 0.7,
-    child: Card(
-      elevation: 2,
-      color: Colors.grey[50], 
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[200]!),
-      ),
-      child: InkWell(
-        onTap: () => navigateToPage(10), 
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.help_center_rounded, color: Colors.red, size: 24),
-              const SizedBox(width: 12),
-              const Text(
-                'Need Help? FAQ',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
-    ),
-  ),
-),
-const SizedBox(height: 12),
-Align(
-  alignment: Alignment.center,
-  child: SizedBox(
-    width: MediaQuery.of(context).size.width * 0.7,
-    child: Card(
-      elevation: 2,
-      color: Colors.grey[50], 
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey[200]!),
-      ),
-      child: InkWell(
-        onTap: () => _launchYouTubeVideo(context),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.play_circle_filled, color: Colors.blue[700], size: 24),
-              const SizedBox(width: 12),
-              const Text(
-                'User Manual Video',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  ),
-),
-const SizedBox(height: 30),
-        ],
-      ),
-    ),
     );
   }
 
-void _launchYouTubeVideo(BuildContext context) async {
-  const url = 'https://www.youtube.com/watch?v=EYSO2wKFIUM'; 
-  final uri = Uri.parse(url);
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  } else {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not open video link'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  void _launchYouTubeVideo(BuildContext context) async {
+    const url = 'https://www.youtube.com/watch?v=EYSO2wKFIUM';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open video link'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-}
 
   Widget _buildStatCard({
     required IconData icon,
@@ -1438,24 +1470,24 @@ class _HomePageState extends State<HomePage> {
       case 0:
         page = const InHomePage();
       case 1:
-        page = const UserSearchPage(); 
+        page = const UserSearchPage();
       case 2:
-        page = CoursePage(); 
+        page = CoursePage();
       case 3:
         page = const MaterialsPage();
       case 4:
-        page = const QuizPage(); 
+        page = const QuizPage();
       case 5:
-        page = const ForumPage();  
+        page = const ForumPage();
       case 6:
-        page = const AIChatbotPage(); 
+        page = const AIChatbotPage();
       case 7:
-        page = const ProgressPage(); 
+        page = const ProgressPage();
       case 8:
         page = const AchievementsPage();
       case 9:
         page = const ProfilePage();
-      case 10: 
+      case 10:
         page = const FAQPage();
       default:
         page = const Center(child: Text('Page not found'));
@@ -1474,7 +1506,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         titleSpacing: 2,
-        title: const Text('CodingBahasa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'CodingBahasa',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline, size: 28),
@@ -1505,9 +1540,9 @@ class _HomePageState extends State<HomePage> {
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/2.png'), 
+            image: AssetImage('assets/2.png'),
             fit: BoxFit.cover,
-            opacity: 0.1, 
+            opacity: 0.1,
           ),
         ),
         child: Column(
@@ -1539,7 +1574,7 @@ class _HomePageState extends State<HomePage> {
                 duration: const Duration(milliseconds: 250),
                 child: Container(
                   key: ValueKey(selectedIndex),
-                  color: Colors.transparent, 
+                  color: Colors.transparent,
                   alignment: Alignment.center,
                   child: page,
                 ),
@@ -1597,39 +1632,39 @@ class _UserSearchPageState extends State<UserSearchPage> {
   }
 
   // ----- loadAllUsers -----
-Future<void> _loadAllUsers() async {
-  setState(() => _isLoading = true);
-  final userState = context.read<FirebaseUserState>();
-  final users = await userState.searchUserByName('');
-  setState(() {
-    _displayedUsers = users;
-    _isLoading = false;
-  });
-}
-
-// ----- searchUsers -----
-Future<void> _searchUsers(String query) async {
-  setState(() => _isLoading = true);
-  final userState = context.read<FirebaseUserState>();
-  var results = await userState.searchUserByName(query);
-
-  if (_filterClassName != null || _filterFormLevel != null) {
-    results = results.where((user) {
-      if (_filterClassName != null && user.className != _filterClassName) {
-        return false;
-      }
-      if (_filterFormLevel != null && user.formLevel != _filterFormLevel) {
-        return false;
-      }
-      return true;
-    }).toList();
+  Future<void> _loadAllUsers() async {
+    setState(() => _isLoading = true);
+    final userState = context.read<FirebaseUserState>();
+    final users = await userState.searchUserByName('');
+    setState(() {
+      _displayedUsers = users;
+      _isLoading = false;
+    });
   }
 
-  setState(() {
-    _displayedUsers = results;
-    _isLoading = false;
-  });
-}
+  // ----- searchUsers -----
+  Future<void> _searchUsers(String query) async {
+    setState(() => _isLoading = true);
+    final userState = context.read<FirebaseUserState>();
+    var results = await userState.searchUserByName(query);
+
+    if (_filterClassName != null || _filterFormLevel != null) {
+      results = results.where((user) {
+        if (_filterClassName != null && user.className != _filterClassName) {
+          return false;
+        }
+        if (_filterFormLevel != null && user.formLevel != _filterFormLevel) {
+          return false;
+        }
+        return true;
+      }).toList();
+    }
+
+    setState(() {
+      _displayedUsers = results;
+      _isLoading = false;
+    });
+  }
 
   // ----- applyFilters -----
   Future<void> _applyFilters() async {
@@ -1672,61 +1707,70 @@ Future<void> _searchUsers(String query) async {
 
   // ----- showUserDetailsDialog -----
   void _showUserDetailsDialog(AppUser user) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: user.userType == UserType.student
-                ? Colors.blue[100]
-                : Colors.green[100],
-            backgroundImage: user.profilePicture != null &&
-                             user.profilePicture!.isNotEmpty &&
-                             user.profilePicture!.startsWith('http')
-                ? NetworkImage(user.profilePicture!)
-                : null,
-            child: user.profilePicture == null ||
-                   user.profilePicture!.isEmpty ||
-                   !user.profilePicture!.startsWith('http')
-                ? Icon(
-                    user.userType == UserType.student ? Icons.school : Icons.person,
-                    color: user.userType == UserType.student
-                        ? Colors.blue[700]
-                        : Colors.green[700],
-                  )
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(user.username, style: const TextStyle(fontSize: 20)),
-          ),
-        ],
-      ),
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildDetailRow('User Type', user.userType == UserType.student ? 'Student' : 'Teacher'),
-          _buildDetailRow('Email', user.email),
-          if (user.formLevel != null) _buildDetailRow('Form Level', user.formLevel!),
-          if (user.className != null) _buildDetailRow('Class', user.className!),
-          if (user.userType == UserType.student) ...[
-            const Divider(),
-            _buildDetailRow('Points', user.points.toString()),
-            _buildDetailRow('Badges', user.badges.length.toString()),
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: user.userType == UserType.student
+                  ? Colors.blue[100]
+                  : Colors.green[100],
+              backgroundImage:
+                  user.profilePicture != null &&
+                      user.profilePicture!.isNotEmpty &&
+                      user.profilePicture!.startsWith('http')
+                  ? NetworkImage(user.profilePicture!)
+                  : null,
+              child:
+                  user.profilePicture == null ||
+                      user.profilePicture!.isEmpty ||
+                      !user.profilePicture!.startsWith('http')
+                  ? Icon(
+                      user.userType == UserType.student
+                          ? Icons.school
+                          : Icons.person,
+                      color: user.userType == UserType.student
+                          ? Colors.blue[700]
+                          : Colors.green[700],
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(user.username, style: const TextStyle(fontSize: 20)),
+            ),
           ],
+        ),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDetailRow(
+              'User Type',
+              user.userType == UserType.student ? 'Student' : 'Teacher',
+            ),
+            _buildDetailRow('Email', user.email),
+            if (user.formLevel != null)
+              _buildDetailRow('Form Level', user.formLevel!),
+            if (user.className != null)
+              _buildDetailRow('Class', user.className!),
+            if (user.userType == UserType.student) ...[
+              const Divider(),
+              _buildDetailRow('Points', user.points.toString()),
+              _buildDetailRow('Badges', user.badges.length.toString()),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
-        ),
-      ],
-    ),
-  );
-}
+    );
+  }
 
   // ----- showFilterDialog -----
   void _showFilterDialog() {
@@ -1795,228 +1839,235 @@ Future<void> _searchUsers(String query) async {
   }
 
   @override
-Widget build(BuildContext context) {
-  final currentUser = context.watch<FirebaseUserState>().currentUser;
+  Widget build(BuildContext context) {
+    final currentUser = context.watch<FirebaseUserState>().currentUser;
 
-  return Scaffold(
-    //backgroundColor: Colors.white,
-    appBar: AppBar(
-      title: const Text('🔍 Search User'),
-      backgroundColor: Colors.lightBlue,
-      foregroundColor: Colors.white,
-      actions: [
-        // ✅ FIXED: Only teachers can see filter options
-        if (currentUser?.userType == UserType.teacher) ...[
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: _showFilterDialog,
-            tooltip: 'Filter',
-          ),
-          if (_filterClassName != null || _filterFormLevel != null)
+    return Scaffold(
+      //backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('🔍 Search User'),
+        backgroundColor: Colors.lightBlue,
+        foregroundColor: Colors.white,
+        actions: [
+          // ✅ FIXED: Only teachers can see filter options
+          if (currentUser?.userType == UserType.teacher) ...[
             IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: _clearFilters,
-              tooltip: 'Clear Filters',
+              icon: const Icon(Icons.filter_list),
+              onPressed: _showFilterDialog,
+              tooltip: 'Filter',
             ),
+            if (_filterClassName != null || _filterFormLevel != null)
+              IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: _clearFilters,
+                tooltip: 'Clear Filters',
+              ),
+          ],
         ],
-      ],
-    ),
-    body: BackgroundWrapper(
-    child: Column(
-      children: [
-        // ✅ Search bar - ACCESSIBLE TO EVERYONE
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Search by username...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        _searchUsers('');
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onChanged: _searchUsers,
-          ),
-        ),
-        
-        // ✅ FIXED: Filter chips only visible to teachers
-        if (currentUser?.userType == UserType.teacher && 
-            (_filterClassName != null || _filterFormLevel != null))
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                const Text('Filters: '),
-                if (_filterFormLevel != null)
-                  Chip(
-                    label: Text(_filterFormLevel!),
-                    onDeleted: () => setState(() {
-                      _filterFormLevel = null;
-                      _applyFilters();
-                    }),
-                  ),
-                if (_filterClassName != null) ...[
-                  const SizedBox(width: 8),
-                  Chip(
-                    label: Text(_filterClassName!),
-                    onDeleted: () => setState(() {
-                      _filterClassName = null;
-                      _applyFilters();
-                    }),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        
-        // Results count - everyone can see
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              '${_displayedUsers.length} user(s) found',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
-        ),
-        
-        // User list - everyone can see
-Expanded(
-  child: _isLoading
-      ? const Center(child: CircularProgressIndicator())
-      : _displayedUsers.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.person_off,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No users found',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
+      ),
+      body: BackgroundWrapper(
+        child: Column(
+          children: [
+            // ✅ Search bar - ACCESSIBLE TO EVERYONE
+            Padding(
               padding: const EdgeInsets.all(16),
-              itemCount: _displayedUsers.length,
-              itemBuilder: (context, index) {
-                final user = _displayedUsers[index];
-                final isCurrentUser = user.id == currentUser?.id;
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search by username...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            _searchUsers('');
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onChanged: _searchUsers,
+              ),
+            ),
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: user.userType == UserType.student
-                          ? Colors.blue[100]
-                          : Colors.green[100],
-                      backgroundImage: user.profilePicture != null &&
-                                     user.profilePicture!.isNotEmpty &&
-                                     user.profilePicture!.startsWith('http')
-                          ? NetworkImage(user.profilePicture!)
-                          : null,
-                      child: user.profilePicture == null ||
-                             user.profilePicture!.isEmpty ||
-                             !user.profilePicture!.startsWith('http')
-                          ? Icon(
-                              user.userType == UserType.student ? Icons.school : Icons.person,
-                              color: user.userType == UserType.student
-                                  ? Colors.blue[700]
-                                  : Colors.green[700],
-                            )
-                          : null,
-                    ),
-                    title: Row(
-                      children: [
-                        Text(user.username),
-                        if (isCurrentUser) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[100],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              'You',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue[700],
-                              ),
+            // ✅ FIXED: Filter chips only visible to teachers
+            if (currentUser?.userType == UserType.teacher &&
+                (_filterClassName != null || _filterFormLevel != null))
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    const Text('Filters: '),
+                    if (_filterFormLevel != null)
+                      Chip(
+                        label: Text(_filterFormLevel!),
+                        onDeleted: () => setState(() {
+                          _filterFormLevel = null;
+                          _applyFilters();
+                        }),
+                      ),
+                    if (_filterClassName != null) ...[
+                      const SizedBox(width: 8),
+                      Chip(
+                        label: Text(_filterClassName!),
+                        onDeleted: () => setState(() {
+                          _filterClassName = null;
+                          _applyFilters();
+                        }),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+            // Results count - everyone can see
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_displayedUsers.length} user(s) found',
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
+              ),
+            ),
+
+            // User list - everyone can see
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _displayedUsers.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.person_off,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No users found',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          user.userType == UserType.student
-                              ? 'Student'
-                              : 'Teacher',
-                          style: TextStyle(
-                            color: user.userType == UserType.student
-                                ? Colors.blue[700]
-                                : Colors.green[700],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _displayedUsers.length,
+                      itemBuilder: (context, index) {
+                        final user = _displayedUsers[index];
+                        final isCurrentUser = user.id == currentUser?.id;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: user.userType == UserType.student
+                                  ? Colors.blue[100]
+                                  : Colors.green[100],
+                              backgroundImage:
+                                  user.profilePicture != null &&
+                                      user.profilePicture!.isNotEmpty &&
+                                      user.profilePicture!.startsWith('http')
+                                  ? NetworkImage(user.profilePicture!)
+                                  : null,
+                              child:
+                                  user.profilePicture == null ||
+                                      user.profilePicture!.isEmpty ||
+                                      !user.profilePicture!.startsWith('http')
+                                  ? Icon(
+                                      user.userType == UserType.student
+                                          ? Icons.school
+                                          : Icons.person,
+                                      color: user.userType == UserType.student
+                                          ? Colors.blue[700]
+                                          : Colors.green[700],
+                                    )
+                                  : null,
+                            ),
+                            title: Row(
+                              children: [
+                                Text(user.username),
+                                if (isCurrentUser) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[100],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      'You',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user.userType == UserType.student
+                                      ? 'Student'
+                                      : 'Teacher',
+                                  style: TextStyle(
+                                    color: user.userType == UserType.student
+                                        ? Colors.blue[700]
+                                        : Colors.green[700],
+                                  ),
+                                ),
+                                if (user.formLevel != null)
+                                  Text('Form: ${user.formLevel}'),
+                                if (user.className != null)
+                                  Text('Class: ${user.className}'),
+                              ],
+                            ),
+                            trailing: user.userType == UserType.student
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.star,
+                                        size: 16,
+                                        color: Colors.amber,
+                                      ),
+                                      Text(
+                                        '${user.points}',
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                    ],
+                                  )
+                                : null,
+                            onTap: () => _showUserDetailsDialog(user),
                           ),
-                        ),
-                        if (user.formLevel != null)
-                          Text('Form: ${user.formLevel}'),
-                        if (user.className != null)
-                          Text('Class: ${user.className}'),
-                      ],
+                        );
+                      },
                     ),
-                    trailing: user.userType == UserType.student
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.star,
-                                size: 16,
-                                color: Colors.amber,
-                              ),
-                              Text(
-                                '${user.points}',
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          )
-                        : null,
-                    onTap: () => _showUserDetailsDialog(user),
-                  ),
-                );
-              },
             ),
-),
-      ],
-    ),
-    ),
-  );
-}
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
@@ -2041,6 +2092,7 @@ Expanded(
 const String _kDoneStatusKeyPrefix = 'course_status_done_';
 
 enum FilterStatus { all, toView, done }
+
 enum SortOption { topicAscending, topicDescending }
 
 class CoursePage extends StatefulWidget {
@@ -2087,7 +2139,7 @@ Proses mengkaji butiran sesuatu masalah untuk mendapatkan satu penyelesaian.
 7. Membuat penilaian
 8. Membuat penambahbaikan
 """,
-      "video": "https://youtu.be/Z7oPHbRlgfs?si=WmLMRmpssL31GH9x"
+      "video": "https://youtu.be/Z7oPHbRlgfs?si=WmLMRmpssL31GH9x",
     },
 
     {
@@ -2149,7 +2201,7 @@ Tulis Algoritma ➡️ Uji ➡️ Pembetulan ➡️ Pengaturcaraan
 3. Bandingkan "Output Diperoleh" dengan "Output Dijangka"
 4. Analisis & baiki algoritma
 """,
-      "video": "https://youtu.be/NL9c25tu6VU?si=724Ke4pZ-AokWaDJ"
+      "video": "https://youtu.be/NL9c25tu6VU?si=724Ke4pZ-AokWaDJ",
     },
 
     {
@@ -2181,7 +2233,7 @@ PEMBOLEH UBAH SEJAGAT 🆚 SETEMPAT
 • Tidak boleh diakses di luar fungsi itu
 • Hanya boleh digunakan untuk fungsi yang diisi
 """,
-      "video": "https://youtu.be/SwJKIcVwIDc?si=z_kZD_s_HxDJnbp8"
+      "video": "https://youtu.be/SwJKIcVwIDc?si=z_kZD_s_HxDJnbp8",
     },
 
     {
@@ -2216,7 +2268,7 @@ while (<syarat boolean>){
 }
 i-=1 🟰 i = i – 1
 """,
-      "video": "https://youtu.be/FJ25cfsrufg?si=bs5PSK-bWDlLNd3X"
+      "video": "https://youtu.be/FJ25cfsrufg?si=bs5PSK-bWDlLNd3X",
     },
 
     {
@@ -2241,7 +2293,7 @@ Pengatur cara dapat mempraktikkan amalan-amalan yang biasa diikuti untuk menghas
 3. Logik
    • Atur cara tidak berfungsi seperti yang diingini
 """,
-      "video": "https://youtu.be/E0i_O5RXqtM?si=W4BkFsV43DNSPb_N"
+      "video": "https://youtu.be/E0i_O5RXqtM?si=W4BkFsV43DNSPb_N",
     },
 
     {
@@ -2290,7 +2342,7 @@ PARAMETER
   Tiada parameter : static void subAtur01 (){}
   Menerima parameter : static void subAtur01 (int x){}
 """,
-      "video": "https://youtu.be/1kw_OQmxU5c?si=JfuQ2-Z-GFL7-B_9"
+      "video": "https://youtu.be/1kw_OQmxU5c?si=JfuQ2-Z-GFL7-B_9",
     },
 
     {
@@ -2304,14 +2356,13 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
 4. Uji & nyah ralat - Pelbagai jenis pengujian, menyah ralat, membaiki ralat & penambahbaikan dijalankan
 5. Dokumentasi - Disediakan di setiap fasa
 """,
-      "video": "https://youtu.be/PQU16kOnQRk?si=1dCReplwhLzder9c"
+      "video": "https://youtu.be/PQU16kOnQRk?si=1dCReplwhLzder9c",
     },
   ];
   late List<bool> _isDone;
   FilterStatus _currentFilter = FilterStatus.all;
   SortOption _currentSort = SortOption.topicAscending;
   bool _showFilters = false;
-  
 
   @override
   void initState() {
@@ -2336,7 +2387,7 @@ Proses mengenal pasti keperluan program & mencari sebab sesuatu program dibina.
     await prefs.setBool(key, status);
   }
 
-void _navigateToDetails(BuildContext context, int originalIndex) async {
+  void _navigateToDetails(BuildContext context, int originalIndex) async {
     final topic = topics[originalIndex];
 
     await Navigator.push(
@@ -2353,47 +2404,43 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
     setState(() {
       _isDone[originalIndex] = true;
     });
-    _saveDoneStatus(originalIndex, true); 
+    _saveDoneStatus(originalIndex, true);
     await _syncCompletionToFirestore();
   }
 
   Future<void> _syncCompletionToFirestore() async {
-  final userState = context.read<FirebaseUserState>();
-  final user = userState.currentUser;
-  
-  if (user == null || user.userType != UserType.student) return;
+    final userState = context.read<FirebaseUserState>();
+    final user = userState.currentUser;
 
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final totalTopics = systemQuizData.length;
-    int completedTopics = 0;
+    if (user == null || user.userType != UserType.student) return;
 
-    for (int i = 0; i < totalTopics; i++) {
-      final key = '$_kDoneStatusKeyPrefix$i';
-      if (prefs.getBool(key) ?? false) {
-        completedTopics++;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final totalTopics = systemQuizData.length;
+      int completedTopics = 0;
+
+      for (int i = 0; i < totalTopics; i++) {
+        final key = '$_kDoneStatusKeyPrefix$i';
+        if (prefs.getBool(key) ?? false) {
+          completedTopics++;
+        }
       }
+
+      final completionPercentage = totalTopics > 0
+          ? (completedTopics / totalTopics) * 100
+          : 0.0;
+
+      await FirebaseFirestore.instance.collection('users').doc(user.id).update({
+        'completionLevel': completionPercentage,
+      });
+
+      print('✅ Synced completion to Firestore: $completionPercentage%');
+    } catch (e) {
+      print('❌ Failed to sync completion: $e');
     }
-
-    final completionPercentage = totalTopics > 0 
-        ? (completedTopics / totalTopics) * 100 
-        : 0.0;
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.id)
-        .update({
-          'completionLevel': completionPercentage,
-        });
-
-    print('✅ Synced completion to Firestore: $completionPercentage%');
-
-  } catch (e) {
-    print('❌ Failed to sync completion: $e');
   }
-}
 
-   List<MapEntry<int, Map<String, String>>> _getFilteredAndSortedTopics() {
+  List<MapEntry<int, Map<String, String>>> _getFilteredAndSortedTopics() {
     List<MapEntry<int, Map<String, String>>> indexedTopics = [];
     for (int i = 0; i < topics.length; i++) {
       indexedTopics.add(MapEntry(i, topics[i]));
@@ -2414,7 +2461,9 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
 
     filtered.sort((a, b) {
       int comparison = a.value["title"]!.compareTo(b.value["title"]!);
-      return _currentSort == SortOption.topicAscending ? comparison : -comparison;
+      return _currentSort == SortOption.topicAscending
+          ? comparison
+          : -comparison;
     });
 
     return filtered;
@@ -2440,8 +2489,11 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
-                  
-                  const Text('Filter by Progress:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+
+                  const Text(
+                    'Filter by Progress:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -2450,7 +2502,9 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                         label: const Text('All'),
                         selected: _currentFilter == FilterStatus.all,
                         onSelected: (selected) {
-                          setModalState(() => _currentFilter = FilterStatus.all);
+                          setModalState(
+                            () => _currentFilter = FilterStatus.all,
+                          );
                           setState(() {});
                           Navigator.pop(context);
                         },
@@ -2459,7 +2513,9 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                         label: const Text('To View'),
                         selected: _currentFilter == FilterStatus.toView,
                         onSelected: (selected) {
-                          setModalState(() => _currentFilter = FilterStatus.toView);
+                          setModalState(
+                            () => _currentFilter = FilterStatus.toView,
+                          );
                           setState(() {});
                           Navigator.pop(context);
                         },
@@ -2468,17 +2524,22 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                         label: const Text('Done'),
                         selected: _currentFilter == FilterStatus.done,
                         onSelected: (selected) {
-                          setModalState(() => _currentFilter = FilterStatus.done);
+                          setModalState(
+                            () => _currentFilter = FilterStatus.done,
+                          );
                           setState(() {});
                           Navigator.pop(context);
                         },
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 20),
-                  
-                  const Text('Sort by Topic:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+
+                  const Text(
+                    'Sort by Topic:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -2487,7 +2548,9 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                         label: const Text('A-Z'),
                         selected: _currentSort == SortOption.topicAscending,
                         onSelected: (selected) {
-                          setModalState(() => _currentSort = SortOption.topicAscending);
+                          setModalState(
+                            () => _currentSort = SortOption.topicAscending,
+                          );
                           setState(() {});
                         },
                       ),
@@ -2495,15 +2558,17 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                         label: const Text('Z-A'),
                         selected: _currentSort == SortOption.topicDescending,
                         onSelected: (selected) {
-                          setModalState(() => _currentSort = SortOption.topicDescending);
+                          setModalState(
+                            () => _currentSort = SortOption.topicDescending,
+                          );
                           setState(() {});
                         },
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 20),
-                  
+
                   Row(
                     children: [
                       Expanded(
@@ -2554,7 +2619,8 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
         return '';
     }
   }
-    Widget _buildFilterChips() {
+
+  Widget _buildFilterChips() {
     return Card(
       margin: const EdgeInsets.all(8.0),
       child: Padding(
@@ -2574,21 +2640,29 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                 if (_currentFilter != FilterStatus.all)
                   InputChip(
                     label: Text(
-                      _currentFilter == FilterStatus.toView ? 'To View' : 'Done',
+                      _currentFilter == FilterStatus.toView
+                          ? 'To View'
+                          : 'Done',
                       style: const TextStyle(color: Colors.white),
                     ),
                     backgroundColor: Colors.lightBlue,
-                    deleteIcon: const Icon(Icons.close, size: 16, color: Colors.white),
+                    deleteIcon: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                     onDeleted: () {
                       setState(() {
                         _currentFilter = FilterStatus.all;
                       });
                     },
                   ),
-                
+
                 InputChip(
                   label: Text(
-                    _currentSort == SortOption.topicAscending ? 'Sort: A-Z' : 'Sort: Z-A',
+                    _currentSort == SortOption.topicAscending
+                        ? 'Sort: A-Z'
+                        : 'Sort: Z-A',
                   ),
                   backgroundColor: Colors.grey[200],
                   deleteIcon: const Icon(Icons.close, size: 16),
@@ -2598,8 +2672,9 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                     });
                   },
                 ),
-                
-                if (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending)
+
+                if (_currentFilter != FilterStatus.all ||
+                    _currentSort != SortOption.topicAscending)
                   ActionChip(
                     label: const Text('Clear All'),
                     avatar: const Icon(Icons.clear_all, size: 16),
@@ -2624,13 +2699,15 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _currentFilter == FilterStatus.toView ? Icons.check_circle : Icons.search_off,
+            _currentFilter == FilterStatus.toView
+                ? Icons.check_circle
+                : Icons.search_off,
             size: 64,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            _currentFilter == FilterStatus.toView 
+            _currentFilter == FilterStatus.toView
                 ? 'No Courses To View'
                 : 'No Completed Courses',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -2656,6 +2733,7 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     final filteredTopics = _getFilteredAndSortedTopics();
@@ -2674,7 +2752,8 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
                 onPressed: () => _showFilterMenu(context),
                 tooltip: 'Filter & Sort',
               ),
-               if (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending)
+              if (_currentFilter != FilterStatus.all ||
+                  _currentSort != SortOption.topicAscending)
                 Positioned(
                   right: 8,
                   top: 8,
@@ -2692,122 +2771,166 @@ void _navigateToDetails(BuildContext context, int originalIndex) async {
         ],
       ),
       body: BackgroundWrapper(
-       child: Column(
-        children: [
-          if (_showFilters) _buildFilterChips(),
-          
-          if (!_showFilters && (_currentFilter != FilterStatus.all || _currentSort != SortOption.topicAscending))
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.lightBlue[50],
-              child: Row(
-                children: [
-                  const Icon(Icons.filter_alt, size: 16, color: Colors.lightBlue),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${filteredTopics.length} course${filteredTopics.length != 1 ? 's' : ''} shown',
-                      style: const TextStyle(color: Colors.lightBlue, fontSize: 12),
+        child: Column(
+          children: [
+            if (_showFilters) _buildFilterChips(),
+
+            if (!_showFilters &&
+                (_currentFilter != FilterStatus.all ||
+                    _currentSort != SortOption.topicAscending))
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                color: Colors.lightBlue[50],
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.filter_alt,
+                      size: 16,
+                      color: Colors.lightBlue,
                     ),
-                  ),
-                  GestureDetector(
-                    onTap: () => _showFilterMenu(context),
-                    child: const Text(
-                      'Edit',
-                      style: TextStyle(color: Colors.lightBlue, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // Courses list
-          Expanded(
-            child: filteredTopics.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    itemCount: filteredTopics.length,
-                    itemBuilder: (context, index) {
-            
-                      final entry = filteredTopics[index];
-                      final originalIndex = entry.key;
-                      final topic = entry.value;
-                      final isDone = _isDone[originalIndex];
-                      
-                      return Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${filteredTopics.length} course${filteredTopics.length != 1 ? 's' : ''} shown',
+                        style: const TextStyle(
+                          color: Colors.lightBlue,
+                          fontSize: 12,
                         ),
-                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Topic title 
-                            InkWell(
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                              onTap: () => _navigateToDetails(context, originalIndex),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Row(
-                                  children: [
-                                    // Status indicator
-                                    Icon(
-                                      isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                                      color: isDone ? Colors.green : Colors.grey,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Topic title
-                                    Expanded(
-                                      child: Text(
-                                        topic["title"]!,
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          color: isDone ? Colors.green[800] : Colors.black,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _showFilterMenu(context),
+                      child: const Text(
+                        'Edit',
+                        style: TextStyle(
+                          color: Colors.lightBlue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            // Courses list
+            Expanded(
+              child: filteredTopics.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      itemCount: filteredTopics.length,
+                      itemBuilder: (context, index) {
+                        final entry = filteredTopics[index];
+                        final originalIndex = entry.key;
+                        final topic = entry.value;
+                        final isDone = _isDone[originalIndex];
+
+                        return Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 16,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Topic title
+                              InkWell(
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(12),
+                                ),
+                                onTap: () =>
+                                    _navigateToDetails(context, originalIndex),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Row(
+                                    children: [
+                                      // Status indicator
+                                      Icon(
+                                        isDone
+                                            ? Icons.check_circle
+                                            : Icons.radio_button_unchecked,
+                                        color: isDone
+                                            ? Colors.green
+                                            : Colors.grey,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Topic title
+                                      Expanded(
+                                        child: Text(
+                                          topic["title"]!,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: isDone
+                                                ? Colors.green[800]
+                                                : Colors.black,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          
-                            const Divider(height: 1, color: Colors.grey),
-                            
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isDone ? Colors.green : Colors.lightBlue,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    ],
                                   ),
                                 ),
-                                onPressed: () => _navigateToDetails(context, originalIndex),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(isDone ? Icons.visibility : Icons.play_arrow, size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      isDone ? "Review Course" : "Start Learning",
-                                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+
+                              const Divider(height: 1, color: Colors.grey),
+
+                              Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isDone
+                                        ? Colors.green
+                                        : Colors.lightBlue,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
                                     ),
-                                  ],
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: () => _navigateToDetails(
+                                    context,
+                                    originalIndex,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isDone
+                                            ? Icons.visibility
+                                            : Icons.play_arrow,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        isDone
+                                            ? "Review Course"
+                                            : "Start Learning",
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2840,10 +2963,7 @@ class _DetailsPageState extends State<DetailsPage> {
 
     _controller = YoutubePlayerController(
       initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
-      ),
+      flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
     );
   }
 
@@ -2855,19 +2975,16 @@ class _DetailsPageState extends State<DetailsPage> {
         backgroundColor: Colors.lightBlue,
       ),
       body: BackgroundWrapper(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            YoutubePlayer(controller: _controller),
-            const SizedBox(height: 20),
-            Text(
-              widget.note,
-              style: const TextStyle(fontSize: 16),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: ListView(
+            children: [
+              YoutubePlayer(controller: _controller),
+              const SizedBox(height: 20),
+              Text(widget.note, style: const TextStyle(fontSize: 16)),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -2875,16 +2992,13 @@ class _DetailsPageState extends State<DetailsPage> {
 
 // ========== QUIZ ==========
 enum QuestionType { mcq, shortAnswer }
+
 enum QuizStatus { draft, published }
 
-enum AssessmentStatus {
-  notStarted,
-  completed,
-}
-enum AssessmentType {
-  system,
-  teacher,
-}
+enum AssessmentStatus { notStarted, completed }
+
+enum AssessmentType { system, teacher }
+
 class Question {
   final String id;
   final String questionText;
@@ -3000,6 +3114,7 @@ class QuizAttempt {
     this.aiFeedback,
   });
 }
+
 class AssessmentItem {
   final String title;
   final String topic;
@@ -3601,6 +3716,7 @@ final List<Question> summativeTestQuestions = [
         'Indeks tatasusunan (array) bermula dari 0. "Ungu" ialah [0], "Biru" ialah [1], dan "Merah" ialah [2].',
   ),
 ];
+
 // US008-03: Filter assessments by topic and status
 class StudentAssessmentsPage extends StatefulWidget {
   const StudentAssessmentsPage({super.key});
@@ -3633,15 +3749,15 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
   }
 
   bool _isAssessmentCompleted(String quizTitle, String? quizId) {
-    final userAttempts = userQuizAttempts.where((attempt) => 
-      attempt.quizTitle == quizTitle
+    final userAttempts = userQuizAttempts.where(
+      (attempt) => attempt.quizTitle == quizTitle,
     );
     return userAttempts.isNotEmpty;
   }
 
   AssessmentStatus _getAssessmentStatus(String quizTitle, String? quizId) {
-    return _isAssessmentCompleted(quizTitle, quizId) 
-        ? AssessmentStatus.completed 
+    return _isAssessmentCompleted(quizTitle, quizId)
+        ? AssessmentStatus.completed
         : AssessmentStatus.notStarted;
   }
 
@@ -3653,13 +3769,11 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
     if (isTeacher) {
       return Scaffold(
         appBar: AppBar(title: const Text('Access Denied')),
-        body: const Center(
-          child: Text('This page is for students only.'),
-        ),
+        body: const Center(child: Text('This page is for students only.')),
       );
     }
 
-     return Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: const Text('My Assessments'),
         backgroundColor: Colors.lightBlue,
@@ -3675,12 +3789,12 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
         ],
       ),
       body: BackgroundWrapper(
-      child: Column(
-        children: [
-          if (_showFilters) _buildFilterSection(),
-          Expanded(child: _buildAssessmentsList()),
-        ],
-      ),
+        child: Column(
+          children: [
+            if (_showFilters) _buildFilterSection(),
+            Expanded(child: _buildAssessmentsList()),
+          ],
+        ),
       ),
     );
   }
@@ -3699,7 +3813,7 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            
+
             DropdownButtonFormField<String>(
               value: _selectedTopicFilter,
               decoration: const InputDecoration(
@@ -3709,16 +3823,14 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
               ),
               isExpanded: true,
               items: [
-                const DropdownMenuItem(
-                  value: null,
-                  child: Text('All Topics'),
-                ),
+                const DropdownMenuItem(value: null, child: Text('All Topics')),
                 ..._availableTopics.map((topic) {
                   return DropdownMenuItem(
                     value: topic,
                     child: Text(
                       topic,
-                      overflow: TextOverflow.ellipsis, // Add ellipsis for long text
+                      overflow:
+                          TextOverflow.ellipsis, // Add ellipsis for long text
                       maxLines: 1, // Limit to single line
                     ),
                   );
@@ -3728,9 +3840,9 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
                 setState(() => _selectedTopicFilter = value);
               },
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             DropdownButtonFormField<AssessmentStatus>(
               value: _selectedStatusFilter,
               decoration: const InputDecoration(
@@ -3739,15 +3851,14 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
                 prefixIcon: Icon(Icons.flag),
               ),
               items: [
-                DropdownMenuItem(
-                  value: null,
-                  child: Text('All Statuses'),
-                ),
+                DropdownMenuItem(value: null, child: Text('All Statuses')),
                 ...AssessmentStatus.values.map((status) {
                   return DropdownMenuItem(
                     value: status,
                     child: Text(
-                      status == AssessmentStatus.completed ? 'Completed' : 'Not Started',
+                      status == AssessmentStatus.completed
+                          ? 'Completed'
+                          : 'Not Started',
                     ),
                   );
                 }).toList(),
@@ -3756,9 +3867,9 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
                 setState(() => _selectedStatusFilter = value);
               },
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -3785,11 +3896,11 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
-        
+
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return _buildEmptyState();
         }
@@ -3800,47 +3911,53 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
             .toList();
 
         final allAssessments = <AssessmentItem>[];
-        
+
         systemQuizData.forEach((topic, questions) {
-          allAssessments.add(AssessmentItem(
-            title: topic,
-            topic: topic,
-            type: AssessmentType.system,
-            questions: questions,
-            status: _getAssessmentStatus(topic, null),
-          ));
+          allAssessments.add(
+            AssessmentItem(
+              title: topic,
+              topic: topic,
+              type: AssessmentType.system,
+              questions: questions,
+              status: _getAssessmentStatus(topic, null),
+            ),
+          );
         });
-        
-        allAssessments.add(AssessmentItem(
-          title: 'Summative Test (Bab 1)',
-          topic: 'Comprehensive',
-          type: AssessmentType.system,
-          questions: summativeTestQuestions,
-          status: _getAssessmentStatus('Summative Test (Bab 1)', null),
-        ));
-        
+
+        allAssessments.add(
+          AssessmentItem(
+            title: 'Summative Test (Bab 1)',
+            topic: 'Comprehensive',
+            type: AssessmentType.system,
+            questions: summativeTestQuestions,
+            status: _getAssessmentStatus('Summative Test (Bab 1)', null),
+          ),
+        );
+
         for (final quiz in teacherQuizzes) {
-          allAssessments.add(AssessmentItem(
-            title: quiz.title,
-            topic: quiz.topic,
-            type: AssessmentType.teacher,
-            questions: quiz.questions,
-            quizId: quiz.id,
-            status: _getAssessmentStatus(quiz.title, quiz.id),
-          ));
+          allAssessments.add(
+            AssessmentItem(
+              title: quiz.title,
+              topic: quiz.topic,
+              type: AssessmentType.teacher,
+              questions: quiz.questions,
+              quizId: quiz.id,
+              status: _getAssessmentStatus(quiz.title, quiz.id),
+            ),
+          );
         }
 
         final filteredAssessments = allAssessments.where((assessment) {
-          if (_selectedTopicFilter != null && 
+          if (_selectedTopicFilter != null &&
               assessment.topic != _selectedTopicFilter) {
             return false;
           }
-          
-          if (_selectedStatusFilter != null && 
+
+          if (_selectedStatusFilter != null &&
               assessment.status != _selectedStatusFilter) {
             return false;
           }
-          
+
           return true;
         }).toList();
 
@@ -3866,11 +3983,11 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
       margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
       child: ListTile(
         leading: Icon(
-          assessment.type == AssessmentType.system 
-              ? Icons.auto_awesome 
+          assessment.type == AssessmentType.system
+              ? Icons.auto_awesome
               : Icons.school,
-          color: assessment.status == AssessmentStatus.completed 
-              ? Colors.green 
+          color: assessment.status == AssessmentStatus.completed
+              ? Colors.green
               : Colors.blue,
         ),
         title: Text(assessment.title),
@@ -3882,8 +3999,8 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
             Text(
               'Status: ${assessment.status == AssessmentStatus.completed ? 'Completed' : 'Not Started'}',
               style: TextStyle(
-                color: assessment.status == AssessmentStatus.completed 
-                    ? Colors.green 
+                color: assessment.status == AssessmentStatus.completed
+                    ? Colors.green
                     : Colors.orange,
                 fontWeight: FontWeight.w500,
               ),
@@ -3931,7 +4048,7 @@ class _StudentAssessmentsPageState extends State<StudentAssessmentsPage> {
     );
   }
 
-Widget _buildEmptyState() {
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -3989,8 +4106,7 @@ class QuizPage extends StatefulWidget {
 
 // ========== QUIZ PAGE STATE ==========
 class _QuizPageState extends State<QuizPage> {
-
- @override
+  @override
   void initState() {
     super.initState();
     _loadQuizAttempts();
@@ -4000,7 +4116,7 @@ class _QuizPageState extends State<QuizPage> {
   Future<void> _loadQuizAttempts() async {
     final userState = context.read<FirebaseUserState>();
     final user = userState.currentUser;
-    
+
     if (user == null || user.userType != UserType.student) return;
 
     try {
@@ -4016,7 +4132,7 @@ class _QuizPageState extends State<QuizPage> {
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
-        
+
         // Convert questions back to Question objects
         final questionsData = data['questions'] as List<dynamic>;
         final questions = questionsData
@@ -4029,9 +4145,10 @@ class _QuizPageState extends State<QuizPage> {
           userAnswers: Map<String, String>.from(data['userAnswers'] ?? {}),
           score: data['score'] ?? 0,
           total: data['total'] ?? 0,
-          timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          aiFeedback: data['aiFeedback'] != null 
-              ? Map<String, String>.from(data['aiFeedback']) 
+          timestamp:
+              (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          aiFeedback: data['aiFeedback'] != null
+              ? Map<String, String>.from(data['aiFeedback'])
               : null,
         );
 
@@ -4039,7 +4156,7 @@ class _QuizPageState extends State<QuizPage> {
       }
 
       print('✅ Loaded ${userQuizAttempts.length} quiz attempts from Firestore');
-      
+
       if (mounted) {
         setState(() {});
       }
@@ -4047,7 +4164,8 @@ class _QuizPageState extends State<QuizPage> {
       print('❌ Error loading quiz attempts: $e');
     }
   }
-// ----- startQuiz ----- (Helper function to navigate to the quiz-taking page)
+
+  // ----- startQuiz ----- (Helper function to navigate to the quiz-taking page)
   void _startQuiz(
     BuildContext context,
     String title,
@@ -4071,9 +4189,7 @@ class _QuizPageState extends State<QuizPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Confirmation'),
-        content: Text(
-          'Are you sure you want to delete "${quiz.title}"?',
-        ),
+        content: Text('Are you sure you want to delete "${quiz.title}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -4167,221 +4283,242 @@ class _QuizPageState extends State<QuizPage> {
         ],
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // --- 1. System Quizzes ---
-            _buildSectionTitle('System Quizzes'),
-            Card(
-              elevation: 2,
-              child: ListTile(
-                leading: const Icon(Icons.auto_stories, color: Colors.blue),
-                title: const Text('Sub-Topic Quizzes'),
-                subtitle: const Text('Practice questions for each topic'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SystemQuizListPage(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Card(
-            elevation: 2,
-            child: ListTile(
-              leading: const Icon(Icons.quiz, color: Colors.blue),
-              title: const Text('Summative Test (Bab 1)'),
-              subtitle: const Text('Test your knowledge on the whole chapter'),
-              trailing: Icon(isTeacher ? Icons.visibility : Icons.play_arrow), // ✅ MODIFIED
-              onTap: () {
-            if (isTeacher) {
-              Navigator.push(
-              context,
-              MaterialPageRoute(
-              builder: (context) => ReviewQuizPage(
-              quizTitle: 'Summative Test (Bab 1)',
-              questions: summativeTestQuestions,
-            ),
-          ),
-        );
-      } else {
-        _startQuiz(context, 'Summative Test (Bab 1)', summativeTestQuestions);
-      }
-    },
-  ),
-),
-
-            const Divider(height: 30, thickness: 1),
-
-            // --- 2. Teacher-Created Quizzes ---
-            _buildSectionTitle('Teacher Quizzes'),
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('quizzes')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text('No quizzes published by your teacher yet.'),
-                    ),
-                  );
-                }
-
-                final quizzes = snapshot.data!.docs
-                    .map((doc) => Quiz.fromFirestore(doc))
-                    .toList();
-
-                return ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: quizzes.length,
-                  itemBuilder: (context, index) {
-                    final quiz = quizzes[index];
-
-                    // Show drafts only to teachers
-                    if (quiz.status == QuizStatus.draft && !isTeacher) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return Card(
-                      elevation: 2,
-                      child: ListTile(
-                        leading: Icon(
-                          quiz.status == QuizStatus.published
-                              ? Icons.check_circle
-                              : Icons.edit,
-                          color: quiz.status == QuizStatus.published
-                              ? Colors.green
-                              : Colors.orange,
-                        ),
-                        title: Text(quiz.title),
-                        subtitle: Text(
-                          '${quiz.topic} - ${quiz.questions.length} questions',
-                        ),
-
-trailing: isTeacher
-    ? PopupMenuButton<String>(
-        onSelected: (value) {
-          if (value == 'edit') _editQuiz(quiz);
-          if (value == 'delete') _deleteQuiz(quiz);
-          if (value == 'review') _reviewQuiz(quiz);
-        },
-        itemBuilder: (context) => [
-          // Show 'Edit' for BOTH draft and published
-          const PopupMenuItem(value: 'edit', child: Text('Edit')),
-
-          // Show 'Review' for all quizzes
-          const PopupMenuItem(value: 'review', child: Text('Review Answers')),
-
-          // Delete is available for both draft and published
-          const PopupMenuItem(value: 'delete', child: Text('Delete')),
-        ],
-      )
-    : const Icon(Icons.play_arrow),
-                        onTap: () {
-                          if (isTeacher) {
-                            // Default tap action for teacher is 'review'
-                            _reviewQuiz(quiz);
-                          } else if (quiz.status == QuizStatus.published) {
-                            // Student tap action is 'start quiz'
-                            _startQuiz(context, quiz.title, quiz.questions);
-                          }
-                        },
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-             
-            //US008-03: Filter assessments by topic and status
-            if (!isTeacher) ...[
-              const Divider(height: 30, thickness: 1),
-              _buildSectionTitle('Assessments Management'),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              // --- 1. System Quizzes ---
+              _buildSectionTitle('System Quizzes'),
               Card(
                 elevation: 2,
                 child: ListTile(
-                  leading: const Icon(Icons.filter_alt, color: Colors.purple),
-                  title: const Text('Filter My Assessments'),
-                  subtitle: const Text('View and filter assessments by topic and status'),
+                  leading: const Icon(Icons.auto_stories, color: Colors.blue),
+                  title: const Text('Sub-Topic Quizzes'),
+                  subtitle: const Text('Practice questions for each topic'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const StudentAssessmentsPage(),
-          ),
-        );
-      },
-    ),
-  ),
-],
-const Divider(height: 30, thickness: 1),
-            // --- 3. Student Quiz History (US006-02) ---
-            if (!isTeacher) ...[
-              _buildSectionTitle('My Quiz History'),
-              userQuizAttempts.isEmpty
-                  ? const Center(
+                        builder: (context) => const SystemQuizListPage(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              Card(
+                elevation: 2,
+                child: ListTile(
+                  leading: const Icon(Icons.quiz, color: Colors.blue),
+                  title: const Text('Summative Test (Bab 1)'),
+                  subtitle: const Text(
+                    'Test your knowledge on the whole chapter',
+                  ),
+                  trailing: Icon(
+                    isTeacher ? Icons.visibility : Icons.play_arrow,
+                  ), // ✅ MODIFIED
+                  onTap: () {
+                    if (isTeacher) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ReviewQuizPage(
+                            quizTitle: 'Summative Test (Bab 1)',
+                            questions: summativeTestQuestions,
+                          ),
+                        ),
+                      );
+                    } else {
+                      _startQuiz(
+                        context,
+                        'Summative Test (Bab 1)',
+                        summativeTestQuestions,
+                      );
+                    }
+                  },
+                ),
+              ),
+
+              const Divider(height: 30, thickness: 1),
+
+              // --- 2. Teacher-Created Quizzes ---
+              _buildSectionTitle('Teacher Quizzes'),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('quizzes')
+                    .orderBy('createdAt', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16.0),
-                        child: Text('You have not completed any quizzes yet.'),
+                        child: Text(
+                          'No quizzes published by your teacher yet.',
+                        ),
                       ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: userQuizAttempts.length,
-                      itemBuilder: (context, index) {
-                        final attempt = userQuizAttempts.reversed
-                            .toList()[index]; // Show newest first
-                        return Card(
-                          elevation: 2,
-                          child: ListTile(
-                            leading: const Icon(
-                              Icons.history,
-                              color: Colors.purple,
-                            ),
-                            title: Text(attempt.quizTitle),
-                            subtitle: Text(
-                              'Score: ${attempt.score}/${attempt.total} - Completed on ${attempt.timestamp.toLocal().toString().split(' ')[0]}',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              // Navigate to the results page to review
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      QuizResultsPage(attempt: attempt),
-                                ),
-                              );
-                            },
+                    );
+                  }
+
+                  final quizzes = snapshot.data!.docs
+                      .map((doc) => Quiz.fromFirestore(doc))
+                      .toList();
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: quizzes.length,
+                    itemBuilder: (context, index) {
+                      final quiz = quizzes[index];
+
+                      // Show drafts only to teachers
+                      if (quiz.status == QuizStatus.draft && !isTeacher) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Card(
+                        elevation: 2,
+                        child: ListTile(
+                          leading: Icon(
+                            quiz.status == QuizStatus.published
+                                ? Icons.check_circle
+                                : Icons.edit,
+                            color: quiz.status == QuizStatus.published
+                                ? Colors.green
+                                : Colors.orange,
                           ),
-                        );
-                      },
+                          title: Text(quiz.title),
+                          subtitle: Text(
+                            '${quiz.topic} - ${quiz.questions.length} questions',
+                          ),
+
+                          trailing: isTeacher
+                              ? PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'edit') _editQuiz(quiz);
+                                    if (value == 'delete') _deleteQuiz(quiz);
+                                    if (value == 'review') _reviewQuiz(quiz);
+                                  },
+                                  itemBuilder: (context) => [
+                                    // Show 'Edit' for BOTH draft and published
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('Edit'),
+                                    ),
+
+                                    // Show 'Review' for all quizzes
+                                    const PopupMenuItem(
+                                      value: 'review',
+                                      child: Text('Review Answers'),
+                                    ),
+
+                                    // Delete is available for both draft and published
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Delete'),
+                                    ),
+                                  ],
+                                )
+                              : const Icon(Icons.play_arrow),
+                          onTap: () {
+                            if (isTeacher) {
+                              // Default tap action for teacher is 'review'
+                              _reviewQuiz(quiz);
+                            } else if (quiz.status == QuizStatus.published) {
+                              // Student tap action is 'start quiz'
+                              _startQuiz(context, quiz.title, quiz.questions);
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+
+              //US008-03: Filter assessments by topic and status
+              if (!isTeacher) ...[
+                const Divider(height: 30, thickness: 1),
+                _buildSectionTitle('Assessments Management'),
+                Card(
+                  elevation: 2,
+                  child: ListTile(
+                    leading: const Icon(Icons.filter_alt, color: Colors.purple),
+                    title: const Text('Filter My Assessments'),
+                    subtitle: const Text(
+                      'View and filter assessments by topic and status',
                     ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StudentAssessmentsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+              const Divider(height: 30, thickness: 1),
+              // --- 3. Student Quiz History (US006-02) ---
+              if (!isTeacher) ...[
+                _buildSectionTitle('My Quiz History'),
+                userQuizAttempts.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text(
+                            'You have not completed any quizzes yet.',
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: userQuizAttempts.length,
+                        itemBuilder: (context, index) {
+                          final attempt = userQuizAttempts.reversed
+                              .toList()[index]; // Show newest first
+                          return Card(
+                            elevation: 2,
+                            child: ListTile(
+                              leading: const Icon(
+                                Icons.history,
+                                color: Colors.purple,
+                              ),
+                              title: Text(attempt.quizTitle),
+                              subtitle: Text(
+                                'Score: ${attempt.score}/${attempt.total} - Completed on ${attempt.timestamp.toLocal().toString().split(' ')[0]}',
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () {
+                                // Navigate to the results page to review
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        QuizResultsPage(attempt: attempt),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ],
             ],
-
-
-          ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -4412,47 +4549,47 @@ class SystemQuizListPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('System-Generated Quizzes')),
       body: BackgroundWrapper(
-      child: ListView.builder(
-        itemCount: systemQuizData.length,
-        itemBuilder: (context, index) {
-          final topicTitle = systemQuizData.keys.elementAt(index);
-          final generatedQuestions = systemQuizData[topicTitle]!;
+        child: ListView.builder(
+          itemCount: systemQuizData.length,
+          itemBuilder: (context, index) {
+            final topicTitle = systemQuizData.keys.elementAt(index);
+            final generatedQuestions = systemQuizData[topicTitle]!;
 
-          return Card(
-            margin: const EdgeInsets.all(8.0),
-            child: ListTile(
-              title: Text(topicTitle),
-              subtitle: Text('${generatedQuestions.length} Questions'),
-              trailing: Icon(isTeacher ? Icons.visibility : Icons.play_arrow),
-              onTap: () {
-                // ✅ MODIFIED: Teacher ALWAYS reviews, never takes quiz
-                if (isTeacher) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ReviewQuizPage(
-                        quizTitle: topicTitle,
-                        questions: generatedQuestions,
+            return Card(
+              margin: const EdgeInsets.all(8.0),
+              child: ListTile(
+                title: Text(topicTitle),
+                subtitle: Text('${generatedQuestions.length} Questions'),
+                trailing: Icon(isTeacher ? Icons.visibility : Icons.play_arrow),
+                onTap: () {
+                  // ✅ MODIFIED: Teacher ALWAYS reviews, never takes quiz
+                  if (isTeacher) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ReviewQuizPage(
+                          quizTitle: topicTitle,
+                          questions: generatedQuestions,
+                        ),
                       ),
-                    ),
-                  );
-                } else {
-                  // Student takes the quiz
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TakeQuizPage(
-                        quizTitle: topicTitle,
-                        questions: generatedQuestions,
+                    );
+                  } else {
+                    // Student takes the quiz
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TakeQuizPage(
+                          quizTitle: topicTitle,
+                          questions: generatedQuestions,
+                        ),
                       ),
-                    ),
-                  );
-                }
-              },
-            ),
-          );
-        },
-      ),
+                    );
+                  }
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -4477,88 +4614,91 @@ class ReviewQuizPage extends StatelessWidget {
         backgroundColor: Colors.orange[700],
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Reviewing Answers (${questions.length} questions)',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const Divider(thickness: 1),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: questions.length,
-              itemBuilder: (context, index) {
-                final q = questions[index];
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Reviewing Answers (${questions.length} questions)',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Divider(thickness: 1),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: questions.length,
+                itemBuilder: (context, index) {
+                  final q = questions[index];
 
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.symmetric(vertical: 8.0),
-                  color: Colors.blue[50],
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Q${index + 1}: ${q.questionText}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        if (q.type == QuestionType.mcq)
-                          ...q.options.map(
-                            (opt) => Text(
-                              '- $opt',
-                              style: TextStyle(
-                                color: opt == q.answer
-                                    ? Colors.green[800]
-                                    : Colors.black87,
-                                fontWeight: opt == q.answer
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
+                  return Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    color: Colors.blue[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Q${index + 1}: ${q.questionText}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
-
-                        const SizedBox(height: 8),
-                        Text(
-                          'Correct Answer: ${q.answer}',
-                          style: TextStyle(
-                            color: Colors.green[800],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (q.explanation != null) ...[
                           const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(8.0),
-                            width: double.infinity,
-                            color: Colors.grey[200],
-                            child: Text(
-                              'Explanation: ${q.explanation}',
-                              style: TextStyle(
-                                color: Colors.grey[800],
-                                fontStyle: FontStyle.italic,
+
+                          if (q.type == QuestionType.mcq)
+                            ...q.options.map(
+                              (opt) => Text(
+                                '- $opt',
+                                style: TextStyle(
+                                  color: opt == q.answer
+                                      ? Colors.green[800]
+                                      : Colors.black87,
+                                  fontWeight: opt == q.answer
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
                               ),
                             ),
+
+                          const SizedBox(height: 8),
+                          Text(
+                            'Correct Answer: ${q.answer}',
+                            style: TextStyle(
+                              color: Colors.green[800],
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
+                          if (q.explanation != null) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8.0),
+                              width: double.infinity,
+                              color: Colors.grey[200],
+                              child: Text(
+                                'Explanation: ${q.explanation}',
+                                style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -4586,250 +4726,297 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   final _newExplanationController = TextEditingController();
   QuestionType _newQuestionType = QuestionType.mcq;
 
-// Show dialog to edit existing question
-void _showEditQuestionDialog(int index) {
-  final question = _questions[index];
-  
-  final editQuestionController = TextEditingController(text: question.questionText);
-  final editAnswerController = TextEditingController(text: question.answer);
-  final editExplanationController = TextEditingController(text: question.explanation ?? '');
-  
-  QuestionType editType = question.type;
-  
-  // Initialize MCQ options controllers
-  List<TextEditingController> editMcqControllers = [];
-  int editCorrectIndex = 0;
-  
-  if (question.type == QuestionType.mcq) {
-    for (int i = 0; i < question.options.length; i++) {
-      editMcqControllers.add(TextEditingController(text: question.options[i]));
-      if (question.options[i] == question.answer) {
-        editCorrectIndex = i;
+  // Show dialog to edit existing question
+  void _showEditQuestionDialog(int index) {
+    final question = _questions[index];
+
+    final editQuestionController = TextEditingController(
+      text: question.questionText,
+    );
+    final editAnswerController = TextEditingController(text: question.answer);
+    final editExplanationController = TextEditingController(
+      text: question.explanation ?? '',
+    );
+
+    QuestionType editType = question.type;
+
+    // Initialize MCQ options controllers
+    List<TextEditingController> editMcqControllers = [];
+    int editCorrectIndex = 0;
+
+    if (question.type == QuestionType.mcq) {
+      for (int i = 0; i < question.options.length; i++) {
+        editMcqControllers.add(
+          TextEditingController(text: question.options[i]),
+        );
+        if (question.options[i] == question.answer) {
+          editCorrectIndex = i;
+        }
       }
     }
-  }
 
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setDialogState) {
-        return AlertDialog(
-          title: Text('Edit Question ${index + 1}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Question Type Dropdown (Read-only)
-                DropdownButtonFormField<QuestionType>(
-                  value: editType,
-                  decoration: const InputDecoration(labelText: 'Question Type'),
-                  items: const [
-                    DropdownMenuItem(value: QuestionType.mcq, child: Text('Multiple Choice (MCQ)')),
-                    DropdownMenuItem(value: QuestionType.shortAnswer, child: Text('Short Answer')),
-                  ],
-                  onChanged: null, 
-                ),
-                const SizedBox(height: 10),
-
-                // Question Text
-                TextFormField(
-                  controller: editQuestionController,
-                  decoration: InputDecoration(
-                    labelText: 'Question Text',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  maxLines: 5,
-                  minLines: 3,
-                ),
-                const SizedBox(height: 10),
-
-                if (editType == QuestionType.mcq) ...[
-                  // MCQ Options
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('MCQ Options:', style: TextStyle(fontWeight: FontWeight.w500)),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle, color: Colors.green),
-                        onPressed: () {
-                          setDialogState(() {
-                            editMcqControllers.add(TextEditingController());
-                          });
-                        },
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text('Edit Question ${index + 1}'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Question Type Dropdown (Read-only)
+                  DropdownButtonFormField<QuestionType>(
+                    value: editType,
+                    decoration: const InputDecoration(
+                      labelText: 'Question Type',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: QuestionType.mcq,
+                        child: Text('Multiple Choice (MCQ)'),
+                      ),
+                      DropdownMenuItem(
+                        value: QuestionType.shortAnswer,
+                        child: Text('Short Answer'),
                       ),
                     ],
+                    onChanged: null,
                   ),
-                  ...List.generate(editMcqControllers.length, (i) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Row(
-                        children: [
-                          Radio<int>(
-                            value: i,
-                            groupValue: editCorrectIndex,
-                            onChanged: (int? value) {
-                              setDialogState(() => editCorrectIndex = value!);
-                            },
+                  const SizedBox(height: 10),
+
+                  // Question Text
+                  TextFormField(
+                    controller: editQuestionController,
+                    decoration: InputDecoration(
+                      labelText: 'Question Text',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    maxLines: 5,
+                    minLines: 3,
+                  ),
+                  const SizedBox(height: 10),
+
+                  if (editType == QuestionType.mcq) ...[
+                    // MCQ Options
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'MCQ Options:',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.add_circle,
+                            color: Colors.green,
                           ),
-                          Expanded(
-                            child: TextFormField(
-                              controller: editMcqControllers[i],
-                              decoration: InputDecoration(
-                                labelText: 'Option ${i + 1}',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              maxLines: 2,
-                              minLines: 1,
-                            ),
-                          ),
-                          if (editMcqControllers.length > 2)
-                            IconButton(
-                              icon: const Icon(Icons.remove_circle, color: Colors.red),
-                              onPressed: () {
-                                if (editMcqControllers.length <= 2) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Minimum 2 options required')),
-                                  );
-                                  return;
-                                }
-                                setDialogState(() {
-                                  editMcqControllers[i].dispose();
-                                  editMcqControllers.removeAt(i);
-                                  if (editCorrectIndex >= editMcqControllers.length) {
-                                    editCorrectIndex = editMcqControllers.length - 1;
-                                  }
-                                });
+                          onPressed: () {
+                            setDialogState(() {
+                              editMcqControllers.add(TextEditingController());
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    ...List.generate(editMcqControllers.length, (i) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            Radio<int>(
+                              value: i,
+                              groupValue: editCorrectIndex,
+                              onChanged: (int? value) {
+                                setDialogState(() => editCorrectIndex = value!);
                               },
                             ),
-                        ],
+                            Expanded(
+                              child: TextFormField(
+                                controller: editMcqControllers[i],
+                                decoration: InputDecoration(
+                                  labelText: 'Option ${i + 1}',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                maxLines: 2,
+                                minLines: 1,
+                              ),
+                            ),
+                            if (editMcqControllers.length > 2)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.remove_circle,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () {
+                                  if (editMcqControllers.length <= 2) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Minimum 2 options required',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  setDialogState(() {
+                                    editMcqControllers[i].dispose();
+                                    editMcqControllers.removeAt(i);
+                                    if (editCorrectIndex >=
+                                        editMcqControllers.length) {
+                                      editCorrectIndex =
+                                          editMcqControllers.length - 1;
+                                    }
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ] else ...[
+                    // Short Answer
+                    TextFormField(
+                      controller: editAnswerController,
+                      decoration: InputDecoration(
+                        labelText: 'Correct Answer',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    );
-                  }),
-                ] else ...[
-                  // Short Answer
-                  TextFormField(
-                    controller: editAnswerController,
-                    decoration: InputDecoration(
-                      labelText: 'Correct Answer',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      maxLines: 3,
+                      minLines: 2,
                     ),
-                    maxLines: 3,
-                    minLines: 2,
+                  ],
+
+                  const SizedBox(height: 10),
+
+                  // Explanation
+                  TextFormField(
+                    controller: editExplanationController,
+                    decoration: InputDecoration(
+                      labelText: 'Explanation (Optional)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    maxLines: 5,
+                    minLines: 3,
                   ),
                 ],
-
-                const SizedBox(height: 10),
-
-                // Explanation
-                TextFormField(
-                  controller: editExplanationController,
-                  decoration: InputDecoration(
-                    labelText: 'Explanation (Optional)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  maxLines: 5,
-                  minLines: 3,
-                ),
-              ],
+              ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                // Dispose controllers
-                editQuestionController.dispose();
-                editAnswerController.dispose();
-                editExplanationController.dispose();
-                for (var c in editMcqControllers) {
-                  c.dispose();
-                }
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Validate
-                if (editQuestionController.text.trim().isEmpty) {
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // Dispose controllers
+                  editQuestionController.dispose();
+                  editAnswerController.dispose();
+                  editExplanationController.dispose();
+                  for (var c in editMcqControllers) {
+                    c.dispose();
+                  }
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Validate
+                  if (editQuestionController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Question text cannot be empty'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  String updatedAnswer;
+                  List<String> updatedOptions = [];
+
+                  if (editType == QuestionType.mcq) {
+                    updatedOptions = editMcqControllers
+                        .map((c) => c.text.trim())
+                        .toList();
+                    final nonEmptyOptions = updatedOptions
+                        .where((opt) => opt.isNotEmpty)
+                        .toList();
+
+                    if (nonEmptyOptions.length < 2) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please fill at least 2 MCQ options'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    updatedOptions = nonEmptyOptions;
+                    if (editCorrectIndex >= updatedOptions.length) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please select a valid correct answer'),
+                        ),
+                      );
+                      return;
+                    }
+                    updatedAnswer = updatedOptions[editCorrectIndex];
+                  } else {
+                    if (editAnswerController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Answer cannot be empty')),
+                      );
+                      return;
+                    }
+                    updatedAnswer = editAnswerController.text.trim();
+                  }
+
+                  // Update the question
+                  setState(() {
+                    _questions[index] = Question(
+                      id: question.id, // Keep the same ID
+                      questionText: editQuestionController.text.trim(),
+                      type: editType,
+                      options: updatedOptions,
+                      answer: updatedAnswer,
+                      explanation: editExplanationController.text.trim().isEmpty
+                          ? null
+                          : editExplanationController.text.trim(),
+                    );
+                  });
+
+                  // Dispose controllers
+                  editQuestionController.dispose();
+                  editAnswerController.dispose();
+                  editExplanationController.dispose();
+                  for (var c in editMcqControllers) {
+                    c.dispose();
+                  }
+
+                  Navigator.pop(context);
+
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Question text cannot be empty')),
+                    const SnackBar(
+                      content: Text('Question updated successfully'),
+                      backgroundColor: Colors.green,
+                    ),
                   );
-                  return;
-                }
+                },
+                child: const Text('Save Changes'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
-                String updatedAnswer;
-                List<String> updatedOptions = [];
-
-                if (editType == QuestionType.mcq) {
-                  updatedOptions = editMcqControllers.map((c) => c.text.trim()).toList();
-                  final nonEmptyOptions = updatedOptions.where((opt) => opt.isNotEmpty).toList();
-                  
-                  if (nonEmptyOptions.length < 2) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please fill at least 2 MCQ options')),
-                    );
-                    return;
-                  }
-                  
-                  updatedOptions = nonEmptyOptions;
-                  if (editCorrectIndex >= updatedOptions.length) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please select a valid correct answer')),
-                    );
-                    return;
-                  }
-                  updatedAnswer = updatedOptions[editCorrectIndex];
-                } else {
-                  if (editAnswerController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Answer cannot be empty')),
-                    );
-                    return;
-                  }
-                  updatedAnswer = editAnswerController.text.trim();
-                }
-
-                // Update the question
-                setState(() {
-                  _questions[index] = Question(
-                    id: question.id, // Keep the same ID
-                    questionText: editQuestionController.text.trim(),
-                    type: editType,
-                    options: updatedOptions,
-                    answer: updatedAnswer,
-                    explanation: editExplanationController.text.trim().isEmpty
-                        ? null
-                        : editExplanationController.text.trim(),
-                  );
-                });
-
-                // Dispose controllers
-                editQuestionController.dispose();
-                editAnswerController.dispose();
-                editExplanationController.dispose();
-                for (var c in editMcqControllers) {
-                  c.dispose();
-                }
-
-                Navigator.pop(context);
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Question updated successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              child: const Text('Save Changes'),
-            ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-//Dynamic list of MCQ option controllers
+  //Dynamic list of MCQ option controllers
   List<TextEditingController> _mcqOptionControllers = [
     TextEditingController(),
     TextEditingController(),
@@ -4901,14 +5088,14 @@ void _showEditQuestionDialog(int index) {
 
     if (_newQuestionType == QuestionType.mcq) {
       options = _mcqOptionControllers.map((c) => c.text.trim()).toList();
-      
+
       // Check only non-empty options
       final nonEmptyOptions = options.where((opt) => opt.isNotEmpty).toList();
       if (nonEmptyOptions.length < 2) {
         _showError('Please fill at least 2 MCQ options.');
         return;
       }
-      
+
       options = nonEmptyOptions;
       if (_correctMcqOptionIndex >= options.length) {
         _showError('Please select a valid correct answer.');
@@ -4942,15 +5129,12 @@ void _showEditQuestionDialog(int index) {
     _newQuestionTextController.clear();
     _newAnswerController.clear();
     _newExplanationController.clear();
-    
+
     // Reset to 2 empty options
     for (var c in _mcqOptionControllers) {
       c.dispose();
     }
-    _mcqOptionControllers = [
-      TextEditingController(),
-      TextEditingController(),
-    ];
+    _mcqOptionControllers = [TextEditingController(), TextEditingController()];
     setState(() => _correctMcqOptionIndex = 0);
   }
 
@@ -4987,13 +5171,17 @@ void _showEditQuestionDialog(int index) {
         final newQuiz = Quiz(
           id: '',
           title: _titleController.text,
-          topic: _topicController.text.isEmpty ? 'General' : _topicController.text,
+          topic: _topicController.text.isEmpty
+              ? 'General'
+              : _topicController.text,
           questions: _questions,
           status: status,
           createdBy: user.id,
         );
 
-        await FirebaseFirestore.instance.collection('quizzes').add(newQuiz.toMap());
+        await FirebaseFirestore.instance
+            .collection('quizzes')
+            .add(newQuiz.toMap());
       }
 
       if (mounted) {
@@ -5025,226 +5213,279 @@ void _showEditQuestionDialog(int index) {
     return Scaffold(
       appBar: AppBar(title: Text(_isEditing ? 'Edit Quiz' : 'Create New Quiz')),
       body: BackgroundWrapper(
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: InputDecoration(
-                        labelText: 'Quiz Title',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: InputDecoration(
+                          labelText: 'Quiz Title',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (v) =>
+                            v!.isEmpty ? 'Please enter a title' : null,
                       ),
-                      validator: (v) => v!.isEmpty ? 'Please enter a title' : null,
-                    ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _topicController,
-                      decoration: InputDecoration(
-                        labelText: 'Topic (e.g., 1.1)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _topicController,
+                        decoration: InputDecoration(
+                          labelText: 'Topic (e.g., 1.1)',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (v) =>
+                            v!.isEmpty ? 'Please enter a topic' : null,
                       ),
-                      validator: (v) => v!.isEmpty ? 'Please enter a topic' : null,
-                    ),
-                    const Divider(height: 30, thickness: 2),
+                      const Divider(height: 30, thickness: 2),
 
-                    const Text(
-                      'Add New Question:',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    DropdownButtonFormField<QuestionType>(
-                      value: _newQuestionType,
-                      items: const [
-                        DropdownMenuItem(value: QuestionType.mcq, child: Text('Multiple Choice (MCQ)')),
-                        DropdownMenuItem(value: QuestionType.shortAnswer, child: Text('Short Answer')),
+                      const Text(
+                        'Add New Question:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      DropdownButtonFormField<QuestionType>(
+                        value: _newQuestionType,
+                        items: const [
+                          DropdownMenuItem(
+                            value: QuestionType.mcq,
+                            child: Text('Multiple Choice (MCQ)'),
+                          ),
+                          DropdownMenuItem(
+                            value: QuestionType.shortAnswer,
+                            child: Text('Short Answer'),
+                          ),
+                        ],
+                        onChanged: (QuestionType? value) =>
+                            setState(() => _newQuestionType = value!),
+                        decoration: const InputDecoration(
+                          labelText: 'Question Type',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Multiline question text
+                      TextFormField(
+                        controller: _newQuestionTextController,
+                        decoration: InputDecoration(
+                          labelText: 'Question Text',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          hintText: 'Enter your question here...',
+                        ),
+                        maxLines: 5,
+                        minLines: 3,
+                      ),
+                      const SizedBox(height: 10),
+
+                      if (_newQuestionType == QuestionType.mcq) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'MCQ Options (Select correct one):',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            //Add option button
+                            IconButton(
+                              icon: const Icon(
+                                Icons.add_circle,
+                                color: Colors.green,
+                              ),
+                              tooltip: 'Add Option',
+                              onPressed: _addMcqOption,
+                            ),
+                          ],
+                        ),
+                        //Dynamic MCQ options with delete button
+                        ...List.generate(_mcqOptionControllers.length, (index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              children: [
+                                Radio<int>(
+                                  value: index,
+                                  groupValue: _correctMcqOptionIndex,
+                                  onChanged: (int? value) => setState(
+                                    () => _correctMcqOptionIndex = value!,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _mcqOptionControllers[index],
+                                    decoration: InputDecoration(
+                                      labelText: 'Option ${index + 1}',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    maxLines: 2,
+                                    minLines: 1,
+                                  ),
+                                ),
+                                //Delete option button (only if more than 2)
+                                if (_mcqOptionControllers.length > 2)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.remove_circle,
+                                      color: Colors.red,
+                                    ),
+                                    tooltip: 'Remove Option',
+                                    onPressed: () => _removeMcqOption(index),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ] else ...[
+                        //Multiline short answer
+                        TextFormField(
+                          controller: _newAnswerController,
+                          decoration: InputDecoration(
+                            labelText: 'Correct Short Answer',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            hintText: 'Enter the correct answer...',
+                          ),
+                          maxLines: 3,
+                          minLines: 2,
+                        ),
                       ],
-                      onChanged: (QuestionType? value) => setState(() => _newQuestionType = value!),
-                      decoration: const InputDecoration(labelText: 'Question Type'),
-                    ),
-                    const SizedBox(height: 10),
 
-                    // Multiline question text
-                    TextFormField(
-                      controller: _newQuestionTextController,
-                      decoration: InputDecoration(
-                        labelText: 'Question Text',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        hintText: 'Enter your question here...',
+                      const SizedBox(height: 10),
+                      // Multiline explanation
+                      TextFormField(
+                        controller: _newExplanationController,
+                        decoration: InputDecoration(
+                          labelText: 'Explanation (Optional)',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          hintText: 'Provide detailed feedback...',
+                        ),
+                        maxLines: 5,
+                        minLines: 3,
                       ),
-                      maxLines: 5,
-                      minLines: 3,
-                    ),
-                    const SizedBox(height: 10),
 
-                    if (_newQuestionType == QuestionType.mcq) ...[
+                      const SizedBox(height: 10),
+                      Center(
+                        child: ElevatedButton.icon(
+                          onPressed: _addQuestion,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Question to Quiz'),
+                        ),
+                      ),
+                      const Divider(height: 30, thickness: 2),
+
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'MCQ Options (Select correct one):',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                            'Quiz Questions:',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          //Add option button
-                          IconButton(
-                            icon: const Icon(Icons.add_circle, color: Colors.green),
-                            tooltip: 'Add Option',
-                            onPressed: _addMcqOption,
-                          ),
+                          Text('${_questions.length} Question(s)'),
                         ],
                       ),
-                      //Dynamic MCQ options with delete button
-                      ...List.generate(_mcqOptionControllers.length, (index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Row(
-                            children: [
-                              Radio<int>(
-                                value: index,
-                                groupValue: _correctMcqOptionIndex,
-                                onChanged: (int? value) => setState(() => _correctMcqOptionIndex = value!),
-                              ),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _mcqOptionControllers[index],
-                                  decoration: InputDecoration(
-                                    labelText: 'Option ${index + 1}',
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ..._questions.asMap().entries.map((entry) {
+                        int idx = entry.key;
+                        Question q = entry.value;
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          child: ListTile(
+                            title: Text(
+                              'Q${idx + 1}: ${q.questionText}',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Type: ${q.type == QuestionType.mcq ? "MCQ" : "Short Answer"}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
                                   ),
-                                  maxLines: 2,
-                                  minLines: 1,
                                 ),
-                              ),
-                              //Delete option button (only if more than 2)
-                              if (_mcqOptionControllers.length > 2)
+                                Text(
+                                  'Answer: ${q.answer}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Edit button
                                 IconButton(
-                                  icon: const Icon(Icons.remove_circle, color: Colors.red),
-                                  tooltip: 'Remove Option',
-                                  onPressed: () => _removeMcqOption(index),
+                                  icon: const Icon(
+                                    Icons.edit,
+                                    color: Colors.blue,
+                                  ),
+                                  tooltip: 'Edit Question',
+                                  onPressed: () => _showEditQuestionDialog(idx),
                                 ),
-                            ],
+                                // Delete button
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  tooltip: 'Delete Question',
+                                  onPressed: () =>
+                                      setState(() => _questions.removeAt(idx)),
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       }),
-                    ] else ...[
-                      //Multiline short answer
-                      TextFormField(
-                        controller: _newAnswerController,
-                        decoration: InputDecoration(
-                          labelText: 'Correct Short Answer',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          hintText: 'Enter the correct answer...',
-                        ),
-                        maxLines: 3,
-                        minLines: 2,
+                      const SizedBox(height: 30),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => _saveQuiz(QuizStatus.draft),
+                            icon: const Icon(Icons.drafts),
+                            label: const Text('Save as Draft'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => _saveQuiz(QuizStatus.published),
+                            icon: const Icon(Icons.cloud_upload),
+                            label: Text(
+                              _isEditing ? 'Update & Publish' : 'Publish Quiz',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-
-                    const SizedBox(height: 10),
-                    // Multiline explanation
-                    TextFormField(
-                      controller: _newExplanationController,
-                      decoration: InputDecoration(
-                        labelText: 'Explanation (Optional)',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        hintText: 'Provide detailed feedback...',
-                      ),
-                      maxLines: 5,
-                      minLines: 3,
-                    ),
-
-                    const SizedBox(height: 10),
-                    Center(
-                      child: ElevatedButton.icon(
-                        onPressed: _addQuestion,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Question to Quiz'),
-                      ),
-                    ),
-                    const Divider(height: 30, thickness: 2),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Quiz Questions:',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        Text('${_questions.length} Question(s)'),
-                      ],
-                    ),
-                    ..._questions.asMap().entries.map((entry) {
-  int idx = entry.key;
-  Question q = entry.value;
-  return Card(
-    margin: const EdgeInsets.symmetric(vertical: 6),
-    child: ListTile(
-      title: Text(
-        'Q${idx + 1}: ${q.questionText}',
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Type: ${q.type == QuestionType.mcq ? "MCQ" : "Short Answer"}',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
-          Text(
-            'Answer: ${q.answer}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Edit button
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.blue),
-            tooltip: 'Edit Question',
-            onPressed: () => _showEditQuestionDialog(idx),
-          ),
-          // Delete button
-          IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            tooltip: 'Delete Question',
-            onPressed: () => setState(() => _questions.removeAt(idx)),
-          ),
-        ],
-      ),
-    ),
-  );
-}),
-                    const SizedBox(height: 30),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () => _saveQuiz(QuizStatus.draft),
-                          icon: const Icon(Icons.drafts),
-                          label: const Text('Save as Draft'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () => _saveQuiz(QuizStatus.published),
-                          icon: const Icon(Icons.cloud_upload),
-                          label: Text(_isEditing ? 'Update & Publish' : 'Publish Quiz'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
       ),
     );
   }
@@ -5275,7 +5516,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
 
   // AI Model for marking
   late final GenerativeModel _markingModel;
-  
+
   @override
   void initState() {
     super.initState();
@@ -5295,10 +5536,10 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
       apiKey: apiKey,
       systemInstruction: Content.system(
         'Anda adalah AI yang menandakan kuiz. Anda akan diberi jawapan yang dijangka dan jawapan pengguna. '
-      'Bandingkan keduanya untuk kesamaan semantik, bukan hanya padanan teks tepat, termasuk sinonim dan variasi, serta perbezaan huruf besar dan kecil. '
-      'Balas dengan HANYA perkataan "YA" jika jawapan pengguna betul atau sinonim/variasi yang hampir. '
-      'Balas dengan HANYA perkataan "TIDAK" jika jawapan pengguna salah. '
-      'Berikan justifikasi untuk setiap jawapan dalam Bahasa Malaysia.',
+        'Bandingkan keduanya untuk kesamaan semantik, bukan hanya padanan teks tepat, termasuk sinonim dan variasi, serta perbezaan huruf besar dan kecil. '
+        'Balas dengan HANYA perkataan "YA" jika jawapan pengguna betul atau sinonim/variasi yang hampir. '
+        'Balas dengan HANYA perkataan "TIDAK" jika jawapan pengguna salah. '
+        'Berikan justifikasi untuk setiap jawapan dalam Bahasa Malaysia.',
       ),
     );
   }
@@ -5367,199 +5608,205 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
 
   // Save to progress_records collection for teacher filtering
   Future<void> _saveQuizToProgressRecords(int score, int total) async {
-  final userState = context.read<FirebaseUserState>();
-  final user = userState.currentUser;
-  if (user == null || !mounted) return;
+    final userState = context.read<FirebaseUserState>();
+    final user = userState.currentUser;
+    if (user == null || !mounted) return;
 
-  try {
-    final percentage = (score / total * 100).toDouble();
-    
-    await FirebaseFirestore.instance.collection('progress_records').add({
-      'student': user.username,
-      'studentId': user.id,
-      'activity': widget.quizTitle,
-      'score': percentage,
-      'grade': _calculateGradeFromPercentage(percentage),
-      'comments': 'Auto-generated from quiz completion',
-      'timestamp': FieldValue.serverTimestamp(),
-      'isAutoGenerated': true, 
-    });
-    
-    print('✅ Quiz score saved to progress_records for filtering');
-  } catch (e) {
-    print('❌ Error saving to progress_records: $e');
-  }
-}
+    try {
+      final percentage = (score / total * 100).toDouble();
 
-// Helper function to calculate grade
-String _calculateGradeFromPercentage(double percentage) {
-  if (percentage >= 80) return 'A';
-  if (percentage >= 60) return 'B';
-  if (percentage >= 50) return 'C';
-  if (percentage >= 40) return 'D';
-  return 'F';
-}
+      await FirebaseFirestore.instance.collection('progress_records').add({
+        'student': user.username,
+        'studentId': user.id,
+        'activity': widget.quizTitle,
+        'score': percentage,
+        'grade': _calculateGradeFromPercentage(percentage),
+        'comments': 'Auto-generated from quiz completion',
+        'timestamp': FieldValue.serverTimestamp(),
+        'isAutoGenerated': true,
+      });
 
-Future<void> _submitQuiz() async {
-  if (!mounted) return;
-
-  setState(() => _isSubmitting = true);
-
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const AlertDialog(
-      content: Row(
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(width: 20),
-          Text('Menandakan kuiz...'),
-        ],
-      ),
-    ),
-  );
-
-  int score = 0;
-  
-  // Store AI feedback for each question
-  Map<String, String> aiFeedback = {};
-
-  for (var q in widget.questions) {
-    final userAnswer = _userAnswers[q.id]?.trim() ?? "";
-    final correctAnswer = q.answer.trim();
-
-    if (userAnswer.isEmpty) {
-      aiFeedback[q.id] = "Tiada jawapan diberikan.";
-      continue;
+      print('✅ Quiz score saved to progress_records for filtering');
+    } catch (e) {
+      print('❌ Error saving to progress_records: $e');
     }
+  }
 
-    if (q.type == QuestionType.mcq) {
-      // MCQ: Case-insensitive exact match
-      if (userAnswer.toLowerCase() == correctAnswer.toLowerCase()) {
-        score++;
-        aiFeedback[q.id] = "✅ Betul!";
-      } else {
-        aiFeedback[q.id] = "❌ Salah. Jawapan yang betul ialah: ${q.answer}";
+  // Helper function to calculate grade
+  String _calculateGradeFromPercentage(double percentage) {
+    if (percentage >= 80) return 'A';
+    if (percentage >= 60) return 'B';
+    if (percentage >= 50) return 'C';
+    if (percentage >= 40) return 'D';
+    return 'F';
+  }
+
+  Future<void> _submitQuiz() async {
+    if (!mounted) return;
+
+    setState(() => _isSubmitting = true);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text('Menandakan kuiz...'),
+          ],
+        ),
+      ),
+    );
+
+    int score = 0;
+
+    // Store AI feedback for each question
+    Map<String, String> aiFeedback = {};
+
+    for (var q in widget.questions) {
+      final userAnswer = _userAnswers[q.id]?.trim() ?? "";
+      final correctAnswer = q.answer.trim();
+
+      if (userAnswer.isEmpty) {
+        aiFeedback[q.id] = "Tiada jawapan diberikan.";
+        continue;
       }
-    } else if (q.type == QuestionType.shortAnswer) {
-      // Short Answer: Check case-insensitive match first
-      if (userAnswer.toLowerCase() == correctAnswer.toLowerCase()) {
-        score++;
-        aiFeedback[q.id] = "✅ Jawapan sempurna!";
-      } else {
-        try {
-          // IMPROVED: Better AI prompt that explicitly handles case sensitivity
-          final prompt =
-              'Anda sedang menilai jawapan pendek pelajar.\n\n'
-              'Soalan: ${q.questionText}\n'
-              'Jawapan Dijangka: $correctAnswer\n'
-              'Jawapan Pelajar: $userAnswer\n\n'
-              'Tugas:\n'
-              '1. Tentukan sama ada jawapan pelajar adalah betul.\n'
-              '2. ABAIKAN perbezaan huruf besar/kecil (contoh: "Java" = "java" = "JAVA").\n'
-              '3. TERIMA sinonim, parafrase, dan variasi yang bermakna sama.\n'
-              '4. TERIMA jawapan yang mempunyai makna yang sama walaupun perkataan berbeza sedikit.\n'
-              '5. Balas dengan TEPAT "YA" atau "TIDAK" pada baris pertama.\n'
-              '6. Pada baris kedua, berikan maklum balas peribadi ringkas (1-2 ayat) dalam Bahasa Malaysia.\n\n'
-              'Contoh jawapan yang MESTI diterima:\n'
-              '- "Pemboleh ubah sejagat" = "pemboleh ubah sejagat" = "PEMBOLEH UBAH SEJAGAT"\n'
-              '- "Leraian" = "leraian" = "decomposition" = "memecahkan masalah"\n'
-              '- "Integer" = "integer" = "nombor bulat"\n\n'
-              'Format:\n'
-              'YA atau TIDAK\n'
-              'Maklum balas anda di sini';
 
-          final response = await _markingModel.generateContent([
-            Content.text(prompt),
-          ]);
+      if (q.type == QuestionType.mcq) {
+        // MCQ: Case-insensitive exact match
+        if (userAnswer.toLowerCase() == correctAnswer.toLowerCase()) {
+          score++;
+          aiFeedback[q.id] = "✅ Betul!";
+        } else {
+          aiFeedback[q.id] = "❌ Salah. Jawapan yang betul ialah: ${q.answer}";
+        }
+      } else if (q.type == QuestionType.shortAnswer) {
+        // Short Answer: Check case-insensitive match first
+        if (userAnswer.toLowerCase() == correctAnswer.toLowerCase()) {
+          score++;
+          aiFeedback[q.id] = "✅ Jawapan sempurna!";
+        } else {
+          try {
+            // IMPROVED: Better AI prompt that explicitly handles case sensitivity
+            final prompt =
+                'Anda sedang menilai jawapan pendek pelajar.\n\n'
+                'Soalan: ${q.questionText}\n'
+                'Jawapan Dijangka: $correctAnswer\n'
+                'Jawapan Pelajar: $userAnswer\n\n'
+                'Tugas:\n'
+                '1. Tentukan sama ada jawapan pelajar adalah betul.\n'
+                '2. ABAIKAN perbezaan huruf besar/kecil (contoh: "Java" = "java" = "JAVA").\n'
+                '3. TERIMA sinonim, parafrase, dan variasi yang bermakna sama.\n'
+                '4. TERIMA jawapan yang mempunyai makna yang sama walaupun perkataan berbeza sedikit.\n'
+                '5. Balas dengan TEPAT "YA" atau "TIDAK" pada baris pertama.\n'
+                '6. Pada baris kedua, berikan maklum balas peribadi ringkas (1-2 ayat) dalam Bahasa Malaysia.\n\n'
+                'Contoh jawapan yang MESTI diterima:\n'
+                '- "Pemboleh ubah sejagat" = "pemboleh ubah sejagat" = "PEMBOLEH UBAH SEJAGAT"\n'
+                '- "Leraian" = "leraian" = "decomposition" = "memecahkan masalah"\n'
+                '- "Integer" = "integer" = "nombor bulat"\n\n'
+                'Format:\n'
+                'YA atau TIDAK\n'
+                'Maklum balas anda di sini';
 
-          final responseText = response.text?.trim() ?? "";
-          final lines = responseText.split('\n');
-          
-          final verdict = lines.isNotEmpty ? lines[0].toUpperCase().trim() : "TIDAK";
-          final feedback = lines.length > 1 ? lines.sublist(1).join(' ').trim() : "Tiada maklum balas tersedia.";
+            final response = await _markingModel.generateContent([
+              Content.text(prompt),
+            ]);
 
-          // Accept both "YA" (Malay) and "YES" (English) from AI
-          if (verdict == 'YA' || verdict == 'YES') {
-            score++;
-            aiFeedback[q.id] = "✅ $feedback";
-          } else {
-            aiFeedback[q.id] = "❌ $feedback\n\nJawapan Dijangka: $correctAnswer";
+            final responseText = response.text?.trim() ?? "";
+            final lines = responseText.split('\n');
+
+            final verdict = lines.isNotEmpty
+                ? lines[0].toUpperCase().trim()
+                : "TIDAK";
+            final feedback = lines.length > 1
+                ? lines.sublist(1).join(' ').trim()
+                : "Tiada maklum balas tersedia.";
+
+            // Accept both "YA" (Malay) and "YES" (English) from AI
+            if (verdict == 'YA' || verdict == 'YES') {
+              score++;
+              aiFeedback[q.id] = "✅ $feedback";
+            } else {
+              aiFeedback[q.id] =
+                  "❌ $feedback\n\nJawapan Dijangka: $correctAnswer";
+            }
+          } catch (e) {
+            print('AI marking error: $e');
+            aiFeedback[q.id] =
+                "❌ Tidak dapat mengesahkan jawapan. Dijangka: $correctAnswer";
           }
-        } catch (e) {
-          print('AI marking error: $e');
-          aiFeedback[q.id] = "❌ Tidak dapat mengesahkan jawapan. Dijangka: $correctAnswer";
         }
       }
     }
+
+    if (!mounted) return;
+
+    await _saveQuizScoreToDatabase(score, widget.questions.length);
+    await _saveQuizToProgressRecords(score, widget.questions.length);
+
+    // Pass AI feedback to the attempt
+    final attempt = QuizAttempt(
+      quizTitle: widget.quizTitle,
+      questions: widget.questions,
+      userAnswers: Map.from(_userAnswers),
+      score: score,
+      total: widget.questions.length,
+      timestamp: DateTime.now(),
+      aiFeedback: aiFeedback,
+    );
+
+    await _saveQuizAttemptToFirestore(attempt);
+
+    userQuizAttempts.add(attempt);
+
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuizResultsPage(attempt: attempt),
+      ),
+    );
   }
 
-  if (!mounted) return;
+  // Save quiz attempt to Firestore
+  Future<void> _saveQuizAttemptToFirestore(QuizAttempt attempt) async {
+    final userState = context.read<FirebaseUserState>();
+    final user = userState.currentUser;
+    if (user == null || !mounted) return;
 
-  await _saveQuizScoreToDatabase(score, widget.questions.length);
-  await _saveQuizToProgressRecords(score, widget.questions.length);
+    try {
+      // Convert questions to map format
+      final questionsData = attempt.questions.map((q) => q.toMap()).toList();
 
-  // Pass AI feedback to the attempt
-  final attempt = QuizAttempt(
-    quizTitle: widget.quizTitle,
-    questions: widget.questions,
-    userAnswers: Map.from(_userAnswers),
-    score: score,
-    total: widget.questions.length,
-    timestamp: DateTime.now(),
-    aiFeedback: aiFeedback,
-  );
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.id)
+          .collection('quiz_attempts')
+          .add({
+            'quizTitle': attempt.quizTitle,
+            'questions': questionsData,
+            'userAnswers': attempt.userAnswers,
+            'score': attempt.score,
+            'total': attempt.total,
+            'timestamp': FieldValue.serverTimestamp(),
+            'aiFeedback': attempt.aiFeedback ?? {},
+          });
 
-  await _saveQuizAttemptToFirestore(attempt);
-
-  userQuizAttempts.add(attempt);
-
-  if (!mounted) return;
-  setState(() => _isSubmitting = false);
-
-  if (!mounted) return;
-  Navigator.pop(context);
-
-  if (!mounted) return;
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (context) => QuizResultsPage(attempt: attempt),
-    ),
-  );
-}
-
-// Save quiz attempt to Firestore
-Future<void> _saveQuizAttemptToFirestore(QuizAttempt attempt) async {
-  final userState = context.read<FirebaseUserState>();
-  final user = userState.currentUser;
-  if (user == null || !mounted) return;
-
-  try {
-    // Convert questions to map format
-    final questionsData = attempt.questions.map((q) => q.toMap()).toList();
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.id)
-        .collection('quiz_attempts')
-        .add({
-      'quizTitle': attempt.quizTitle,
-      'questions': questionsData,
-      'userAnswers': attempt.userAnswers,
-      'score': attempt.score,
-      'total': attempt.total,
-      'timestamp': FieldValue.serverTimestamp(),
-      'aiFeedback': attempt.aiFeedback ?? {},
-    });
-
-    print('✅ Quiz attempt saved to Firestore');
-  } catch (e) {
-    print('❌ Error saving quiz attempt: $e');
+      print('✅ Quiz attempt saved to Firestore');
+    } catch (e) {
+      print('❌ Error saving quiz attempt: $e');
+    }
   }
-}
 
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -5573,16 +5820,16 @@ Future<void> _saveQuizAttemptToFirestore(QuizAttempt attempt) async {
         ),
       ),
       body: BackgroundWrapper(
-      child: PageView.builder(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // Disable swiping
-        itemCount: widget.questions.length,
-        itemBuilder: (context, index) {
-          final question = widget.questions[index];
-          return _buildQuestionPage(question, index);
-        },
-        onPageChanged: (index) => setState(() => _currentPage = index),
-      ),
+        child: PageView.builder(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(), // Disable swiping
+          itemCount: widget.questions.length,
+          itemBuilder: (context, index) {
+            final question = widget.questions[index];
+            return _buildQuestionPage(question, index);
+          },
+          onPageChanged: (index) => setState(() => _currentPage = index),
+        ),
       ),
       bottomNavigationBar: BottomAppBar(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -5703,133 +5950,156 @@ class QuizResultsPage extends StatelessWidget {
         automaticallyImplyLeading: false, // No back button
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // --- 1. Score Summary ---
-            Text(
-              'Quiz Complete!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[800],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your Score: ${attempt.score} / ${attempt.total}',
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 24),
-
-            // --- 2. Detailed Feedback List ---
-            const Text(
-              'Detailed Feedback',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const Divider(),
-
-           ListView.builder(
-  shrinkWrap: true,
-  physics: const NeverScrollableScrollPhysics(),
-  itemCount: attempt.questions.length,
-  itemBuilder: (context, index) {
-    final q = attempt.questions[index];
-    final userAnswer = attempt.userAnswers[q.id];
-    final isCorrect = userAnswer?.toLowerCase().trim() == q.answer.toLowerCase().trim();
-    
-    // Get AI feedback
-    final feedback = attempt.aiFeedback?[q.id] ?? '';
-
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      color: isCorrect ? Colors.green[50] : Colors.red[50],
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Q${index + 1}: ${q.questionText}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your Answer: $userAnswer',
-              style: TextStyle(
-                color: isCorrect ? Colors.green[800] : Colors.red[800],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (!isCorrect) ...[
-              const SizedBox(height: 4),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // --- 1. Score Summary ---
               Text(
-                'Correct Answer: ${q.answer}',
-                style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.w500),
-              ),
-            ],
-            
-            // Display AI personalized feedback
-            if (feedback.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
+                'Quiz Complete!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[800],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.psychology, size: 16, color: Colors.blue[700]),
-                        const SizedBox(width: 6),
-                        Text(
-                          'AI Feedback:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[900],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your Score: ${attempt.score} / ${attempt.total}',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // --- 2. Detailed Feedback List ---
+              const Text(
+                'Detailed Feedback',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Divider(),
+
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: attempt.questions.length,
+                itemBuilder: (context, index) {
+                  final q = attempt.questions[index];
+                  final userAnswer = attempt.userAnswers[q.id];
+                  final isCorrect =
+                      userAnswer?.toLowerCase().trim() ==
+                      q.answer.toLowerCase().trim();
+
+                  // Get AI feedback
+                  final feedback = attempt.aiFeedback?[q.id] ?? '';
+
+                  return Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    color: isCorrect ? Colors.green[50] : Colors.red[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Q${index + 1}: ${q.questionText}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Your Answer: $userAnswer',
+                            style: TextStyle(
+                              color: isCorrect
+                                  ? Colors.green[800]
+                                  : Colors.red[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (!isCorrect) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Correct Answer: ${q.answer}',
+                              style: TextStyle(
+                                color: Colors.blue[800],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+
+                          // Display AI personalized feedback
+                          if (feedback.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8.0),
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue[200]!),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.psychology,
+                                        size: 16,
+                                        color: Colors.blue[700],
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'AI Feedback:',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue[900],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    feedback,
+                                    style: TextStyle(
+                                      color: Colors.blue[900],
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          // Show explanation if available
+                          if (q.explanation != null) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8.0),
+                              width: double.infinity,
+                              color: Colors.grey[200],
+                              child: Text(
+                                'Explanation: ${q.explanation}',
+                                style: TextStyle(
+                                  color: Colors.grey[800],
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      feedback,
-                      style: TextStyle(color: Colors.blue[900], fontSize: 13),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
-            
-            // Show explanation if available
-            if (q.explanation != null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                width: double.infinity,
-                color: Colors.grey[200],
-                child: Text(
-                  'Explanation: ${q.explanation}',
-                  style: TextStyle(color: Colors.grey[800], fontStyle: FontStyle.italic),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
-      ),
-    );
-  },
-)
-],
-),
-),
       ),
       bottomNavigationBar: BottomAppBar(
         child: Padding(
@@ -5863,9 +6133,7 @@ class AIChatbotPage extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        body: BackgroundWrapper(
-       child: const _ChatBody(),
-      ),
+        body: BackgroundWrapper(child: const _ChatBody()),
       ),
     );
   }
@@ -6090,66 +6358,67 @@ class _ChatBodyState extends State<_ChatBody> {
 
         // ---- Rating + End Conversation Row ----
         Container(
-  color: Colors.grey[100],
-  padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
-  child: Row(
-    children: [
-      // ⭐ Rating Section (flexible)
-      Expanded(
-        child: Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 2,
-          children: [
-            const Text('Rate chatbot:'),
-            for (int s = 1; s <= 5; s++)
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: Icon(
-                  s <= lastRating ? Icons.star : Icons.star_border,
-                  color: Colors.orange,
-                  size: 24,
-                ),
-                onPressed: () {
-                  setState(() => lastRating = s);
+          color: Colors.grey[100],
+          padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
+          child: Row(
+            children: [
+              // ⭐ Rating Section (flexible)
+              Expanded(
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 2,
+                  children: [
+                    const Text('Rate chatbot:'),
+                    for (int s = 1; s <= 5; s++)
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(
+                          s <= lastRating ? Icons.star : Icons.star_border,
+                          color: Colors.orange,
+                          size: 24,
+                        ),
+                        onPressed: () {
+                          setState(() => lastRating = s);
 
-                  context.read<ChatBloc>()
-                      .add(SubmitChatRatingEvent(s));
+                          context.read<ChatBloc>().add(
+                            SubmitChatRatingEvent(s),
+                          );
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Thanks! You rated the bot $s star(s).',
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Thanks! You rated the bot $s star(s).',
+                              ),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
                       ),
-                      duration: const Duration(seconds: 2),
+                  ],
+                ),
+              ),
+
+              // ⛔ Stop Button (fixed)
+              IconButton(
+                icon: const Icon(
+                  Icons.stop_circle,
+                  color: Colors.red,
+                  size: 28,
+                ),
+                tooltip: 'End Conversation',
+                onPressed: () {
+                  context.read<ChatBloc>().add(ClearChatEvent());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Perbualan telah tamat. Memulakan semula'),
                     ),
                   );
                 },
               ),
-          ],
+            ],
+          ),
         ),
-      ),
-
-      // ⛔ Stop Button (fixed)
-      IconButton(
-        icon: const Icon(
-          Icons.stop_circle,
-          color: Colors.red,
-          size: 28,
-        ),
-        tooltip: 'End Conversation',
-        onPressed: () {
-          context.read<ChatBloc>().add(ClearChatEvent());
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Perbualan telah tamat. Memulakan semula'),
-            ),
-          );
-        },
-      ),
-    ],
-  ),
-),
       ],
     );
   }
@@ -6494,32 +6763,32 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   Future<void> _onSubmitChatRating(
-  SubmitChatRatingEvent event,
-  Emitter<ChatState> emit,
-) async {
-  final user = firebase_auth.FirebaseAuth.instance.currentUser;
+    SubmitChatRatingEvent event,
+    Emitter<ChatState> emit,
+  ) async {
+    final user = firebase_auth.FirebaseAuth.instance.currentUser;
 
-  if (user == null) {
-    debugPrint('❌ No logged-in user');
-    return;
+    if (user == null) {
+      debugPrint('❌ No logged-in user');
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('chatbot_ratings')
+          .add({
+            'rating': event.rating,
+            'source': 'AI Chatbot',
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+
+      debugPrint('✅ Chatbot rating saved');
+    } catch (e) {
+      debugPrint('❌ Failed to save rating: $e');
+    }
   }
-
-  try {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('chatbot_ratings')
-        .add({
-      'rating': event.rating,
-      'source': 'AI Chatbot',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    debugPrint('✅ Chatbot rating saved');
-  } catch (e) {
-    debugPrint('❌ Failed to save rating: $e');
-  }
-}
 }
 
 // Progress Page
@@ -6539,7 +6808,7 @@ class ProgressRecord {
   final String grade;
   final String comments;
   final Timestamp? timestamp;
-  final bool isAutoGenerated; 
+  final bool isAutoGenerated;
 
   ProgressRecord({
     required this.id,
@@ -6550,7 +6819,7 @@ class ProgressRecord {
     required this.grade,
     required this.comments,
     required this.timestamp,
-    this.isAutoGenerated = false, 
+    this.isAutoGenerated = false,
   });
 
   factory ProgressRecord.fromDoc(DocumentSnapshot doc) {
@@ -6584,18 +6853,19 @@ class _ProgressPageState extends State<ProgressPage> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _isSearching = false;
 
-   // Filtering state variables
+  // Filtering state variables
   String? _selectedQuizFilter;
   double _minScoreFilter = 0;
   double _maxScoreFilter = 100;
   bool _showFilterOptions = false;
-  List<String> _availableQuizzes = []; 
+  List<String> _availableQuizzes = [];
 
   @override
   void initState() {
     super.initState();
     _loadAvailableQuizzes();
   }
+
   // Calculate course completion percentage
   Future<double> _calculateCourseCompletionPercentage(String studentId) async {
     try {
@@ -6616,29 +6886,28 @@ class _ProgressPageState extends State<ProgressPage> {
       return 0.0;
     }
   }
-// Fetch available quizzes for the dropdown
-Future<void> _loadAvailableQuizzes() async {
-  try {
-    final snapshot = await _fs
-        .collection('progress_records')
-        .get();
 
-    final quizTitles = snapshot.docs
-        .map((doc) => doc['activity'] as String)
-        .toSet()
-        .toList();
+  // Fetch available quizzes for the dropdown
+  Future<void> _loadAvailableQuizzes() async {
+    try {
+      final snapshot = await _fs.collection('progress_records').get();
 
-    setState(() {
-      _availableQuizzes = quizTitles..sort();
-    });
-  } catch (e) {
-    print('Error loading quiz list: $e');
-    // Provide empty list on error
-    setState(() {
-      _availableQuizzes = [];
-    });
+      final quizTitles = snapshot.docs
+          .map((doc) => doc['activity'] as String)
+          .toSet()
+          .toList();
+
+      setState(() {
+        _availableQuizzes = quizTitles..sort();
+      });
+    } catch (e) {
+      print('Error loading quiz list: $e');
+      // Provide empty list on error
+      setState(() {
+        _availableQuizzes = [];
+      });
+    }
   }
-}
 
   // Clear all filters
   void _clearFilters() {
@@ -6650,7 +6919,7 @@ Future<void> _loadAvailableQuizzes() async {
     });
   }
 
- Future<void> _searchUsers(String query) async {
+  Future<void> _searchUsers(String query) async {
     if (query.isEmpty) {
       setState(() => _searchResults = []);
       return;
@@ -6670,10 +6939,7 @@ Future<void> _loadAvailableQuizzes() async {
             final username = (doc.data()['username'] ?? '').toLowerCase();
             return username.contains(query.toLowerCase());
           })
-          .map((doc) => {
-                'id': doc.id,
-                'username': doc['username'],
-              })
+          .map((doc) => {'id': doc.id, 'username': doc['username']})
           .toList();
 
       setState(() {
@@ -6684,15 +6950,15 @@ Future<void> _loadAvailableQuizzes() async {
       print('❌ User search error: $e');
       setState(() => _isSearching = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User search failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('User search failed: $e')));
       }
     }
   }
 
-// Add progress data with data validation
-Future<void> _addProgress() async {
+  // Add progress data with data validation
+  Future<void> _addProgress() async {
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -6718,9 +6984,7 @@ Future<void> _addProgress() async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
@@ -6795,8 +7059,14 @@ Future<void> _addProgress() async {
         title: const Text('Delete Confirmation'),
         content: const Text('Are you sure you want to delete this record?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -6804,54 +7074,59 @@ Future<void> _addProgress() async {
     if (confirmed == true) {
       try {
         await _fs.collection('progress_records').doc(docId).delete();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record deleted successfully!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Record deleted successfully!')),
+        );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
-  
+
   //Validation methods for input fields
   String? _validateActivity(String? value) {
-  if (value == null || value.isEmpty) {
-    return 'Activity name is required';
+    if (value == null || value.isEmpty) {
+      return 'Activity name is required';
+    }
+    if (value.length < 3) {
+      return 'Activity name must be at least 3 characters';
+    }
+    if (value.length > 100) {
+      return 'Activity name must not exceed 100 characters';
+    }
+    return null;
   }
-  if (value.length < 3) {
-    return 'Activity name must be at least 3 characters';
-  }
-  if (value.length > 100) {
-    return 'Activity name must not exceed 100 characters';
-  }
-  return null;
-}
 
-String? _validateScore(String? value) {
-  if (value == null || value.isEmpty) {
-    return 'Score is required';
-  }
-  
-  final score = double.tryParse(value);
-  if (score == null) {
-    return 'Please enter a valid number';
-  }
-  
-  if (score < 0) {
-    return 'Score cannot be negative';
-  }
-  
-  if (score > 100) {
-    return 'Score cannot exceed 100';
-  }
-  
-  return null;
-}
+  String? _validateScore(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Score is required';
+    }
 
-String? _validateComments(String? value) {
-  if (value != null && value.length > 200) {
-    return 'Comments must not exceed 200 characters';
+    final score = double.tryParse(value);
+    if (score == null) {
+      return 'Please enter a valid number';
+    }
+
+    if (score < 0) {
+      return 'Score cannot be negative';
+    }
+
+    if (score > 100) {
+      return 'Score cannot exceed 100';
+    }
+
+    return null;
   }
-  return null;
-}
+
+  String? _validateComments(String? value) {
+    if (value != null && value.length > 200) {
+      return 'Comments must not exceed 200 characters';
+    }
+    return null;
+  }
+
   void _showEditDialog(ProgressRecord record) {
     final activityCtl = TextEditingController(text: record.activity);
     final scoreCtl = TextEditingController(text: record.score.toString());
@@ -6869,37 +7144,63 @@ String? _validateComments(String? value) {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Student: ${record.student}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                'Student: ${record.student}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: activityCtl,
-                decoration: InputDecoration(labelText: 'Activity', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
+                decoration: InputDecoration(
+                  labelText: 'Activity',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 validator: (v) => v!.isEmpty ? 'Enter activity' : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: scoreCtl,
-                decoration: InputDecoration(labelText: 'Score', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
+                decoration: InputDecoration(
+                  labelText: 'Score',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? 'Enter score' : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: gradeCtl,
-                decoration: InputDecoration(labelText: 'Grade', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
+                decoration: InputDecoration(
+                  labelText: 'Grade',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 validator: (v) => v!.isEmpty ? 'Enter grade' : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: commentsCtl,
-                decoration: InputDecoration(labelText: 'Comments', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),)),
+                decoration: InputDecoration(
+                  labelText: 'Comments',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 maxLines: 2,
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             child: const Text('Save'),
             onPressed: () async {
@@ -6913,7 +7214,9 @@ String? _validateComments(String? value) {
               });
 
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Record updated')));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Record updated')));
             },
           ),
         ],
@@ -6927,7 +7230,7 @@ String? _validateComments(String? value) {
     final currentUser = userState.currentUser;
     final isTeacher = currentUser?.userType == UserType.teacher;
     final currentUsername = currentUser?.username;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('📈 Student Progress'),
@@ -6941,806 +7244,905 @@ String? _validateComments(String? value) {
               tooltip: 'Class Dashboard',
               onPressed: () => Navigator.push(
                 context,
-          MaterialPageRoute(builder: (_) => const ClassDashboardPage()),
-        ),
+                MaterialPageRoute(builder: (_) => const ClassDashboardPage()),
+              ),
+            ),
+            // Progress History Button
+            IconButton(
+              icon: const Icon(Icons.history, color: Colors.white),
+              tooltip: 'Progress History',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProgressHistoryPage()),
+              ),
+            ),
+          ],
+        ],
       ),
-      // Progress History Button
-      IconButton(
-        icon: const Icon(Icons.history, color: Colors.white),
-        tooltip: 'Progress History',
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ProgressHistoryPage()),
-        ),
-      ),
-    ],
-  ],
-),
-body: BackgroundWrapper( 
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Course Completion Progress Bar (Students Only)
-            if (!isTeacher && currentUser != null) ...[
-              FutureBuilder<double>(
-                future: _calculateCourseCompletionPercentage(currentUser.id),
-                builder: (context, snapshot) {
-                  final completionPercentage = snapshot.data ?? 0.0;
-                  final completedTopics = (completionPercentage / 100 * systemQuizData.length).round();
-                  final totalTopics = systemQuizData.length;
+      body: BackgroundWrapper(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Course Completion Progress Bar (Students Only)
+              if (!isTeacher && currentUser != null) ...[
+                FutureBuilder<double>(
+                  future: _calculateCourseCompletionPercentage(currentUser.id),
+                  builder: (context, snapshot) {
+                    final completionPercentage = snapshot.data ?? 0.0;
+                    final completedTopics =
+                        (completionPercentage / 100 * systemQuizData.length)
+                            .round();
+                    final totalTopics = systemQuizData.length;
 
-                  return Card(
-                    elevation: 4,
-                    color: Colors.blue[50],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                '📚 Course Completion',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
+                    return Card(
+                      elevation: 4,
+                      color: Colors.blue[50],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  '📚 Course Completion',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '${completionPercentage.toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: completionPercentage >= 80
-                                      ? Colors.green
-                                      : completionPercentage >= 50
-                                          ? Colors.orange
-                                          : Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          
-                          // Progress Bar
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: LinearProgressIndicator(
-                              value: completionPercentage / 100,
-                              minHeight: 20,
-                              backgroundColor: Colors.grey[300],
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                completionPercentage >= 80
-                                    ? Colors.green
-                                    : completionPercentage >= 50
+                                Text(
+                                  '${completionPercentage.toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: completionPercentage >= 80
+                                        ? Colors.green
+                                        : completionPercentage >= 50
                                         ? Colors.orange
                                         : Colors.red,
-                              ),
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 12),
-                          
-                          // Stats
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.check_circle, color: Colors.green, size: 20),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '$completedTopics Completed',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  Icon(Icons.pending, color: Colors.orange, size: 20),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${totalTopics - completedTopics} Remaining',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 12),
-                          
-                          // Motivational Message
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue[200]!),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  completionPercentage >= 80
-                                      ? Icons.celebration
-                                      : completionPercentage >= 50
-                                          ? Icons.trending_up
-                                          : Icons.emoji_events,
-                                  color: Colors.blue,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    completionPercentage >= 100
-                                        ? '🎉 Amazing! You\'ve completed all courses!'
-                                        : completionPercentage >= 80
-                                            ? '🌟 Great progress! Keep it up!'
-                                            : completionPercentage >= 50
-                                                ? '💪 You\'re halfway there!'
-                                                : '🚀 Start your learning journey!',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[800],
-                                      fontStyle: FontStyle.italic,
-                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+
+                            // Progress Bar
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: completionPercentage / 100,
+                                minHeight: 20,
+                                backgroundColor: Colors.grey[300],
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  completionPercentage >= 80
+                                      ? Colors.green
+                                      : completionPercentage >= 50
+                                      ? Colors.orange
+                                      : Colors.red,
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Stats
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '$completedTopics Completed',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.pending,
+                                      color: Colors.orange,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${totalTopics - completedTopics} Remaining',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Motivational Message
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue[200]!),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    completionPercentage >= 80
+                                        ? Icons.celebration
+                                        : completionPercentage >= 50
+                                        ? Icons.trending_up
+                                        : Icons.emoji_events,
+                                    color: Colors.blue,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      completionPercentage >= 100
+                                          ? '🎉 Amazing! You\'ve completed all courses!'
+                                          : completionPercentage >= 80
+                                          ? '🌟 Great progress! Keep it up!'
+                                          : completionPercentage >= 50
+                                          ? '💪 You\'re halfway there!'
+                                          : '🚀 Start your learning journey!',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[800],
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+              if (isTeacher) ...[
+                Card(
+                  elevation: 3,
+                  color: Colors.blue[50],
+                  child: ExpansionTile(
+                    leading: const Icon(Icons.filter_list, color: Colors.blue),
+                    title: const Text(
+                      'Filter Students by Quiz Score',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
-            if (isTeacher) ...[
-              Card(
-          elevation: 3,
-          color: Colors.blue[50],
-          child: ExpansionTile(
-            leading: const Icon(Icons.filter_list, color: Colors.blue),
-            title: const Text(
-              'Filter Students by Quiz Score',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            initiallyExpanded: _showFilterOptions,
-            onExpansionChanged: (expanded) {
-              setState(() => _showFilterOptions = expanded);
-            },
-             tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-             childrenPadding: EdgeInsets.zero, 
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Quiz Selector Dropdown
-                    DropdownButtonFormField<String>(
-                      value: _selectedQuizFilter,
-                      decoration: InputDecoration(
-                        labelText: 'Select Quiz',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        prefixIcon: const Icon(Icons.quiz),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                    initiallyExpanded: _showFilterOptions,
+                    onExpansionChanged: (expanded) {
+                      setState(() => _showFilterOptions = expanded);
+                    },
+                    tilePadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    childrenPadding: EdgeInsets.zero,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Quiz Selector Dropdown
+                            DropdownButtonFormField<String>(
+                              value: _selectedQuizFilter,
+                              decoration: InputDecoration(
+                                labelText: 'Select Quiz',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                prefixIcon: const Icon(Icons.quiz),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                              hint: const Text('All Quizzes'),
+                              isExpanded: true,
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('All Quizzes'),
+                                ),
+                                ..._availableQuizzes.map(
+                                  (quiz) => DropdownMenuItem(
+                                    value: quiz,
+                                    child: Text(
+                                      quiz,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                setState(() => _selectedQuizFilter = value);
+                              },
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Score Range Slider
+                            const Text(
+                              'Score Range',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
+                            RangeSlider(
+                              values: RangeValues(
+                                _minScoreFilter,
+                                _maxScoreFilter,
+                              ),
+                              min: 0,
+                              max: 100,
+                              divisions: 20,
+                              labels: RangeLabels(
+                                '${_minScoreFilter.toStringAsFixed(0)}%',
+                                '${_maxScoreFilter.toStringAsFixed(0)}%',
+                              ),
+                              onChanged: (RangeValues values) {
+                                setState(() {
+                                  _minScoreFilter = values.start;
+                                  _maxScoreFilter = values.end;
+                                });
+                              },
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Min: ${_minScoreFilter.toStringAsFixed(0)}%',
+                                ),
+                                Text(
+                                  'Max: ${_maxScoreFilter.toStringAsFixed(0)}%',
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Clear Filters Button
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: _clearFilters,
+                                  icon: const Icon(Icons.clear),
+                                  label: const Text('Clear Filters'),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      hint: const Text('All Quizzes'),
-                      isExpanded: true, 
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('All Quizzes'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Validation with error messages
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          labelText: 'Search Student *',
+                          labelStyle: const TextStyle(color: Colors.black87),
+                          hintText: 'Type username to search...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                      _searchResults.clear();
+                                      _selectedStudentUsername = null;
+                                    });
+                                  },
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
                         ),
-                        ..._availableQuizzes.map(
-                          (quiz) => DropdownMenuItem(
-                            value: quiz,
-                            child: Text(
-                              quiz,
-                              overflow: TextOverflow.ellipsis,
+                        onChanged: _searchUsers,
+                        validator: (value) {
+                          if (_selectedStudentUsername == null) {
+                            return 'Please select a student from the search results';
+                          }
+                          return null;
+                        },
+                      ),
+
+                      if (_searchResults.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Card(
+                          elevation: 2,
+                          child: Container(
+                            constraints: const BoxConstraints(maxHeight: 200),
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: _searchResults.length,
+                              itemBuilder: (_, i) {
+                                final u = _searchResults[i];
+                                return ListTile(
+                                  leading: const CircleAvatar(
+                                    child: Icon(Icons.person, size: 20),
+                                  ),
+                                  title: Text(u['username']),
+                                  trailing: const Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedStudentUsername = u['username'];
+                                      _selectedStudentId = u['id'];
+                                      _searchController.text = u['username'];
+                                      _searchResults.clear();
+                                    });
+                                    // Trigger form validation
+                                    _formKey.currentState?.validate();
+                                  },
+                                );
+                              },
                             ),
                           ),
                         ),
                       ],
-                      onChanged: (value) {
-                        setState(() => _selectedQuizFilter = value);
-                      },
-                    ),
-                    const SizedBox(height: 16),
 
-                    // Score Range Slider
-                    const Text(
-                      'Score Range',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    RangeSlider(
-                      values: RangeValues(_minScoreFilter, _maxScoreFilter),
-                      min: 0,
-                      max: 100,
-                      divisions: 20,
-                      labels: RangeLabels(
-                        '${_minScoreFilter.toStringAsFixed(0)}%',
-                        '${_maxScoreFilter.toStringAsFixed(0)}%',
-                      ),
-                      onChanged: (RangeValues values) {
-                        setState(() {
-                          _minScoreFilter = values.start;
-                          _maxScoreFilter = values.end;
-                        });
-                      },
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Min: ${_minScoreFilter.toStringAsFixed(0)}%'),
-                        Text('Max: ${_maxScoreFilter.toStringAsFixed(0)}%'),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Clear Filters Button
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton.icon(
-                          onPressed: _clearFilters,
-                          icon: const Icon(Icons.clear),
-                          label: const Text('Clear Filters'),
+                      if (_selectedStudentUsername != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green[200]!),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Selected: ',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    _selectedStudentUsername!,
+                                    style: const TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  icon: const Icon(Icons.clear, size: 16),
+                                  label: const Text('Clear'),
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedStudentUsername = null;
+                                      _selectedStudentId = null;
+                                      _searchController.clear();
+                                    });
+                                    _formKey.currentState?.validate();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-         // Validation with error messages
-              Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-          labelText: 'Search Student *',
-          labelStyle: const TextStyle(
-            color: Colors.black87,
-          ),
-          hintText: 'Type username to search...',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    setState(() {
-                      _searchController.clear();
-                      _searchResults.clear();
-                      _selectedStudentUsername = null;
-                    });
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: Colors.grey[50],
-        ),
-        onChanged: _searchUsers,
-        validator: (value) {
-          if (_selectedStudentUsername == null) {
-            return 'Please select a student from the search results';
-          }
-          return null;
-        },
-      ),
-      
-      if (_searchResults.isNotEmpty) ...[
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: Container(
-            constraints: const BoxConstraints(maxHeight: 200),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _searchResults.length,
-              itemBuilder: (_, i) {
-                final u = _searchResults[i];
-                return ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.person, size: 20),
-                  ),
-                  title: Text(u['username']),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    setState(() {
-                      _selectedStudentUsername = u['username'];
-                      _selectedStudentId = u['id'];
-                      _searchController.text = u['username'];
-                      _searchResults.clear();
-                    });
-                    // Trigger form validation
-                    _formKey.currentState?.validate();
-                  },
-                );
-              },
-            ),
-          ),
-        ),
-      ],
 
-      if (_selectedStudentUsername != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.green[50],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green[200]!),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                const SizedBox(width: 8),
-                const Text('Selected: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                Expanded(
-                  child: Text(
-                    _selectedStudentUsername!,
-                    style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
+                      const SizedBox(height: 16),
+
+                      // Activity Field
+                      TextFormField(
+                        controller: _activityController,
+                        decoration: InputDecoration(
+                          labelText: 'Activity Name *',
+                          hintText: 'e.g., Quiz 1 - Basic Programming',
+                          prefixIcon: const Icon(Icons.assignment),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          counterText: '${_activityController.text.length}/100',
+                        ),
+                        maxLength: 100,
+                        validator: _validateActivity,
+                        onChanged: (value) {
+                          setState(() {}); // Update character counter
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Score Field
+                      TextFormField(
+                        controller: _scoreController,
+                        decoration: InputDecoration(
+                          labelText: 'Score (0-100) *',
+                          hintText: 'Enter score',
+                          prefixIcon: const Icon(Icons.percent),
+                          suffixText: '%',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          helperText: 'Enter a value between 0 and 100',
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: _validateScore,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Grade Field with Dropdown
+                      DropdownButtonFormField<String>(
+                        value: _gradeController.text.isNotEmpty
+                            ? _gradeController.text.toUpperCase()
+                            : null,
+                        decoration: InputDecoration(
+                          labelText: 'Grade *',
+                          prefixIcon: const Icon(Icons.grade),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          helperText: 'Select a letter grade',
+                        ),
+                        items:
+                            [
+                                  'A+',
+                                  'A',
+                                  'A-',
+                                  'B+',
+                                  'B',
+                                  'B-',
+                                  'C+',
+                                  'C',
+                                  'C-',
+                                  'D',
+                                  'F',
+                                ]
+                                .map(
+                                  (grade) => DropdownMenuItem(
+                                    value: grade,
+                                    child: Text(grade),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _gradeController.text = value ?? '';
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a grade';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Comments Field (Optional)
+                      TextFormField(
+                        controller: _commentsController,
+                        decoration: InputDecoration(
+                          labelText: 'Comments (Optional)',
+                          hintText: 'Add any additional feedback...',
+                          prefixIcon: const Icon(Icons.comment),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[50],
+                          counterText: '${_commentsController.text.length}/500',
+                          alignLabelWithHint: true,
+                        ),
+                        maxLines: 3,
+                        maxLength: 500,
+                        validator: _validateComments,
+                        onChanged: (value) {
+                          setState(() {}); // Update character counter
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Required Fields Note
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue[200]!),
+                        ),
+                        child: Row(
+                          children: const [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.blue,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '* indicates required fields',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: _addProgress,
+                          icon: const Icon(Icons.add_circle_outline),
+                          label: const Text(
+                            'Add Progress Record',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
+
+                      const Divider(height: 40, thickness: 2),
+                    ],
                   ),
-                ),
-                TextButton.icon(
-                  icon: const Icon(Icons.clear, size: 16),
-                  label: const Text('Clear'),
-                  onPressed: () {
-                    setState(() {
-                      _selectedStudentUsername = null;
-                       _selectedStudentId = null;
-                      _searchController.clear();
-                    });
-                    _formKey.currentState?.validate();
-                  },
                 ),
               ],
-            ),
-          ),
-        ),
-
-      const SizedBox(height: 16),
-
-      // Activity Field
-      TextFormField(
-        controller: _activityController,
-        decoration: InputDecoration(
-          labelText: 'Activity Name *',
-          hintText: 'e.g., Quiz 1 - Basic Programming',
-          prefixIcon: const Icon(Icons.assignment),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: Colors.grey[50],
-          counterText: '${_activityController.text.length}/100',
-        ),
-        maxLength: 100,
-        validator: _validateActivity,
-        onChanged: (value) {
-          setState(() {}); // Update character counter
-        },
-      ),
-      const SizedBox(height: 16),
-
-      // Score Field
-      TextFormField(
-        controller: _scoreController,
-        decoration: InputDecoration(
-          labelText: 'Score (0-100) *',
-          hintText: 'Enter score',
-          prefixIcon: const Icon(Icons.percent),
-          suffixText: '%',
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: Colors.grey[50],
-          helperText: 'Enter a value between 0 and 100',
-        ),
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        validator: _validateScore,
-      ),
-      const SizedBox(height: 16),
-
-      // Grade Field with Dropdown
-      DropdownButtonFormField<String>(
-        value: _gradeController.text.isNotEmpty ? _gradeController.text.toUpperCase() : null,
-        decoration: InputDecoration(
-          labelText: 'Grade *',
-          prefixIcon: const Icon(Icons.grade),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: Colors.grey[50],
-          helperText: 'Select a letter grade',
-        ),
-        items: ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F']
-            .map((grade) => DropdownMenuItem(
-                  value: grade,
-                  child: Text(grade),
-                ))
-            .toList(),
-        onChanged: (value) {
-          setState(() {
-            _gradeController.text = value ?? '';
-          });
-        },
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please select a grade';
-          }
-          return null;
-        },
-      ),
-      const SizedBox(height: 16),
-
-      // Comments Field (Optional)
-      TextFormField(
-        controller: _commentsController,
-        decoration: InputDecoration(
-          labelText: 'Comments (Optional)',
-          hintText: 'Add any additional feedback...',
-          prefixIcon: const Icon(Icons.comment),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: Colors.grey[50],
-          counterText: '${_commentsController.text.length}/500',
-          alignLabelWithHint: true,
-        ),
-        maxLines: 3,
-        maxLength: 500,
-        validator: _validateComments,
-        onChanged: (value) {
-          setState(() {}); // Update character counter
-        },
-      ),
-      const SizedBox(height: 20),
-
-      // Required Fields Note
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blue[50],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.blue[200]!),
-        ),
-        child: Row(
-          children: const [
-            Icon(Icons.info_outline, color: Colors.blue, size: 20),
-            SizedBox(width: 8),
-            Text(
-              '* indicates required fields',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.blue,
-                fontStyle: FontStyle.italic,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  isTeacher ? 'Progress Records' : 'Your Progress Records',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 16),
-
-      // Submit Button
-      SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton.icon(
-          onPressed: _addProgress,
-          icon: const Icon(Icons.add_circle_outline),
-          label: const Text(
-            'Add Progress Record',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 2,
-          ),
-        ),
-      ),
-
-      const Divider(height: 40, thickness: 2),
-      ],
-      ),
-      )
-      ],
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                isTeacher ? 'Progress Records' : 'Your Progress Records',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                ),
               const SizedBox(height: 8),
-              
+
               // TEACHER VIEW with Filtering
               if (isTeacher)
-              StreamBuilder<QuerySnapshot>(
-                stream: _fs.collection('progress_records').snapshots(),
-                builder: (_, snap) {
-                  if (!snap.hasData) {
-                    return const Center(child: CircularProgressIndicator());
+                StreamBuilder<QuerySnapshot>(
+                  stream: _fs.collection('progress_records').snapshots(),
+                  builder: (_, snap) {
+                    if (!snap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
                     }
-                    
+
                     // Apply filters
                     var records = snap.data!.docs
-                    .map((d) => ProgressRecord.fromDoc(d))
-                    .toList();
-                    
+                        .map((d) => ProgressRecord.fromDoc(d))
+                        .toList();
+
                     // Filter by selected quiz
                     if (_selectedQuizFilter != null) {
                       records = records
-                      .where((r) => r.activity == _selectedQuizFilter)
-                      .toList();
-                      }
-                      
-                      // Filter by score range
-                      records = records
-                      .where((r) => r.score >= _minScoreFilter && r.score <= _maxScoreFilter)
-                      .toList();
+                          .where((r) => r.activity == _selectedQuizFilter)
+                          .toList();
+                    }
 
-      // Sort by timestamp (newest first)
-      records.sort((a, b) {
-        if (a.timestamp == null) return 1;
-        if (b.timestamp == null) return -1;
-        return b.timestamp!.compareTo(a.timestamp!);
-      });
+                    // Filter by score range
+                    records = records
+                        .where(
+                          (r) =>
+                              r.score >= _minScoreFilter &&
+                              r.score <= _maxScoreFilter,
+                        )
+                        .toList();
 
-       // LIMIT TO LATEST 3 RECORDS
-      final limitedRecords = records.take(3).toList();
-      final totalRecords = records.length;
+                    // Sort by timestamp (newest first)
+                    records.sort((a, b) {
+                      if (a.timestamp == null) return 1;
+                      if (b.timestamp == null) return -1;
+                      return b.timestamp!.compareTo(a.timestamp!);
+                    });
 
-      // Show "No students found" if empty after filtering
-      if (records.isEmpty) {
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
-                const SizedBox(height: 12),
-                Text(
-                  'No students found',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _selectedQuizFilter != null
-                      ? 'No students match the filter criteria for "$_selectedQuizFilter"'
-                      : 'Try adjusting your filters',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
+                    // LIMIT TO LATEST 3 RECORDS
+                    final limitedRecords = records.take(3).toList();
+                    final totalRecords = records.length;
 
-      // Show filter summary if filters are active
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_selectedQuizFilter != null || _minScoreFilter > 0 || _maxScoreFilter < 100)
-            Card(
-              color: Colors.amber[50],
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: Colors.amber),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Showing ${records.length} result(s) for '
-                        '${_selectedQuizFilter ?? "all quizzes"} '
-                        '(${_minScoreFilter.toStringAsFixed(0)}% - ${_maxScoreFilter.toStringAsFixed(0)}%)',
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 8),
-
-          // INFO BANNER: Showing latest 3 only
-          if (totalRecords > 3)
-            Card(
-              color: Colors.blue[50],
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info, color: Colors.blue, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Showing latest 3 of ${totalRecords} records. View all in History.',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ProgressHistoryPage(),
-                        ),
-                      ),
-                      child: const Text('View All'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 8),
-
-          // Display filtered records (LATEST 3 ONLY)
-          ...limitedRecords.map((r) {
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: Icon(
-                  r.isAutoGenerated ? Icons.auto_awesome : Icons.edit,
-                  color: r.isAutoGenerated ? Colors.purple : Colors.blue,
-                ),
-                title: Text('${r.student} — ${r.activity}'),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Score: ${r.score.toStringAsFixed(1)}%, Grade: ${r.grade}'),
-                    if (r.comments.isNotEmpty) Text(r.comments),
-                    if (r.isAutoGenerated)
-                      const Text(
-                        '🤖 Auto-generated from quiz',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontStyle: FontStyle.italic,
-                          color: Colors.purple,
-                        ),
-                      ),
-                  ],
-                ),
-                isThreeLine: true,
-                trailing: !r.isAutoGenerated
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () => _showEditDialog(r),
+                    // Show "No students found" if empty after filtering
+                    if (records.isEmpty) {
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 48,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No students found',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _selectedQuizFilter != null
+                                    ? 'No students match the filter criteria for "$_selectedQuizFilter"'
+                                    : 'Try adjusting your filters',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _confirmAndDelete(r.id),
+                        ),
+                      );
+                    }
+
+                    // Show filter summary if filters are active
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_selectedQuizFilter != null ||
+                            _minScoreFilter > 0 ||
+                            _maxScoreFilter < 100)
+                          Card(
+                            color: Colors.amber[50],
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.info_outline,
+                                    color: Colors.amber,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Showing ${records.length} result(s) for '
+                                      '${_selectedQuizFilter ?? "all quizzes"} '
+                                      '(${_minScoreFilter.toStringAsFixed(0)}% - ${_maxScoreFilter.toStringAsFixed(0)}%)',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ],
-                      )
-                    : null,
-              ),
-            );
-          }),
-        ],
-      );
-    },
-  ),
+                        const SizedBox(height: 8),
 
-// STUDENT VIEW (shows both manual and auto-generated)
-if (!isTeacher)
-  StreamBuilder<QuerySnapshot>(
-    stream: _fs
-        .collection('progress_records')
-        .where('student', isEqualTo: currentUsername)
-        .snapshots(),
-    builder: (_, snap) {
-      if (!snap.hasData) {
-        return const Center(child: CircularProgressIndicator());
-      }
+                        // INFO BANNER: Showing latest 3 only
+                        if (totalRecords > 3)
+                          Card(
+                            color: Colors.blue[50],
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.info,
+                                    color: Colors.blue,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Showing latest 3 of ${totalRecords} records. View all in History.',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const ProgressHistoryPage(),
+                                      ),
+                                    ),
+                                    child: const Text('View All'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
 
-      final records = snap.data!.docs
-          .map((d) => ProgressRecord.fromDoc(d))
-          .toList();
-      
-      records.sort((a, b) {
-        if (a.timestamp == null) return 1;
-        if (b.timestamp == null) return -1;
-        return b.timestamp!.compareTo(a.timestamp!);
-      });
+                        // Display filtered records (LATEST 3 ONLY)
+                        ...limitedRecords.map((r) {
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Icon(
+                                r.isAutoGenerated
+                                    ? Icons.auto_awesome
+                                    : Icons.edit,
+                                color: r.isAutoGenerated
+                                    ? Colors.purple
+                                    : Colors.blue,
+                              ),
+                              title: Text('${r.student} — ${r.activity}'),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Score: ${r.score.toStringAsFixed(1)}%, Grade: ${r.grade}',
+                                  ),
+                                  if (r.comments.isNotEmpty) Text(r.comments),
+                                  if (r.isAutoGenerated)
+                                    const Text(
+                                      '🤖 Auto-generated from quiz',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.purple,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              isThreeLine: true,
+                              trailing: !r.isAutoGenerated
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () => _showEditDialog(r),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () =>
+                                              _confirmAndDelete(r.id),
+                                        ),
+                                      ],
+                                    )
+                                  : null,
+                            ),
+                          );
+                        }),
+                      ],
+                    );
+                  },
+                ),
 
-      if (records.isEmpty) {
-        return const Card(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(
-              child: Text('No progress records yet.'),
-            ),
+              // STUDENT VIEW (shows both manual and auto-generated)
+              if (!isTeacher)
+                StreamBuilder<QuerySnapshot>(
+                  stream: _fs
+                      .collection('progress_records')
+                      .where('student', isEqualTo: currentUsername)
+                      .snapshots(),
+                  builder: (_, snap) {
+                    if (!snap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final records = snap.data!.docs
+                        .map((d) => ProgressRecord.fromDoc(d))
+                        .toList();
+
+                    records.sort((a, b) {
+                      if (a.timestamp == null) return 1;
+                      if (b.timestamp == null) return -1;
+                      return b.timestamp!.compareTo(a.timestamp!);
+                    });
+
+                    if (records.isEmpty) {
+                      return const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(
+                            child: Text('No progress records yet.'),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: records.map((r) {
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: Icon(
+                              r.isAutoGenerated
+                                  ? Icons.auto_awesome
+                                  : Icons.school,
+                              color: r.isAutoGenerated
+                                  ? Colors.purple
+                                  : Colors.blue,
+                            ),
+                            title: Text(r.activity),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Score: ${r.score.toStringAsFixed(1)}%, Grade: ${r.grade}',
+                                ),
+                                if (r.comments.isNotEmpty) Text(r.comments),
+                                if (r.isAutoGenerated)
+                                  const Text(
+                                    '🤖 Auto-recorded from quiz',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.purple,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            isThreeLine: true,
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+            ],
           ),
-        );
-      }
-
-      return Column(
-        children: records.map((r) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              leading: Icon(
-                r.isAutoGenerated ? Icons.auto_awesome : Icons.school,
-                color: r.isAutoGenerated ? Colors.purple : Colors.blue,
-              ),
-              title: Text(r.activity),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Score: ${r.score.toStringAsFixed(1)}%, Grade: ${r.grade}'),
-                  if (r.comments.isNotEmpty) Text(r.comments),
-                  if (r.isAutoGenerated)
-                    const Text(
-                      '🤖 Auto-recorded from quiz',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.purple,
-                      ),
-                    ),
-                ],
-              ),
-              isThreeLine: true,
-            ),
-          );
-        }).toList(),
-      );
-    },
-  ),
-          ],
         ),
       ),
-),
     );
   }
 }
@@ -7982,20 +8384,20 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
     if (!isTeacher) {
       return Scaffold(
         appBar: AppBar(title: const Text('Access Denied')),
-        body: BackgroundWrapper( 
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.lock, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                'You are not allowed to view this page',
-                style: TextStyle(fontSize: 16),
-              ),
-            ],
+        body: BackgroundWrapper(
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'You are not allowed to view this page',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ],
+            ),
           ),
-        ),
         ),
       );
     }
@@ -8007,249 +8409,265 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
         foregroundColor: Colors.white,
       ),
       body: BackgroundWrapper(
-      child: Column(
-        children: [
-          // Search and Filter Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.grey[100],
-            child: Column(
-              children: [
-                // Search Bar
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Search by student name or activity...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+        child: Column(
+          children: [
+            // Search and Filter Section
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.grey[100],
+              child: Column(
+                children: [
+                  // Search Bar
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Search by student name or activity...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
-                    filled: true,
-                    fillColor: Colors.white,
+                    onChanged: (value) {
+                      setState(() => _searchQuery = value.toLowerCase());
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value.toLowerCase());
-                  },
-                ),
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                // Activity Filter Dropdown
-                DropdownButtonFormField<String>(
-                  value: _selectedActivityFilter,
-                  decoration: InputDecoration(
-                    labelText: 'Filter by Activity',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  // Activity Filter Dropdown
+                  DropdownButtonFormField<String>(
+                    value: _selectedActivityFilter,
+                    decoration: InputDecoration(
+                      labelText: 'Filter by Activity',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(Icons.filter_list),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
-                    prefixIcon: const Icon(Icons.filter_list),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  hint: const Text('All Activities'),
-                  isExpanded: true, 
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('All Activities'),
-                    ),
-                    ..._availableActivities.map(
-                      (activity) => DropdownMenuItem(
-                        value: activity,
-                        child: Text(
-                          activity,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                    hint: const Text('All Activities'),
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('All Activities'),
+                      ),
+                      ..._availableActivities.map(
+                        (activity) => DropdownMenuItem(
+                          value: activity,
+                          child: Text(
+                            activity,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedActivityFilter = value);
-                  },
-                ),
-              ],
+                    ],
+                    onChanged: (value) {
+                      setState(() => _selectedActivityFilter = value);
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // Records List
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _fs.collection('progress_records').snapshots(),
-              builder: (_, snap) {
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            // Records List
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _fs.collection('progress_records').snapshots(),
+                builder: (_, snap) {
+                  if (!snap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                var records = snap.data!.docs
-                    .map((d) => ProgressRecord.fromDoc(d))
-                    .toList();
-
-                // Apply search filter
-                if (_searchQuery.isNotEmpty) {
-                  records = records.where((r) {
-                    return r.student.toLowerCase().contains(_searchQuery) ||
-                        r.activity.toLowerCase().contains(_searchQuery);
-                  }).toList();
-                }
-
-                // Apply activity filter
-                if (_selectedActivityFilter != null) {
-                  records = records
-                      .where((r) => r.activity == _selectedActivityFilter)
+                  var records = snap.data!.docs
+                      .map((d) => ProgressRecord.fromDoc(d))
                       .toList();
-                }
 
-                // Sort by timestamp (newest first)
-                records.sort((a, b) {
-                  if (a.timestamp == null) return 1;
-                  if (b.timestamp == null) return -1;
-                  return b.timestamp!.compareTo(a.timestamp!);
-                });
+                  // Apply search filter
+                  if (_searchQuery.isNotEmpty) {
+                    records = records.where((r) {
+                      return r.student.toLowerCase().contains(_searchQuery) ||
+                          r.activity.toLowerCase().contains(_searchQuery);
+                    }).toList();
+                  }
 
-                if (records.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isNotEmpty || _selectedActivityFilter != null
-                              ? 'No records match your filters'
-                              : 'No progress records found.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
+                  // Apply activity filter
+                  if (_selectedActivityFilter != null) {
+                    records = records
+                        .where((r) => r.activity == _selectedActivityFilter)
+                        .toList();
+                  }
+
+                  // Sort by timestamp (newest first)
+                  records.sort((a, b) {
+                    if (a.timestamp == null) return 1;
+                    if (b.timestamp == null) return -1;
+                    return b.timestamp!.compareTo(a.timestamp!);
+                  });
+
+                  if (records.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey[400],
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: records.length,
-                  itemBuilder: (_, i) {
-                    final r = records[i];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
-                      elevation: 2,
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: r.isAutoGenerated
-                              ? Colors.purple[100]
-                              : Colors.blue[100],
-                          child: Icon(
-                            r.isAutoGenerated ? Icons.auto_awesome : Icons.edit,
-                            color: r.isAutoGenerated ? Colors.purple : Colors.blue,
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          '${r.student} — ${r.activity}',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getGradeColor(r.grade),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'Grade: ${r.grade}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Score: ${r.score.toStringAsFixed(1)}%',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ],
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchQuery.isNotEmpty ||
+                                    _selectedActivityFilter != null
+                                ? 'No records match your filters'
+                                : 'No progress records found.',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
                             ),
-                            if (r.comments.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                r.comments,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                            if (r.timestamp != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                DateFormat.yMMMd().add_jm().format(
-                                      r.timestamp!.toDate(),
-                                    ),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[500],
-                                ),
-                              ),
-                            ],
-                            if (r.isAutoGenerated)
-                              const Padding(
-                                padding: EdgeInsets.only(top: 4),
-                                child: Text(
-                                  '🤖 Auto-generated from quiz',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontStyle: FontStyle.italic,
-                                    color: Colors.purple,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        isThreeLine: true,
-                        trailing: !r.isAutoGenerated
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, color: Colors.blue),
-                                    tooltip: 'Edit Record',
-                                    onPressed: () => _showEditDialog(r),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, color: Colors.red),
-                                    tooltip: 'Delete Record',
-                                    onPressed: () => _confirmAndDelete(r.id),
-                                  ),
-                                ],
-                              )
-                            : Tooltip(
-                                message: 'Auto-generated records cannot be edited',
-                                child: Icon(
-                                  Icons.lock,
-                                  color: Colors.grey[400],
-                                  size: 20,
-                                ),
-                              ),
+                          ),
+                        ],
                       ),
                     );
-                  },
-                );
-              },
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: records.length,
+                    itemBuilder: (_, i) {
+                      final r = records[i];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        elevation: 2,
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: r.isAutoGenerated
+                                ? Colors.purple[100]
+                                : Colors.blue[100],
+                            child: Icon(
+                              r.isAutoGenerated
+                                  ? Icons.auto_awesome
+                                  : Icons.edit,
+                              color: r.isAutoGenerated
+                                  ? Colors.purple
+                                  : Colors.blue,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            '${r.student} — ${r.activity}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _getGradeColor(r.grade),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Grade: ${r.grade}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Score: ${r.score.toStringAsFixed(1)}%',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                              if (r.comments.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  r.comments,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                              if (r.timestamp != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat.yMMMd().add_jm().format(
+                                    r.timestamp!.toDate(),
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                              if (r.isAutoGenerated)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    '🤖 Auto-generated from quiz',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontStyle: FontStyle.italic,
+                                      color: Colors.purple,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          isThreeLine: true,
+                          trailing: !r.isAutoGenerated
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                      ),
+                                      tooltip: 'Edit Record',
+                                      onPressed: () => _showEditDialog(r),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      tooltip: 'Delete Record',
+                                      onPressed: () => _confirmAndDelete(r.id),
+                                    ),
+                                  ],
+                                )
+                              : Tooltip(
+                                  message:
+                                      'Auto-generated records cannot be edited',
+                                  child: Icon(
+                                    Icons.lock,
+                                    color: Colors.grey[400],
+                                    size: 20,
+                                  ),
+                                ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -8271,6 +8689,7 @@ class _ProgressHistoryPageState extends State<ProgressHistoryPage> {
     }
   }
 }
+
 // Dashbord Page within Progress Page
 class ClassDashboardPage extends StatelessWidget {
   const ClassDashboardPage({super.key});
@@ -8286,70 +8705,72 @@ class ClassDashboardPage extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
       body: BackgroundWrapper(
-      child: StreamBuilder<QuerySnapshot>(
-        stream: fs.collection('progress_records').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        child: StreamBuilder<QuerySnapshot>(
+          stream: fs.collection('progress_records').snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          final records = snapshot.data!.docs
-              .map((doc) => ProgressRecord.fromDoc(doc))
-              .toList();
+            final records = snapshot.data!.docs
+                .map((doc) => ProgressRecord.fromDoc(doc))
+                .toList();
 
-          if (records.isEmpty) {
-            return const Center(
-              child: Text('No progress data available yet.'),
-            );
-          }
-
-          return FutureBuilder<Map<String, dynamic>>(
-            future: _calculateAnalytics(records),
-            builder: (context, analyticsSnapshot) {
-              if (!analyticsSnapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final analytics = analyticsSnapshot.data!;
-
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. KEY METRICS CARDS
-                    _buildKeyMetricsSection(analytics),
-                    const SizedBox(height: 16),
-
-                    // 2. GRADE DISTRIBUTION PIE CHART
-                    _buildGradeDistributionCard(analytics),
-                    const SizedBox(height: 16),
-
-                    // 3. TOPIC PERFORMANCE BAR CHART + SORTED LIST
-                    _buildTopicPerformanceCard(analytics),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+            if (records.isEmpty) {
+              return const Center(
+                child: Text('No progress data available yet.'),
               );
-            },
-          );
-        },
-      ),
+            }
+
+            return FutureBuilder<Map<String, dynamic>>(
+              future: _calculateAnalytics(records),
+              builder: (context, analyticsSnapshot) {
+                if (!analyticsSnapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final analytics = analyticsSnapshot.data!;
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 1. KEY METRICS CARDS
+                      _buildKeyMetricsSection(analytics),
+                      const SizedBox(height: 16),
+
+                      // 2. GRADE DISTRIBUTION PIE CHART
+                      _buildGradeDistributionCard(analytics),
+                      const SizedBox(height: 16),
+
+                      // 3. TOPIC PERFORMANCE BAR CHART + SORTED LIST
+                      _buildTopicPerformanceCard(analytics),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 
-
   // ANALYTICS CALCULATION
-  Future <Map<String, dynamic>> _calculateAnalytics(List<ProgressRecord> records) async {
+  Future<Map<String, dynamic>> _calculateAnalytics(
+    List<ProgressRecord> records,
+  ) async {
     final FirebaseFirestore fs = FirebaseFirestore.instance;
-     // Get all registered students
-  final usersSnapshot = await fs.collection('users')
-      .where('userType', isEqualTo: 'UserType.student')
-      .get();
-  final registeredStudents = usersSnapshot.docs.length;
+    // Get all registered students
+    final usersSnapshot = await fs
+        .collection('users')
+        .where('userType', isEqualTo: 'UserType.student')
+        .get();
+    final registeredStudents = usersSnapshot.docs.length;
 
-   // Overall class average
+    // Overall class average
     final totalScore = records.fold<double>(0, (sum, r) => sum + r.score);
     final classAverage = records.isEmpty ? 0.0 : totalScore / records.length;
 
@@ -8376,10 +8797,14 @@ class ClassDashboardPage extends StatelessWidget {
 
     // Student completion tracking
     final uniqueStudents = records.map((r) => r.student).toSet();
-    final autoGeneratedRecords = records.where((r) => r.isAutoGenerated).toList();
-    final studentsWithQuizzes = autoGeneratedRecords.map((r) => r.student).toSet();
-    final completionRate = registeredStudents == 0 
-        ? 0.0 
+    final autoGeneratedRecords = records
+        .where((r) => r.isAutoGenerated)
+        .toList();
+    final studentsWithQuizzes = autoGeneratedRecords
+        .map((r) => r.student)
+        .toSet();
+    final completionRate = registeredStudents == 0
+        ? 0.0
         : (studentsWithQuizzes.length / registeredStudents) * 100;
 
     return {
@@ -8427,7 +8852,12 @@ class ClassDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMetricCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Card(
       elevation: 3,
       child: Padding(
@@ -8448,10 +8878,7 @@ class ClassDashboardPage extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),
@@ -8461,7 +8888,8 @@ class ClassDashboardPage extends StatelessWidget {
 
   // 2. GRADE DISTRIBUTION PIE CHART
   Widget _buildGradeDistributionCard(Map<String, dynamic> analytics) {
-    final gradeDistribution = analytics['gradeDistribution'] as Map<String, int>;
+    final gradeDistribution =
+        analytics['gradeDistribution'] as Map<String, int>;
     final totalRecords = analytics['totalRecords'] as int;
 
     if (gradeDistribution.isEmpty) {
@@ -8554,202 +8982,204 @@ class ClassDashboardPage extends StatelessWidget {
     }
   }
 
-// 3. TOPIC PERFORMANCE (BAR CHART WITH NUMBERED LABELS + LEGEND)
-Widget _buildTopicPerformanceCard(Map<String, dynamic> analytics) {
-  final sortedTopics = analytics['topicAverages'] as List<MapEntry<String, double>>;
+  // 3. TOPIC PERFORMANCE (BAR CHART WITH NUMBERED LABELS + LEGEND)
+  Widget _buildTopicPerformanceCard(Map<String, dynamic> analytics) {
+    final sortedTopics =
+        analytics['topicAverages'] as List<MapEntry<String, double>>;
 
-  if (sortedTopics.isEmpty) {
-    return const SizedBox.shrink();
-  }
+    if (sortedTopics.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  // Limit to top 5 struggling topics (lowest scores)
-  final topicsToShow = sortedTopics.take(5).toList();
+    // Limit to top 5 struggling topics (lowest scores)
+    final topicsToShow = sortedTopics.take(5).toList();
 
-  return Card(
-    elevation: 3,
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.bar_chart, color: Colors.blue),
-              SizedBox(width: 8),
-              Text(
-                'Topic Performance Analysis',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Top 5 topics needing attention (sorted by average score)',
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
-          const SizedBox(height: 16),
-
-          // BAR CHART WITH NUMBERED LABELS
-          SizedBox(
-            height: 250,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 100,
-                barGroups: topicsToShow.asMap().entries.map((entry) {
-                  return BarChartGroupData(
-                    x: entry.key,
-                    barRods: [
-                      BarChartRodData(
-                        toY: entry.value.value,
-                        color: entry.value.value < 60
-                            ? Colors.red
-                            : entry.value.value < 75
-                                ? Colors.orange
-                                : Colors.green,
-                        width: 30,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(4),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() >= 0 && value.toInt() < topicsToShow.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              '${value.toInt() + 1}', // Show numbers: 1, 2, 3, 4, 5
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        return Text('${value.toInt()}%');
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+    return Card(
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.bar_chart, color: Colors.blue),
+                SizedBox(width: 8),
+                Text(
+                  'Topic Performance Analysis',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                gridData: FlGridData(show: true),
-                borderData: FlBorderData(show: false),
-              ),
+              ],
             ),
-          ),
-
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 8),
-
-          // LEGEND - NUMBERED LIST WITH TOPIC NAMES
-          Text(
-            'Legend',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
+            const SizedBox(height: 8),
+            Text(
+              'Top 5 topics needing attention (sorted by average score)',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
-          ),
-          const SizedBox(height: 12),
-          
-          ...topicsToShow.asMap().entries.map((entry) {
-            final index = entry.key;
-            final topic = entry.value;
-            final isStruggling = topic.value < 60;
-            
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  // Number badge matching the chart
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: topic.value < 60
-                          ? Colors.red
-                          : topic.value < 75
+            const SizedBox(height: 16),
+
+            // BAR CHART WITH NUMBERED LABELS
+            SizedBox(
+              height: 250,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: 100,
+                  barGroups: topicsToShow.asMap().entries.map((entry) {
+                    return BarChartGroupData(
+                      x: entry.key,
+                      barRods: [
+                        BarChartRodData(
+                          toY: entry.value.value,
+                          color: entry.value.value < 60
+                              ? Colors.red
+                              : entry.value.value < 75
                               ? Colors.orange
                               : Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          width: 30,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
                         ),
+                      ],
+                    );
+                  }).toList(),
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          if (value.toInt() >= 0 &&
+                              value.toInt() < topicsToShow.length) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                '${value.toInt() + 1}', // Show numbers: 1, 2, 3, 4, 5
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                          }
+                          return const Text('');
+                        },
                       ),
                     ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 40,
+                        getTitlesWidget: (value, meta) {
+                          return Text('${value.toInt()}%');
+                        },
+                      ),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          topic.key,
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: false),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+
+            // LEGEND - NUMBERED LIST WITH TOPIC NAMES
+            Text(
+              'Legend',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            ...topicsToShow.asMap().entries.map((entry) {
+              final index = entry.key;
+              final topic = entry.value;
+              final isStruggling = topic.value < 60;
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    // Number badge matching the chart
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: topic.value < 60
+                            ? Colors.red
+                            : topic.value < 75
+                            ? Colors.orange
+                            : Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
                           style: const TextStyle(
-                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
                         ),
-                        if (isStruggling)
-                          const Text(
-                            '⚠️ Students struggling with this topic',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.red,
-                              fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            topic.key,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
                             ),
                           ),
-                      ],
+                          if (isStruggling)
+                            const Text(
+                              '⚠️ Students struggling with this topic',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.red,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Text(
-                    '${topic.value.toStringAsFixed(1)}%',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: topic.value < 60
-                          ? Colors.red
-                          : topic.value < 75
-                              ? Colors.orange
-                              : Colors.green,
+                    Text(
+                      '${topic.value.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: topic.value < 60
+                            ? Colors.red
+                            : topic.value < 75
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 // ---------- Achievements ----------
@@ -8762,7 +9192,8 @@ class AchievementsPage extends StatefulWidget {
 
 class _AchievementsPageState extends State<AchievementsPage> {
   // FIX: Initialize the filter state variable
-  String _selectedCategory = 'All'; // 'All', 'Badge', 'Certificate', 'Milestone', 'Other'
+  String _selectedCategory =
+      'All'; // 'All', 'Badge', 'Certificate', 'Milestone', 'Other'
 
   String _searchQuery = '';
   // Helper function to get the correct achievement stream (Your original code)
@@ -8781,7 +9212,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
     }
   }
 
-  // Function to delete an achievement 
+  // Function to delete an achievement
   Future<void> _deleteAchievement(
     String achievementId,
     String achievementTitle,
@@ -8790,9 +9221,14 @@ class _AchievementsPageState extends State<AchievementsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Achievement'),
-        content: Text('Are you sure you want to delete the achievement "$achievementTitle"? This cannot be undone.'),
+        content: Text(
+          'Are you sure you want to delete the achievement "$achievementTitle"? This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -8829,95 +9265,95 @@ class _AchievementsPageState extends State<AchievementsPage> {
     }
   }
 
-  // ⚠️ Function to show edit dialog 
+  // ⚠️ Function to show edit dialog
   Future<void> _showEditAchievementDialog(
-  Map<String, dynamic> achievement,
-) async {
-  // Navigate to the new EditAchievementPage
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => EditAchievementPage(achievement: achievement),
-    ),
-  );
-  
-  // Check for success message from EditAchievementPage
-  if (result != null && result['success'] == true && mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(result['message']),
-        backgroundColor: Colors.green,
+    Map<String, dynamic> achievement,
+  ) async {
+    // Navigate to the new EditAchievementPage
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditAchievementPage(achievement: achievement),
       ),
     );
-    // StreamBuilder handles the UI refresh automatically
+
+    // Check for success message from EditAchievementPage
+    if (result != null && result['success'] == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // StreamBuilder handles the UI refresh automatically
+    }
   }
-}
 
   @override
-  Widget build(BuildContext context) {
-    // Rely exclusively on live FirebaseUserState
-    final userState = context.watch<FirebaseUserState>();
-    final isLoggedIn = userState.isLoggedIn;
-    final user = userState.currentUser;
-    final bool isTeacher = user?.userType == UserType.teacher ?? false;
-    final bool isStudent = user?.userType == UserType.student ?? false;
+Widget build(BuildContext context) {
+  // Rely exclusively on live FirebaseUserState
+  final userState = context.watch<FirebaseUserState>();
+  final isLoggedIn = userState.isLoggedIn;
+  final user = userState.currentUser;
+  final bool isTeacher = user?.userType == UserType.teacher ?? false;
+  final bool isStudent = user?.userType == UserType.student ?? false;
 
-    // Page title
-    final String pageTitle = isLoggedIn
-        ? '🏆 Achievement'
-        : '🏅 Community Achievement';
+  // Page title
+  final String pageTitle = isLoggedIn
+      ? '🏆 Achievement'
+      : '🏅 Community Achievement';
 
-    // If not logged in, show a simplified message (re-using old logic for non-logged-in state)
-    if (!isLoggedIn) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(pageTitle),
-          backgroundColor: Colors.amber,
-          foregroundColor: Colors.white,
-        ),
-        body: BackgroundWrapper(
+  // If not logged in, show a simplified message
+  if (!isLoggedIn) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(pageTitle),
+        backgroundColor: Colors.amber,
+        foregroundColor: Colors.white,
+      ),
+      body: BackgroundWrapper(
         child: const Center(
           child: Text(
             'Please log in to view personalized achievements or community feed.',
           ),
         ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(pageTitle),
-        backgroundColor: Colors.lightBlue,
-        foregroundColor: Colors.white,
-        actions: [
-    if (isTeacher)
-      IconButton(
-        icon: const Icon(Icons.add_box),
-        tooltip: 'Add Achievement',
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddAchievementPage(),
-            ),
-          );
-
-          if (result != null &&
-              result['success'] == true &&
-              context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result['message']),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        },
       ),
-  ],
-      ),
-      body: BackgroundWrapper(
+    );
+  }
+
+  return Scaffold(
+    appBar: AppBar(
+      title: Text(pageTitle),
+      backgroundColor: Colors.lightBlue,
+      foregroundColor: Colors.white,
+      actions: [
+        if (isTeacher)
+          IconButton(
+            icon: const Icon(Icons.add_box),
+            tooltip: 'Add Achievement',
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddAchievementPage(),
+                ),
+              );
+
+              if (result != null &&
+                  result['success'] == true &&
+                  context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(result['message']),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+          ),
+      ],
+    ),
+    body: BackgroundWrapper(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -8953,7 +9389,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
               ),
               onChanged: (value) {
                 setState(() {
@@ -8964,11 +9403,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
           ),
           // === END US0010-02 SEARCH UI ===
 
-          // === START US013-01 FILTER UI ===
-          if (isStudent)
-            _buildCategoryFilter(),
-          // === END US013-01 FILTER UI ===
+          // === MODIFIED: Show category filter for BOTH students AND teachers ===
+          if (isStudent || isTeacher) _buildCategoryFilter(),
 
+          // === END US013-01 FILTER UI ===
           Expanded(
             // Use live StreamBuilder
             child: StreamBuilder<QuerySnapshot>(
@@ -9001,28 +9439,40 @@ class _AchievementsPageState extends State<AchievementsPage> {
 
                 // 1. Apply Search Filter (US0010-02)
                 if (_searchQuery.isNotEmpty) {
-                    achievements = achievements.where((a) {
-                        final title = (a['title'] ?? '').toString().toLowerCase();
-                        return title.contains(_searchQuery);
-                    }).toList();
+                  achievements = achievements.where((a) {
+                    final title = (a['title'] ?? '').toString().toLowerCase();
+                    return title.contains(_searchQuery);
+                  }).toList();
                 }
 
-                // 2. Apply Category Filter (US013-01) - Only for Students
-                if (isStudent && _selectedCategory != 'All') {
+                // 2. Apply Category Filter (US013-01) - Now for BOTH Students AND Teachers
+                if ((isStudent || isTeacher) && _selectedCategory != 'All') {
                   achievements = achievements.where((a) {
                     final type = (a['type'] ?? 'Other').toString();
-                    if (_selectedCategory == 'Badge' && (type.toLowerCase().contains('badge') || type.toLowerCase().contains('auto'))) return true;
-                    if (_selectedCategory == 'Certificate' && type.toLowerCase().contains('certificate')) return true;
-                    if (_selectedCategory == 'Milestone' && type.toLowerCase().contains('milestone')) return true;
-                    if (_selectedCategory == 'Other' && !type.toLowerCase().contains('badge') && !type.toLowerCase().contains('certificate') && !type.toLowerCase().contains('milestone')) return true;
+                    if (_selectedCategory == 'Badge' &&
+                        (type.toLowerCase().contains('badge') ||
+                            type.toLowerCase().contains('auto')))
+                      return true;
+                    if (_selectedCategory == 'Certificate' &&
+                        type.toLowerCase().contains('certificate'))
+                      return true;
+                    if (_selectedCategory == 'Milestone' &&
+                        type.toLowerCase().contains('milestone'))
+                      return true;
+                    if (_selectedCategory == 'Other' &&
+                        !type.toLowerCase().contains('badge') &&
+                        !type.toLowerCase().contains('certificate') &&
+                        !type.toLowerCase().contains('milestone'))
+                      return true;
                     return false;
                   }).toList();
                 }
                 // === END FILTERING LOGIC ===
                 final totalAchievements = snapshot.data!.docs.length;
 
-                final isFilteredEmpty = totalAchievements > 0 && achievements.isEmpty;
-                
+                final isFilteredEmpty =
+                    totalAchievements > 0 && achievements.isEmpty;
+
                 return _buildAchievementListView(
                   achievements,
                   isLoggedIn,
@@ -9035,15 +9485,15 @@ class _AchievementsPageState extends State<AchievementsPage> {
           ),
         ],
       ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   // === START US013-01 NEW WIDGETS ===
   Widget _buildCategoryFilter() {
     // Categories based on types used in database
     final categories = ['All', 'Badge', 'Certificate', 'Milestone', 'Other'];
-    
+
     // Helper to change state
     void _setCategory(String category) {
       setState(() {
@@ -9059,19 +9509,21 @@ class _AchievementsPageState extends State<AchievementsPage> {
         children: categories.map((category) {
           final isSelected = _selectedCategory == category;
           return Padding(
-             padding: const EdgeInsets.only(right: 8.0),
-             child: ActionChip(
-                label: Text(
-                  category,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.blueGrey[700],
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ActionChip(
+              label: Text(
+                category,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.blueGrey[700],
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
-                backgroundColor: isSelected ? Colors.lightBlue : Colors.grey[200],
-                onPressed: () => _setCategory(category),
-                avatar: isSelected ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
               ),
+              backgroundColor: isSelected ? Colors.lightBlue : Colors.grey[200],
+              onPressed: () => _setCategory(category),
+              avatar: isSelected
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  : null,
+            ),
           );
         }).toList(),
       ),
@@ -9080,7 +9532,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
   // === END US013-01 NEW WIDGETS ===
 
   // Note: Include _buildAchievementListView, _deleteAchievement, _showEditAchievementDialog logic here from your file
-  
+
   Widget _buildAchievementListView(
     List<Map<String, dynamic>> achievements,
     bool isLoggedIn,
@@ -9116,8 +9568,8 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 isFilteredEmpty
                     ? 'No achievements match your search or filter criteria.'
                     : (isLoggedIn
-                        ? 'You have no achievements yet. Start learning and completing quizzes!'
-                        : 'No public achievements found.'),
+                          ? 'You have no achievements yet. Start learning and completing quizzes!'
+                          : 'No public achievements found.'),
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
@@ -9179,7 +9631,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       Expanded(
                         child: Text(
                           'Earned: ${when.toLocal().toString().split(' ')[0]}',
-                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -9239,31 +9694,31 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
     'Other',
   ];
 
-// ⚠️ Function to fetch live student list from Firestore
-Future<List<AppUser>> _getStudentsList() async {
-  try {
-    // ✅ FIX: Simplified query - remove orderBy to avoid index requirement
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('userType', isEqualTo: 'UserType.student')
-        .limit(50)
-        .get();
+  // ⚠️ Function to fetch live student list from Firestore
+  Future<List<AppUser>> _getStudentsList() async {
+    try {
+      // ✅ FIX: Simplified query - remove orderBy to avoid index requirement
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('userType', isEqualTo: 'UserType.student')
+          .limit(50)
+          .get();
 
-    // ✅ Sort in code instead of in query
-    final students = snapshot.docs
-        .map((doc) => AppUser.fromMap(doc.id, doc.data()))
-        .toList();
-    
-    // Sort by username locally
-    students.sort((a, b) => a.username.compareTo(b.username));
-    
-    return students;
-  } catch (e) {
-    print("❌ Error fetching student list: $e");
-    // Return empty list instead of fallback data
-    return [];
+      // ✅ Sort in code instead of in query
+      final students = snapshot.docs
+          .map((doc) => AppUser.fromMap(doc.id, doc.data()))
+          .toList();
+
+      // Sort by username locally
+      students.sort((a, b) => a.username.compareTo(b.username));
+
+      return students;
+    } catch (e) {
+      print("❌ Error fetching student list: $e");
+      // Return empty list instead of fallback data
+      return [];
+    }
   }
-}
 
   // ⚠️ Function to submit the achievement to Firestore (Live Write)
   Future<void> _submitAchievement() async {
@@ -9337,105 +9792,111 @@ Future<List<AppUser>> _getStudentsList() async {
         backgroundColor: Colors.amber,
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              // 1. Student Selection Field (Uses Live Data)
-              _buildStudentSelectionField(),
-              const SizedBox(height: 20),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                // 1. Student Selection Field (Uses Live Data)
+                _buildStudentSelectionField(),
+                const SizedBox(height: 20),
 
-              // 2. Title Input
-              TextFormField(
-                decoration:  InputDecoration(
-                  labelText: 'Achievement Title',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                  prefixIcon: Icon(Icons.star),
+                // 2. Title Input
+                TextFormField(
+                  decoration: InputDecoration(
+                    labelText: 'Achievement Title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(Icons.star),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a title.';
+                    }
+                    return null;
+                  },
+                  onSaved: (value) => _title = value!,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a title.';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _title = value!,
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // 3. Type Dropdown
-              DropdownButtonFormField<String>(
-                decoration:  InputDecoration(
-                  labelText: 'Achievement Type',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                  prefixIcon: Icon(Icons.category),
+                // 3. Type Dropdown
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Achievement Type',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(Icons.category),
+                  ),
+                  initialValue: _type,
+                  items: _achievementTypes.map((String type) {
+                    return DropdownMenuItem<String>(
+                      value: type,
+                      child: Text(type),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _type = newValue!;
+                    });
+                  },
+                  onSaved: (value) => _type = value!,
                 ),
-                initialValue: _type,
-                items: _achievementTypes.map((String type) {
-                  return DropdownMenuItem<String>(
-                    value: type,
-                    child: Text(type),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _type = newValue!;
-                  });
-                },
-                onSaved: (value) => _type = value!,
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              // 4. Description Input
-              TextFormField(
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                  prefixIcon: Icon(Icons.description),
+                // 4. Description Input
+                TextFormField(
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(Icons.description),
+                  ),
+                  maxLines: 3,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a description.';
+                    }
+                    return null;
+                  },
+                  onSaved: (value) => _description = value!,
                 ),
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description.';
-                  }
-                  return null;
-                },
-                onSaved: (value) => _description = value!,
-              ),
-              const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-              // 5. Submit Button
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : _submitAchievement,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send),
-                label: Text(
-                  _isLoading ? 'Awarding...' : 'Award Achievement',
-                  style: const TextStyle(fontSize: 18),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                // 5. Submit Button
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _submitAchievement,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send),
+                  label: Text(
+                    _isLoading ? 'Awarding...' : 'Award Achievement',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -9462,28 +9923,28 @@ Future<List<AppUser>> _getStudentsList() async {
           // Format: StudentName (FormLevel, ClassName)
           String displayText = user.username;
           List<String> details = [];
-  
+
           if (user.formLevel != null && user.formLevel!.isNotEmpty) {
             details.add(user.formLevel!);
           }
           if (user.className != null && user.className!.isNotEmpty) {
-          details.add(user.className!);
+            details.add(user.className!);
           }
-  
+
           if (details.isNotEmpty) {
-          displayText += ' (${details.join(', ')})';
+            displayText += ' (${details.join(', ')})';
           }
-  
+
           return DropdownMenuItem<String>(
-          value: user.id,
-          child: Text(displayText),
+            value: user.id,
+            child: Text(displayText),
           );
-          }).toList();
+        }).toList();
 
         return DropdownButtonFormField<String>(
-          decoration:  InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Select Student to Award',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: Icon(Icons.person),
           ),
           initialValue: _selectedStudentId,
@@ -9538,8 +9999,12 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.achievement['title'] ?? '');
-    _descriptionController = TextEditingController(text: widget.achievement['description'] ?? '');
+    _titleController = TextEditingController(
+      text: widget.achievement['title'] ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.achievement['description'] ?? '',
+    );
     _currentType = widget.achievement['type'] ?? 'Badge';
 
     // Ensure the current type is available in the dropdown if it's a special type
@@ -9580,7 +10045,8 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
         if (context.mounted) {
           Navigator.pop(context, {
             'success': true,
-            'message': 'Achievement "${_titleController.text.trim()}" updated successfully.',
+            'message':
+                'Achievement "${_titleController.text.trim()}" updated successfully.',
           });
         }
       } catch (e) {
@@ -9608,136 +10074,162 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
         backgroundColor: Colors.amber, // Matches the Add page's AppBar color
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              // Display Student Name (Replaces the student selector from AddAchievementPage)
-              Card(
-                color: Colors.blue[50],
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person, color: Colors.blue),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Student Awarded:',
-                              style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                            ),
-                            Text(
-                              studentName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // 1. Title Input
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'Achievement Title',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.star),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a title.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // 2. Type Dropdown
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Achievement Type',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.category),
-                ),
-                value: _currentType,
-                items: _achievementTypes.map((String type) {
-                  return DropdownMenuItem<String>(
-                    value: type,
-                    child: Text(type),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _currentType = newValue!;
-                  });
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // 3. Description Input
-              TextFormField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  prefixIcon: const Icon(Icons.description),
-                ),
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 30),
-
-              // 4. Save Button (Styled like the Add button)
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : _handleSave,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(
-                  _isLoading ? 'Saving...' : 'Save Changes',
-                  style: const TextStyle(fontSize: 18),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green, // Use green for consistency with save/award
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                // Display Student Name (Replaces the student selector from AddAchievementPage)
+                Card(
+                  color: Colors.blue[50],
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person, color: Colors.blue),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Student Awarded:',
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                studentName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+
+                // 1. Title Input
+                TextFormField(
+                  controller: _titleController,
+                  decoration: InputDecoration(
+                    // 2. Add red asterisk to label
+                    label: RichText(
+                      text: TextSpan(
+                        text: 'Achievement Title',
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                        ),
+                        children: const [
+                          TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a title.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // 2. Type Dropdown
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Achievement Type',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.category),
+                  ),
+                  value: _currentType,
+                  items: _achievementTypes.map((String type) {
+                    return DropdownMenuItem<String>(
+                      value: type,
+                      child: Text(type),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _currentType = newValue!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // 3. Description Input
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.description),
+                  ),
+                  maxLines: 3,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a description.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 30),
+
+                // 4. Save Button (Styled like the Add button)
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _handleSave,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(
+                    _isLoading ? 'Saving...' : 'Save Changes',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors
+                        .green, // Use green for consistency with save/award
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -9805,7 +10297,7 @@ class ProfilePage extends StatelessWidget {
 
       // Read image bytes
       final imageBytes = await image.readAsBytes();
-      
+
       // Create unique filename
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final extension = image.path.split('.').last;
@@ -9825,16 +10317,14 @@ class ProfilePage extends StatelessWidget {
 
       final metadata = SettableMetadata(
         contentType: 'image/${extension == 'jpg' ? 'jpeg' : extension}',
-        customMetadata: {
-          'uploadedAt': DateTime.now().toIso8601String(),
-        },
+        customMetadata: {'uploadedAt': DateTime.now().toIso8601String()},
       );
 
       await storageRef.putData(imageBytes, metadata);
 
       // Get download URL after upload completes
       final downloadUrl = await storageRef.getDownloadURL();
-      
+
       print('✅ Profile picture uploaded successfully!');
       print('   URL: $downloadUrl');
 
@@ -9843,10 +10333,9 @@ class ProfilePage extends StatelessWidget {
       }
 
       return downloadUrl;
-
     } on FirebaseException catch (e) {
       print('❌ Firebase error: ${e.code} - ${e.message}');
-      
+
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
@@ -9857,10 +10346,9 @@ class ProfilePage extends StatelessWidget {
         );
       }
       return null;
-      
     } catch (e) {
       print('❌ Upload error: $e');
-      
+
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
@@ -9942,312 +10430,352 @@ class ProfilePage extends StatelessWidget {
         ],
       ),
       body: BackgroundWrapper(
-      child: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Header Section with Profile Picture
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue[700]!, Colors.blue[300]!],
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Header Section with Profile Picture
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue[700]!, Colors.blue[300]!],
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        // Profile picture with edit button
-                        Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 50,
-                              //backgroundColor: Colors.white,
-                              backgroundImage:
-                                  user.profilePicture != null &&
-                                      user.profilePicture!.isNotEmpty &&
-                                      user.profilePicture!.startsWith('http')
-                                  ? NetworkImage(user.profilePicture!)
-                                  : null,
-                              child:
-                                  user.profilePicture == null ||
-                                      user.profilePicture!.isEmpty ||
-                                      !user.profilePicture!.startsWith('http')
-                                  ? const Icon(Icons.person, size: 50, color: Colors.blue)
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: InkWell(
-                                onTap: () async {
-                                  final picturePath =
-                                      await _pickAndUploadProfilePicture(
-                                        context,
-                                      );
-                                  if (picturePath != null && context.mounted) {
-                                    final success = await context
-                                        .read<FirebaseUserState>()
-                                        .updateUserProfile(
-                                          profilePicture: picturePath,
+                      child: Column(
+                        children: [
+                          // Profile picture with edit button
+                          Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 50,
+                                //backgroundColor: Colors.white,
+                                backgroundImage:
+                                    user.profilePicture != null &&
+                                        user.profilePicture!.isNotEmpty &&
+                                        user.profilePicture!.startsWith('http')
+                                    ? NetworkImage(user.profilePicture!)
+                                    : null,
+                                child:
+                                    user.profilePicture == null ||
+                                        user.profilePicture!.isEmpty ||
+                                        !user.profilePicture!.startsWith('http')
+                                    ? const Icon(
+                                        Icons.person,
+                                        size: 50,
+                                        color: Colors.blue,
+                                      )
+                                    : null,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: InkWell(
+                                  onTap: () async {
+                                    final picturePath =
+                                        await _pickAndUploadProfilePicture(
+                                          context,
                                         );
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            success
-                                                ? 'Profile picture updated!'
-                                                : 'Failed to update picture',
+                                    if (picturePath != null &&
+                                        context.mounted) {
+                                      final success = await context
+                                          .read<FirebaseUserState>()
+                                          .updateUserProfile(
+                                            profilePicture: picturePath,
+                                          );
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              success
+                                                  ? 'Profile picture updated!'
+                                                  : 'Failed to update picture',
+                                            ),
+                                            backgroundColor: success
+                                                ? Colors.green
+                                                : Colors.red,
                                           ),
-                                          backgroundColor: success
-                                              ? Colors.green
-                                              : Colors.red,
-                                        ),
-                                      );
+                                        );
+                                      }
                                     }
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.blue,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt,
-                                    size: 20,
-                                    color: Colors.white,
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      size: 20,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          user.username,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            isTeacher ? 'Teacher' : 'Student',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        // Common Info for Both Teacher and Student
-                        _buildInfoCard(
-                          icon: Icons.email,
-                          title: 'Email',
-                          value: user.email,
-                        ),
-
-                        // STUDENT-SPECIFIC FIELDS
-                        if (!isTeacher) ...[
-                          _buildInfoCard(
-                            icon: Icons.school,
-                            title: 'Form Level',
-                            value: user.formLevel ?? 'Not set',
-                          ),
-                          _buildInfoCard(
-                            icon: Icons.class_,
-                            title: 'Class',
-                            value: user.className ?? 'Not set',
-                          ),
-
-                          // Points Card (Students Only)
-                          _buildInfoCard(
-                            icon: Icons.stars,
-                            title: 'Total Points',
-                            value: user.points.toString(),
-                            color: Colors.amber,
-                          ),
-
-                          // Awards Card with Live Count
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                              .collection('achievements')
-                              .where('studentId', isEqualTo: user.id)
-                              .snapshots(),
-                            builder: (context, snapshot) {
-                              int totalAchievements = 0;
-                              if (snapshot.hasData) {
-                                totalAchievements = snapshot.data!.docs.length;
-                              }
-                              
-                              return _buildInfoCard(
-                                icon: Icons.emoji_events,
-                                title: 'Awards',
-                                value: totalAchievements.toString(),
-                                color: Colors.orange,
-                              );
-                            },
-                          ),
-
-                          // Completion Level - Connected to Real Course Progress
-                          FutureBuilder<double>(
-                            future: _calculateCourseCompletionPercentage(user.id),
-                            builder: (context, snapshot) {
-                              final completionPercentage = snapshot.data ?? 0.0;
-                              return _buildInfoCard(
-                                icon: Icons.trending_up,
-                                title: 'Completion Level',
-                                value: '${completionPercentage.toStringAsFixed(1)}%',
-                                color: Colors.green,
-                              );
-                            },
-                          ),
-
-                          // ✅ MODIFIED: Achievements Display (No Empty State Card)
                           const SizedBox(height: 16),
-                          StreamBuilder<QuerySnapshot>(
-                            stream: FirebaseFirestore.instance
-                                .collection('achievements')
-                                .where('studentId', isEqualTo: user.id)
-                                .orderBy('dateEarned', descending: true)
-                                .snapshots(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
-                              }
-
-                              // ✅ CHANGED: Return nothing instead of "No achievements" card
-                              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                                return const SizedBox.shrink();
-                              }
-
-                              final achievements = snapshot.data!.docs;
-                              
-                              // Group achievements by type
-                              final badges = achievements.where((doc) => 
-                                doc['type']?.toString().toLowerCase().contains('badge') ?? false
-                              ).toList();
-                              
-                              final certificates = achievements.where((doc) => 
-                                doc['type']?.toString().toLowerCase().contains('certificate') ?? false
-                              ).toList();
-                              
-                              final milestones = achievements.where((doc) => 
-                                doc['type']?.toString().toLowerCase().contains('milestone') ?? false
-                              ).toList();
-                              
-                              final others = achievements.where((doc) {
-                                final type = doc['type']?.toString().toLowerCase() ?? '';
-                                return !type.contains('badge') && 
-                                       !type.contains('certificate') && 
-                                       !type.contains('milestone');
-                              }).toList();
-
-                              return Column(
-                                children: [
-                                  // Badges Section
-                                  if (badges.isNotEmpty)
-                                    _buildAchievementSection(
-                                      title: '🏅 Badges (${badges.length})',
-                                      achievements: badges,
-                                      color: Colors.amber,
-                                      icon: Icons.star,
-                                    ),
-                                  
-                                  // Certificates Section
-                                  if (certificates.isNotEmpty) ...[
-                                    const SizedBox(height: 16),
-                                    _buildAchievementSection(
-                                      title: '📜 Certificates (${certificates.length})',
-                                      achievements: certificates,
-                                      color: Colors.blue,
-                                      icon: Icons.workspace_premium,
-                                    ),
-                                  ],
-                                  
-                                  // Milestones Section
-                                  if (milestones.isNotEmpty) ...[
-                                    const SizedBox(height: 16),
-                                    _buildAchievementSection(
-                                      title: '🎯 Milestones (${milestones.length})',
-                                      achievements: milestones,
-                                      color: Colors.purple,
-                                      icon: Icons.flag,
-                                    ),
-                                  ],
-                                  
-                                  // Others Section
-                                  if (others.isNotEmpty) ...[
-                                    const SizedBox(height: 16),
-                                    _buildAchievementSection(
-                                      title: '⭐ Other Achievements (${others.length})',
-                                      achievements: others,
-                                      color: Colors.green,
-                                      icon: Icons.emoji_events,
-                                    ),
-                                  ],
-                                ],
-                              );
-                            },
+                          Text(
+                            user.username,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              isTeacher ? 'Teacher' : 'Student',
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Common Info for Both Teacher and Student
+                          _buildInfoCard(
+                            icon: Icons.email,
+                            title: 'Email',
+                            value: user.email,
+                          ),
+
+                          // STUDENT-SPECIFIC FIELDS
+                          if (!isTeacher) ...[
+                            _buildInfoCard(
+                              icon: Icons.school,
+                              title: 'Form Level',
+                              value: user.formLevel ?? 'Not set',
+                            ),
+                            _buildInfoCard(
+                              icon: Icons.class_,
+                              title: 'Class',
+                              value: user.className ?? 'Not set',
+                            ),
+
+                            // Points Card (Students Only)
+                            _buildInfoCard(
+                              icon: Icons.stars,
+                              title: 'Total Points',
+                              value: user.points.toString(),
+                              color: Colors.amber,
+                            ),
+
+                            // Awards Card with Live Count
+                            StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('achievements')
+                                  .where('studentId', isEqualTo: user.id)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                int totalAchievements = 0;
+                                if (snapshot.hasData) {
+                                  totalAchievements =
+                                      snapshot.data!.docs.length;
+                                }
+
+                                return _buildInfoCard(
+                                  icon: Icons.emoji_events,
+                                  title: 'Awards',
+                                  value: totalAchievements.toString(),
+                                  color: Colors.orange,
+                                );
+                              },
+                            ),
+
+                            // Completion Level - Connected to Real Course Progress
+                            FutureBuilder<double>(
+                              future: _calculateCourseCompletionPercentage(
+                                user.id,
+                              ),
+                              builder: (context, snapshot) {
+                                final completionPercentage =
+                                    snapshot.data ?? 0.0;
+                                return _buildInfoCard(
+                                  icon: Icons.trending_up,
+                                  title: 'Completion Level',
+                                  value:
+                                      '${completionPercentage.toStringAsFixed(1)}%',
+                                  color: Colors.green,
+                                );
+                              },
+                            ),
+
+                            // ✅ MODIFIED: Achievements Display (No Empty State Card)
+                            const SizedBox(height: 16),
+                            StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('achievements')
+                                  .where('studentId', isEqualTo: user.id)
+                                  .orderBy('dateEarned', descending: true)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+
+                                // ✅ CHANGED: Return nothing instead of "No achievements" card
+                                if (!snapshot.hasData ||
+                                    snapshot.data!.docs.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                final achievements = snapshot.data!.docs;
+
+                                // Group achievements by type
+                                final badges = achievements
+                                    .where(
+                                      (doc) =>
+                                          doc['type']
+                                              ?.toString()
+                                              .toLowerCase()
+                                              .contains('badge') ??
+                                          false,
+                                    )
+                                    .toList();
+
+                                final certificates = achievements
+                                    .where(
+                                      (doc) =>
+                                          doc['type']
+                                              ?.toString()
+                                              .toLowerCase()
+                                              .contains('certificate') ??
+                                          false,
+                                    )
+                                    .toList();
+
+                                final milestones = achievements
+                                    .where(
+                                      (doc) =>
+                                          doc['type']
+                                              ?.toString()
+                                              .toLowerCase()
+                                              .contains('milestone') ??
+                                          false,
+                                    )
+                                    .toList();
+
+                                final others = achievements.where((doc) {
+                                  final type =
+                                      doc['type']?.toString().toLowerCase() ??
+                                      '';
+                                  return !type.contains('badge') &&
+                                      !type.contains('certificate') &&
+                                      !type.contains('milestone');
+                                }).toList();
+
+                                return Column(
+                                  children: [
+                                    // Badges Section
+                                    if (badges.isNotEmpty)
+                                      _buildAchievementSection(
+                                        title: '🏅 Badges (${badges.length})',
+                                        achievements: badges,
+                                        color: Colors.amber,
+                                        icon: Icons.star,
+                                      ),
+
+                                    // Certificates Section
+                                    if (certificates.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      _buildAchievementSection(
+                                        title:
+                                            '📜 Certificates (${certificates.length})',
+                                        achievements: certificates,
+                                        color: Colors.blue,
+                                        icon: Icons.workspace_premium,
+                                      ),
+                                    ],
+
+                                    // Milestones Section
+                                    if (milestones.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      _buildAchievementSection(
+                                        title:
+                                            '🎯 Milestones (${milestones.length})',
+                                        achievements: milestones,
+                                        color: Colors.purple,
+                                        icon: Icons.flag,
+                                      ),
+                                    ],
+
+                                    // Others Section
+                                    if (others.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      _buildAchievementSection(
+                                        title:
+                                            '⭐ Other Achievements (${others.length})',
+                                        achievements: others,
+                                        color: Colors.green,
+                                        icon: Icons.emoji_events,
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Logout button at the bottom
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: const Offset(0, -3),
                   ),
                 ],
               ),
-            ),
-          ),
-
-          // Logout button at the bottom
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-            ),
-            child: ElevatedButton.icon(
-              onPressed: () => _handleLogout(context),
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout', style: TextStyle(fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              child: ElevatedButton.icon(
+                onPressed: () => _handleLogout(context),
+                icon: const Icon(Icons.logout),
+                label: const Text('Logout', style: TextStyle(fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -10631,94 +11159,96 @@ class _EditProfilePageState extends State<EditProfilePage> {
         foregroundColor: Colors.white,
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Update Your Information',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _usernameController,
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  prefixIcon: const Icon(Icons.person),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Update Your Information',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter username';
-                  }
-                  if (value.length < 3) {
-                    return 'Username must be at least 3 characters';
-                  }
-                  return null;
-                },
-              ),
-              if (user.userType == UserType.student) ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedFormLevel,
-                  decoration: InputDecoration(
-                    labelText: 'Form Level',
-                    prefixIcon: const Icon(Icons.school),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  items: ['Form 4', 'Form 5']
-                      .map(
-                        (level) =>
-                            DropdownMenuItem(value: level, child: Text(level)),
-                      )
-                      .toList(),
-                  onChanged: (value) =>
-                      setState(() => _selectedFormLevel = value),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 TextFormField(
-                  controller: _classNameController,
+                  controller: _usernameController,
                   decoration: InputDecoration(
-                    labelText: 'Class Name',
-                    prefixIcon: const Icon(Icons.class_),
+                    labelText: 'Username',
+                    prefixIcon: const Icon(Icons.person),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter username';
+                    }
+                    if (value.length < 3) {
+                      return 'Username must be at least 3 characters';
+                    }
+                    return null;
+                  },
+                ),
+                if (user.userType == UserType.student) ...[
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedFormLevel,
+                    decoration: InputDecoration(
+                      labelText: 'Form Level',
+                      prefixIcon: const Icon(Icons.school),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    items: ['Form 4', 'Form 5']
+                        .map(
+                          (level) => DropdownMenuItem(
+                            value: level,
+                            child: Text(level),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _selectedFormLevel = value),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _classNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Class Name',
+                      prefixIcon: const Icon(Icons.class_),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: userState.isLoading ? null : _handleSave,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: userState.isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Save Changes',
+                            style: TextStyle(fontSize: 16),
+                          ),
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: userState.isLoading ? null : _handleSave,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: userState.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Save Changes',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -10870,14 +11400,20 @@ class _MaterialsPageState extends State<MaterialsPage> {
     return '${directory.path}/$fileName';
   }
 
-  Future<void> _downloadFile(BuildContext context, LearningMaterial material,
-      {bool openAfterDownload = true}) async {
+  Future<void> _downloadFile(
+    BuildContext context,
+    LearningMaterial material, {
+    bool openAfterDownload = true,
+  }) async {
     final filePath = material.file;
 
     if (!filePath.startsWith('http')) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: Only cloud files can be downloaded.'), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Error: Only cloud files can be downloaded.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
       return;
@@ -10893,8 +11429,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
       return;
     }
 
-    List<ConnectivityResult> connectivityResult = await (Connectivity().checkConnectivity());
-    if (connectivityResult.contains(ConnectivityResult.none) || connectivityResult.isEmpty) {
+    List<ConnectivityResult> connectivityResult = await (Connectivity()
+        .checkConnectivity());
+    if (connectivityResult.contains(ConnectivityResult.none) ||
+        connectivityResult.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).clearSnackBars(); // Clear queue
         ScaffoldMessenger.of(context).showSnackBar(
@@ -10905,7 +11443,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           ),
         );
       }
-      return; 
+      return;
     }
 
     try {
@@ -10930,8 +11468,8 @@ class _MaterialsPageState extends State<MaterialsPage> {
 
       if (context.mounted) {
         Navigator.pop(context); // Close dialog
-        
-        ScaffoldMessenger.of(context).clearSnackBars(); 
+
+        ScaffoldMessenger.of(context).clearSnackBars();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -10954,7 +11492,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
       if (context.mounted) {
         if (Navigator.of(context).canPop()) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Download failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Download failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -10973,8 +11514,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
     final uid = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final doc =
-        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
     if (doc.exists) {
       setState(() {
         userType =
@@ -11019,219 +11562,249 @@ class _MaterialsPageState extends State<MaterialsPage> {
         ],
       ),
       body: BackgroundWrapper(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Search materials...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              TextField(
+                decoration: InputDecoration(
+                  labelText: 'Search materials...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                onChanged: (value) =>
+                    setState(() => searchQuery = value.toLowerCase()),
               ),
-              onChanged: (value) =>
-                  setState(() => searchQuery = value.toLowerCase()),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: StreamBuilder<List<LearningMaterial>>(
-                stream: appState.getMaterialsStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+              const SizedBox(height: 10),
+              Expanded(
+                child: StreamBuilder<List<LearningMaterial>>(
+                  stream: appState.getMaterialsStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No materials uploaded yet.\nClick "+" to add materials.',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  }
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No materials uploaded yet.\nClick "+" to add materials.',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
 
-                  final materials = snapshot.data!
-                      .where(
-                        (m) =>
-                            m.name.toLowerCase().contains(searchQuery) ||
-                            m.description.toLowerCase().contains(searchQuery),
-                      )
-                      .toList();
+                    final materials = snapshot.data!
+                        .where(
+                          (m) =>
+                              m.name.toLowerCase().contains(searchQuery) ||
+                              m.description.toLowerCase().contains(searchQuery),
+                        )
+                        .toList();
 
-                  if (materials.isEmpty) {
-                    return const Center(
-                      child: Text('No materials match your search.'),
-                    );
-                  }
+                    if (materials.isEmpty) {
+                      return const Center(
+                        child: Text('No materials match your search.'),
+                      );
+                    }
 
-                  return ListView.builder(
-                    itemCount: materials.length,
-                    itemBuilder: (context, index) {
-                      final material = materials[index];
+                    return ListView.builder(
+                      itemCount: materials.length,
+                      itemBuilder: (context, index) {
+                        final material = materials[index];
 
-                      return FutureBuilder<bool>(
-                        future: _getLocalFilePath(material)
-                            .then((localPath) => File(localPath).exists()),
-                        builder: (context, snapshot) {
-                          final isDownloaded = snapshot.data ?? false;
+                        return FutureBuilder<bool>(
+                          future: _getLocalFilePath(
+                            material,
+                          ).then((localPath) => File(localPath).exists()),
+                          builder: (context, snapshot) {
+                            final isDownloaded = snapshot.data ?? false;
 
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                                vertical: 6, horizontal: 12),
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              leading: Icon(
-                                Icons.file_present,
-                                color: isDownloaded
-                                    ? Colors.green
-                                    : theme.colorScheme.primary,
-                                size: 32,
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                vertical: 6,
+                                horizontal: 12,
                               ),
-                              title: Text(
-                                material.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
                                 ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (material.description.isNotEmpty)
+                                leading: Icon(
+                                  Icons.file_present,
+                                  color: isDownloaded
+                                      ? Colors.green
+                                      : theme.colorScheme.primary,
+                                  size: 32,
+                                ),
+                                title: Text(
+                                  material.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (material.description.isNotEmpty)
+                                      Text(
+                                        material.description,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      material.description,
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Uploaded: ${DateFormat.yMMMd().add_jm().format(material.time)}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              onTap: () async {
-                                final localPath =
-                                    await _getLocalFilePath(material);
-                                if (await File(localPath).exists()) {
-                                  await OpenFile.open(localPath);
-                                } else {
-                                  await _downloadFile(context, material,
-                                      openAfterDownload: true);
-                                }
-                                setState(() {});
-                              },
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // DOWNLOAD/FOLDER BUTTON
-                                  IconButton(
-                                    icon: Icon(
-                                      isDownloaded
-                                          ? Icons.folder_open
-                                          : Icons.cloud_download,
-                                      color: isDownloaded
-                                          ? Colors.blue
-                                          : Colors.green,
-                                    ),
-                                    tooltip: isDownloaded
-                                        ? 'Open Local File'
-                                        : 'Download File',
-                                    onPressed: () async {
-                                      await _downloadFile(context, material);
-                                      setState(() {});
-                                    },
-                                  ),
-
-                                  if (userType == UserType.teacher.toString()) ...[
-                                    IconButton(
-                                      icon: const Icon(Icons.edit,
-                                          color: Colors.blue),
-                                      onPressed: () async {
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => UploadPage(
-                                              existingMaterial: material,
-                                            ),
-                                          ),
-                                        );
-                                        if (result != null &&
-                                            result['success'] == true &&
-                                            context.mounted) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(SnackBar(
-                                            content: Text(result['message']),
-                                            backgroundColor: Colors.green,
-                                          ));
-                                        }
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                      onPressed: () async {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text(
-                                                'Delete Confirmation'),
-                                            content: const Text(
-                                                'Are you sure you want to delete this material?'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(
-                                                        context, false),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(
-                                                        context, true),
-                                                child: const Text('Confirm'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-
-                                        if (confirm == true) {
-                                          await appState
-                                              .deleteMaterial(material);
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(const SnackBar(
-                                            content: Text(
-                                                'Material deleted successfully!'),
-                                            backgroundColor: Colors.green,
-                                          ));
-                                        }
-                                      },
+                                      'Uploaded: ${DateFormat.yMMMd().add_jm().format(material.time)}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
                                     ),
                                   ],
-                                ],
+                                ),
+                                onTap: () async {
+                                  final localPath = await _getLocalFilePath(
+                                    material,
+                                  );
+                                  if (await File(localPath).exists()) {
+                                    await OpenFile.open(localPath);
+                                  } else {
+                                    await _downloadFile(
+                                      context,
+                                      material,
+                                      openAfterDownload: true,
+                                    );
+                                  }
+                                  setState(() {});
+                                },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // DOWNLOAD/FOLDER BUTTON
+                                    IconButton(
+                                      icon: Icon(
+                                        isDownloaded
+                                            ? Icons.folder_open
+                                            : Icons.cloud_download,
+                                        color: isDownloaded
+                                            ? Colors.blue
+                                            : Colors.green,
+                                      ),
+                                      tooltip: isDownloaded
+                                          ? 'Open Local File'
+                                          : 'Download File',
+                                      onPressed: () async {
+                                        await _downloadFile(context, material);
+                                        setState(() {});
+                                      },
+                                    ),
+
+                                    if (userType ==
+                                        UserType.teacher.toString()) ...[
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: Colors.blue,
+                                        ),
+                                        onPressed: () async {
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => UploadPage(
+                                                existingMaterial: material,
+                                              ),
+                                            ),
+                                          );
+                                          if (result != null &&
+                                              result['success'] == true &&
+                                              context.mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  result['message'],
+                                                ),
+                                                backgroundColor: Colors.green,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                        ),
+                                        onPressed: () async {
+                                          final confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: const Text(
+                                                'Delete Confirmation',
+                                              ),
+                                              content: const Text(
+                                                'Are you sure you want to delete this material?',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        context,
+                                                        false,
+                                                      ),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        context,
+                                                        true,
+                                                      ),
+                                                  child: const Text('Confirm'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+
+                                          if (confirm == true) {
+                                            await appState.deleteMaterial(
+                                              material,
+                                            );
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Material deleted successfully!',
+                                                ),
+                                                backgroundColor: Colors.green,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -11271,13 +11844,13 @@ class _UploadPageState extends State<UploadPage> {
         type: FileType.any,
         allowMultiple: false,
       );
-      
+
       if (result != null && result.files.isNotEmpty) {
         setState(() {
           _pickedFile = result.files.first;
           filePath = _pickedFile!.path; // For display purposes
         });
-        
+
         print('✅ File picked: ${_pickedFile!.name}');
         print('   Size: ${_pickedFile!.size} bytes');
       }
@@ -11331,9 +11904,9 @@ class _UploadPageState extends State<UploadPage> {
     FocusScope.of(context).unfocus();
 
     if (!_formKey.currentState!.validate()) return;
-    
+
     final isEditing = widget.existingMaterial != null;
-    
+
     if (!isEditing && _pickedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -11389,11 +11962,13 @@ class _UploadPageState extends State<UploadPage> {
 
       String downloadUrl;
 
-      if (isEditing && _pickedFile == null && widget.existingMaterial!.file.startsWith('http')) {
+      if (isEditing &&
+          _pickedFile == null &&
+          widget.existingMaterial!.file.startsWith('http')) {
         downloadUrl = widget.existingMaterial!.file;
       } else if (_pickedFile != null) {
         Uint8List? fileBytes;
-        
+
         if (kIsWeb) {
           fileBytes = _pickedFile!.bytes;
         } else {
@@ -11417,7 +11992,7 @@ class _UploadPageState extends State<UploadPage> {
         String cleanFileName = _pickedFile!.name
             .replaceAll(RegExp(r'[^\w\s\-\.]'), '_')
             .replaceAll(RegExp(r'\s+'), '_');
-        
+
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final fileName = '${timestamp}_$cleanFileName';
 
@@ -11434,8 +12009,12 @@ class _UploadPageState extends State<UploadPage> {
           contentType: _getContentType(_pickedFile!.name),
           customMetadata: {
             'originalName': _pickedFile!.name,
-            'uploadedBy': firebase_auth.FirebaseAuth.instance.currentUser?.email ?? 'unknown',
-            'uploadedById': firebase_auth.FirebaseAuth.instance.currentUser?.uid ?? 'unknown',
+            'uploadedBy':
+                firebase_auth.FirebaseAuth.instance.currentUser?.email ??
+                'unknown',
+            'uploadedById':
+                firebase_auth.FirebaseAuth.instance.currentUser?.uid ??
+                'unknown',
             'uploadTimestamp': DateTime.now().toIso8601String(),
           },
         );
@@ -11445,7 +12024,9 @@ class _UploadPageState extends State<UploadPage> {
         final uploadTask = await storageRef.putData(fileBytes, metadata);
 
         print('   Upload state: ${uploadTask.state}');
-        print('   Bytes: ${uploadTask.bytesTransferred}/${uploadTask.totalBytes}');
+        print(
+          '   Bytes: ${uploadTask.bytesTransferred}/${uploadTask.totalBytes}',
+        );
 
         if (uploadTask.state != TaskState.success) {
           throw Exception('Upload failed with state: ${uploadTask.state}');
@@ -11494,7 +12075,8 @@ class _UploadPageState extends State<UploadPage> {
 
         switch (e.code) {
           case 'object-not-found':
-            errorMessage = '❌ Storage bucket not found.\n\n'
+            errorMessage =
+                '❌ Storage bucket not found.\n\n'
                 'Solutions:\n'
                 '1. Check Firebase Storage is enabled\n'
                 '2. Verify storage rules are deployed\n'
@@ -11502,20 +12084,24 @@ class _UploadPageState extends State<UploadPage> {
             break;
           case 'unauthorized':
           case 'permission-denied':
-            errorMessage = '❌ Permission denied.\n\n'
+            errorMessage =
+                '❌ Permission denied.\n\n'
                 'You need teacher permissions to upload files.\n'
                 'Contact admin if you should have access.';
             break;
           case 'unauthenticated':
-            errorMessage = '❌ Not logged in.\n\n'
+            errorMessage =
+                '❌ Not logged in.\n\n'
                 'Please log in to upload files.';
             break;
           case 'quota-exceeded':
-            errorMessage = '❌ Storage quota exceeded.\n\n'
+            errorMessage =
+                '❌ Storage quota exceeded.\n\n'
                 'Contact admin to upgrade storage plan.';
             break;
           case 'retry-limit-exceeded':
-            errorMessage = '❌ Upload timeout.\n\n'
+            errorMessage =
+                '❌ Upload timeout.\n\n'
                 'Check your internet connection and try again.';
             break;
         }
@@ -11536,7 +12122,7 @@ class _UploadPageState extends State<UploadPage> {
     } catch (e, stackTrace) {
       print('❌ General upload error: $e');
       print('Stack trace: $stackTrace');
-      
+
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
@@ -11561,116 +12147,122 @@ class _UploadPageState extends State<UploadPage> {
         foregroundColor: Colors.white,
       ),
       body: BackgroundWrapper(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                initialValue: name,
-                decoration: InputDecoration(
-                  labelText: 'Material Name *',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                  prefixIcon: Icon(Icons.title),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                TextFormField(
+                  initialValue: name,
+                  decoration: InputDecoration(
+                    labelText: 'Material Name *',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(Icons.title),
+                  ),
+                  onSaved: (v) => name = v?.trim() ?? '',
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
                 ),
-                onSaved: (v) => name = v?.trim() ?? '',
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              TextFormField(
-                initialValue: description,
-                decoration: InputDecoration(
-                  labelText: 'Description *',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12),),
-                  prefixIcon: Icon(Icons.description),
+                TextFormField(
+                  initialValue: description,
+                  decoration: InputDecoration(
+                    labelText: 'Description *',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: Icon(Icons.description),
+                  ),
+                  maxLines: 3,
+                  onSaved: (v) => description = v?.trim() ?? '',
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Enter a description'
+                      : null,
                 ),
-                maxLines: 3,
-                onSaved: (v) => description = v?.trim() ?? '',
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Enter a description' : null,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'File ${isEditing ? "(optional)" : "*"}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: pickFile,
-                            icon: const Icon(Icons.attach_file),
-                            label: const Text('Choose File'),
+                Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'File ${isEditing ? "(optional)" : "*"}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _pickedFile != null
-                                  ? '✅ ${_pickedFile!.name}'
-                                  : (filePath != null && filePath!.startsWith('http'))
-                                      ? 'Current: Cloud file'
-                                      : '⚠️  No file selected',
-                              style: TextStyle(
-                                color: _pickedFile != null
-                                    ? Colors.green
-                                    : Colors.grey[600],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: pickFile,
+                              icon: const Icon(Icons.attach_file),
+                              label: const Text('Choose File'),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _pickedFile != null
+                                    ? '✅ ${_pickedFile!.name}'
+                                    : (filePath != null &&
+                                          filePath!.startsWith('http'))
+                                    ? 'Current: Cloud file'
+                                    : '⚠️  No file selected',
+                                style: TextStyle(
+                                  color: _pickedFile != null
+                                      ? Colors.green
+                                      : Colors.grey[600],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
                               ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 2,
+                            ),
+                          ],
+                        ),
+                        if (_pickedFile != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Size: ${(_pickedFile!.size / 1024 / 1024).toStringAsFixed(2)} MB',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
                             ),
                           ),
                         ],
-                      ),
-                      if (_pickedFile != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Size: ${(_pickedFile!.size / 1024 / 1024).toStringAsFixed(2)} MB',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              ElevatedButton.icon(
-                onPressed: () => submit(context),
-                icon: Icon(isEditing ? Icons.save : Icons.cloud_upload),
-                label: Text(
-                  isEditing ? 'Update Material' : 'Upload Material',
-                  style: const TextStyle(fontSize: 16),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                ElevatedButton.icon(
+                  onPressed: () => submit(context),
+                  icon: Icon(isEditing ? Icons.save : Icons.cloud_upload),
+                  label: Text(
+                    isEditing ? 'Update Material' : 'Upload Material',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -11690,52 +12282,52 @@ class FAQPage extends StatelessWidget {
         elevation: 0,
       ),
       body: BackgroundWrapper(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildCategorySection('👤 Akaun & Profil'),
-          _buildFAQItem(
-            'Bolehkah saya menukar alamat emel saya?',
-            'Tidak, hanya kata laluan dan gambar profil boleh ditukar. Sekiranya hendak menukar alamat emel, sila daftar akaun baharu.',
-          ),
-          _buildFAQItem(
-            'Bolehkah saya memadam akaun saya?',
-            'Boleh. Anda boleh memadam akaun secara kekal di halaman Profil. Tindakan ini memerlukan pengesahan kata laluan demi keselamatan data anda.',
-          ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildCategorySection('👤 Akaun & Profil'),
+            _buildFAQItem(
+              'Bolehkah saya menukar alamat emel saya?',
+              'Tidak, hanya kata laluan dan gambar profil boleh ditukar. Sekiranya hendak menukar alamat emel, sila daftar akaun baharu.',
+            ),
+            _buildFAQItem(
+              'Bolehkah saya memadam akaun saya?',
+              'Boleh. Anda boleh memadam akaun secara kekal di halaman Profil. Tindakan ini memerlukan pengesahan kata laluan demi keselamatan data anda.',
+            ),
 
-          _buildCategorySection('📚 Pembelajaran & Nota'),
-          _buildFAQItem(
-            'Bagaimana status "Done" dikira dalam Course?',
-            'Status "Done" akan dikemas kini secara automatik apabila anda mengklik butang "Start Learning" dan melihat kandungan nota atau video bagi setiap topik dalam halaman Course.',
-          ),
-          _buildFAQItem(
-            'Adakah nota boleh diakses secara luar talian (Offline)?',
-            'Ya. Nota yang telah dimuat turun di halaman "Material" akan disimpan secara lokal. Anda boleh membukanya semula bila-bila masa melalui butang "Open Folder" tanpa memerlukan internet.',
-          ),
+            _buildCategorySection('📚 Pembelajaran & Nota'),
+            _buildFAQItem(
+              'Bagaimana status "Done" dikira dalam Course?',
+              'Status "Done" akan dikemas kini secara automatik apabila anda mengklik butang "Start Learning" dan melihat kandungan nota atau video bagi setiap topik dalam halaman Course.',
+            ),
+            _buildFAQItem(
+              'Adakah nota boleh diakses secara luar talian (Offline)?',
+              'Ya. Nota yang telah dimuat turun di halaman "Material" akan disimpan secara lokal. Anda boleh membukanya semula bila-bila masa melalui butang "Open Folder" tanpa memerlukan internet.',
+            ),
 
-          _buildCategorySection('🤖 Kuiz & Pembantu AI'),
-          _buildFAQItem(
-            'Bagaimana AI menanda jawapan pendek saya?',
-            'Sistem kami menggunakan AI (Gemini) yang menilai maksud jawapan anda. Anda tidak perlu risau tentang perbezaan huruf besar atau sinonim; jika logik anda betul, AI akan memberikan markah.',
-          ),
-          _buildFAQItem(
-            'Apakah fungsi AI Study Buddy?',
-            'Ia adalah chatbot khas untuk membantu anda memahami Pengaturcaraan Java. Anda boleh bertanya soalan teknikal dan memberikan rating bintang terhadap kualiti jawapan yang diberikan.',
-          ),
+            _buildCategorySection('🤖 Kuiz & Pembantu AI'),
+            _buildFAQItem(
+              'Bagaimana AI menanda jawapan pendek saya?',
+              'Sistem kami menggunakan AI (Gemini) yang menilai maksud jawapan anda. Anda tidak perlu risau tentang perbezaan huruf besar atau sinonim; jika logik anda betul, AI akan memberikan markah.',
+            ),
+            _buildFAQItem(
+              'Apakah fungsi AI Study Buddy?',
+              'Ia adalah chatbot khas untuk membantu anda memahami Pengaturcaraan Java. Anda boleh bertanya soalan teknikal dan memberikan rating bintang terhadap kualiti jawapan yang diberikan.',
+            ),
 
-          _buildCategorySection('👨‍🏫 Alat Pengurusan Guru'),
-          _buildFAQItem(
-            'Apa yang ada dalam "Class Dashboard"?',
-            'Dashboard ini menyediakan analisis prestasi kelas secara visual termasuk carta pai taburan gred dan bar prestasi topik untuk mengenal pasti topik yang sukar bagi pelajar.',
-          ),
-          _buildFAQItem(
-            'Bolehkah Guru mengedit rekod kemajuan pelajar?',
-            'Guru boleh mengedit rekod yang dimasukkan secara manual. Walau bagaimanapun, rekod yang dijana secara automatik daripada kuiz adalah berkunci untuk integriti data.',
-          ),
+            _buildCategorySection('👨‍🏫 Alat Pengurusan Guru'),
+            _buildFAQItem(
+              'Apa yang ada dalam "Class Dashboard"?',
+              'Dashboard ini menyediakan analisis prestasi kelas secara visual termasuk carta pai taburan gred dan bar prestasi topik untuk mengenal pasti topik yang sukar bagi pelajar.',
+            ),
+            _buildFAQItem(
+              'Bolehkah Guru mengedit rekod kemajuan pelajar?',
+              'Guru boleh mengedit rekod yang dimasukkan secara manual. Walau bagaimanapun, rekod yang dijana secara automatik daripada kuiz adalah berkunci untuk integriti data.',
+            ),
 
-          const SizedBox(height: 32),
-        ],
-      ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
@@ -11745,7 +12337,11 @@ class FAQPage extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24, bottom: 12, left: 4),
       child: Text(
         title,
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[900]),
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: Colors.blue[900],
+        ),
       ),
     );
   }
@@ -11769,7 +12365,11 @@ class FAQPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Text(
               answer,
-              style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
+              style: TextStyle(
+                color: Colors.grey[700],
+                height: 1.5,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
@@ -11777,7 +12377,6 @@ class FAQPage extends StatelessWidget {
     );
   }
 }
-
 
 // ---------- HELP PAGE ----------
 class HelpPage extends StatelessWidget {
@@ -11794,85 +12393,81 @@ class HelpPage extends StatelessWidget {
         elevation: 0,
       ),
       body: BackgroundWrapper(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildSectionTitle('📌 Pengenalan App'),
-          _buildHelpItem(
-            'AI Study Buddy ialah aplikasi pendidikan untuk membantu pelajar belajar Pengaturcaraan Java.',
-            'Fungsi utama termasuk kursus, nota/material, kuiz, forum, dan chatbot AI.',
-          ),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildSectionTitle('📌 Pengenalan App'),
+            _buildHelpItem(
+              'AI Study Buddy ialah aplikasi pendidikan untuk membantu pelajar belajar Pengaturcaraan Java.',
+              'Fungsi utama termasuk kursus, nota/material, kuiz, forum, dan chatbot AI.',
+            ),
 
-          _buildSectionTitle('🗂 Navigasi Menu Utama'),
-          _buildHelpItem(
-            'Home',
-            'Halaman utama dengan ringkasan prestasi, akses pantas ke kursus dan aktiviti.',
-          ),
-          _buildHelpItem(
-            'Course / Material',
-            'Pilih topik, baca nota, muat turun video atau nota.',
-          ),
-          _buildHelpItem(
-            'Quiz',
-            'Ambil kuiz untuk menilai kemahiran anda.',
-          ),
-          _buildHelpItem(
-            'Forum',
-            'Cipta, edit, padam topik, dan berbincang dengan pelajar lain.',
-          ),
-          _buildHelpItem(
-            'AI Chatbot',
-            'Bertanya soalan teknikal atau minta bantuan, boleh beri rating jawapan.',
-          ),
-          _buildHelpItem(
-            'Progress / Achievements',
-            'Semak kemajuan belajar dan pencapaian anda.',
-          ),
+            _buildSectionTitle('🗂 Navigasi Menu Utama'),
+            _buildHelpItem(
+              'Home',
+              'Halaman utama dengan ringkasan prestasi, akses pantas ke kursus dan aktiviti.',
+            ),
+            _buildHelpItem(
+              'Course / Material',
+              'Pilih topik, baca nota, muat turun video atau nota.',
+            ),
+            _buildHelpItem('Quiz', 'Ambil kuiz untuk menilai kemahiran anda.'),
+            _buildHelpItem(
+              'Forum',
+              'Cipta, edit, padam topik, dan berbincang dengan pelajar lain.',
+            ),
+            _buildHelpItem(
+              'AI Chatbot',
+              'Bertanya soalan teknikal atau minta bantuan, boleh beri rating jawapan.',
+            ),
+            _buildHelpItem(
+              'Progress / Achievements',
+              'Semak kemajuan belajar dan pencapaian anda.',
+            ),
 
-          _buildSectionTitle('💬 Menggunakan Chatbot AI'),
-          _buildHelpItem(
-            'Taip soalan anda di kotak input.',
-            'Berikan rating bintang untuk jawapan yang diterima. Pastikan soalan jelas dan ringkas untuk jawapan terbaik.',
-          ),
+            _buildSectionTitle('💬 Menggunakan Chatbot AI'),
+            _buildHelpItem(
+              'Taip soalan anda di kotak input.',
+              'Berikan rating bintang untuk jawapan yang diterima. Pastikan soalan jelas dan ringkas untuk jawapan terbaik.',
+            ),
 
-          _buildSectionTitle('📝 Forum / Perbincangan'),
-          _buildHelpItem(
-            'Cipta Topik',
-            'Tekan ikon "+" untuk mencipta topik baru.',
-          ),
-          _buildHelpItem(
-            'Edit / Padam Topik',
-            'Hanya topik yang anda cipta boleh diedit atau dipadam; guru boleh mengurus semua topik.',
-          ),
-          _buildHelpItem(
-            'Carian / Filter',
-            'Gunakan fungsi filter dan carian untuk mencari topik tertentu.',
-          ),
+            _buildSectionTitle('📝 Forum / Perbincangan'),
+            _buildHelpItem(
+              'Cipta Topik',
+              'Tekan ikon "+" untuk mencipta topik baru.',
+            ),
+            _buildHelpItem(
+              'Edit / Padam Topik',
+              'Hanya topik yang anda cipta boleh diedit atau dipadam; guru boleh mengurus semua topik.',
+            ),
+            _buildHelpItem(
+              'Carian / Filter',
+              'Gunakan fungsi filter dan carian untuk mencari topik tertentu.',
+            ),
 
-          _buildSectionTitle('💡 Tips Penggunaan'),
-          _buildHelpItem(
-            'Akses Offline',
-            'Muat turun nota untuk akses tanpa internet.',
-          ),
-          _buildHelpItem(
-            'Keselamatan Akaun',
-            'Sentiasa log keluar selepas penggunaan untuk keselamatan akaun.',
-          ),
-          _buildHelpItem(
-            'Notifikasi',
-            'Semak notifikasi untuk kemas kini kursus atau forum.',
-          ),
+            _buildSectionTitle('💡 Tips Penggunaan'),
+            _buildHelpItem(
+              'Akses Offline',
+              'Muat turun nota untuk akses tanpa internet.',
+            ),
+            _buildHelpItem(
+              'Keselamatan Akaun',
+              'Sentiasa log keluar selepas penggunaan untuk keselamatan akaun.',
+            ),
+            _buildHelpItem(
+              'Notifikasi',
+              'Semak notifikasi untuk kemas kini kursus atau forum.',
+            ),
 
-          _buildSectionTitle('📞 Sokongan'),
-          _buildHelpItem(
-            'Masalah teknikal',
-            'Jika aplikasi tidak berfungsi atau ada masalah teknikal, hubungi pihak sokongan melalui emel (codingBahasa@example.com) atau pautan bantuan( 06-12345678) dalam aplikasi.',
-            
-          ),
+            _buildSectionTitle('📞 Sokongan'),
+            _buildHelpItem(
+              'Masalah teknikal',
+              'Jika aplikasi tidak berfungsi atau ada masalah teknikal, hubungi pihak sokongan melalui emel (codingBahasa@example.com) atau pautan bantuan( 06-12345678) dalam aplikasi.',
+            ),
 
-          const SizedBox(height: 32),
-        ],
-      ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
@@ -11910,7 +12505,11 @@ class HelpPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Text(
               description,
-              style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
+              style: TextStyle(
+                color: Colors.grey[700],
+                height: 1.5,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
@@ -11918,7 +12517,6 @@ class HelpPage extends StatelessWidget {
     );
   }
 }
-
 
 // ---------- FEEDBACK PAGE ----------
 
@@ -11966,102 +12564,115 @@ class _FeedbackPageState extends State<FeedbackPage> {
         foregroundColor: Colors.white,
       ),
       body: BackgroundWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama',
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama',
+                    prefixIcon: Icon(Icons.person),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Sila masukkan nama anda'
+                      : null,
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'Sila masukkan nama anda' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Emel',
-                  prefixIcon: Icon(Icons.email),
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Emel',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || !value.contains('@')
+                      ? 'Sila masukkan emel yang sah'
+                      : null,
                 ),
-                validator: (value) => value == null || !value.contains('@') ? 'Sila masukkan emel yang sah' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _feedbackController,
-                decoration: const InputDecoration(
-                  labelText: 'Maklum Balas',
-                  prefixIcon: Icon(Icons.feedback),
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _feedbackController,
+                  decoration: const InputDecoration(
+                    labelText: 'Maklum Balas',
+                    prefixIcon: Icon(Icons.feedback),
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 5,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Sila tulis maklum balas anda'
+                      : null,
                 ),
-                maxLines: 5,
-                validator: (value) => value == null || value.isEmpty ? 'Sila tulis maklum balas anda' : null,
-              ),
-              const SizedBox(height: 16),
-              // Rating stars
-              Row(
-                children: List.generate(5, (index) {
-                  final starIndex = index + 1;
-                  return IconButton(
-                    icon: Icon(
-                      starIndex <= _rating ? Icons.star : Icons.star_border,
-                      color: Colors.orange,
+                const SizedBox(height: 16),
+                // Rating stars
+                Row(
+                  children: List.generate(5, (index) {
+                    final starIndex = index + 1;
+                    return IconButton(
+                      icon: Icon(
+                        starIndex <= _rating ? Icons.star : Icons.star_border,
+                        color: Colors.orange,
+                      ),
+                      onPressed: () => setState(() {
+                        _rating = starIndex;
+                      }),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      _formKey.currentState!.reset();
+                      _nameController.clear();
+                      _emailController.clear();
+                      _feedbackController.clear();
+                      setState(() {
+                        _rating = 0;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Form has been refreshed'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text(
+                      'Refresh',
+                      style: TextStyle(fontSize: 16),
                     ),
-                    onPressed: () => setState(() {
-                      _rating = starIndex;
-                    }),
-                  );
-                }),
-              ),
-              const SizedBox(height: 12),
-SizedBox(
-  width: double.infinity,
-  child: OutlinedButton.icon(
-    onPressed: () {
-      _formKey.currentState!.reset();
-      _nameController.clear();
-      _emailController.clear();
-      _feedbackController.clear();
-      setState(() {
-        _rating = 0;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Form has been refreshed'),
-        backgroundColor: Colors.green)
-      );
-    },
-    icon: const Icon(Icons.refresh),
-    label: const Text('Refresh', style: TextStyle(fontSize: 16)),
-    style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
                   ),
-  ),
-),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitFeedback,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: const Text('Hantar Maklum Balas',style: TextStyle(fontSize: 16)),
                 ),
-              ),
-              
-            ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitFeedback,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text(
+                      'Hantar Maklum Balas',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
