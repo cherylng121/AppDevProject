@@ -605,10 +605,10 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            labelText: 'Email',
+                            labelText: 'Email*',
                             prefixIcon: const Icon(Icons.email),
                             suffixIcon: Tooltip(
-                              message: 'Enter your registered email address',
+                              message: 'Enter your registered email address*',
                               child: Icon(
                                 Icons.info_outline,
                                 color: Colors.blue[700],
@@ -634,7 +634,7 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: 'Password*',
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -666,7 +666,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           validator: (value) => value == null || value.isEmpty
-                              ? 'Please enter password'
+                              ? 'Please enter password*'
                               : null,
                         ),
                         const SizedBox(height: 24),
@@ -812,7 +812,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 TextFormField(
                   controller: _usernameController,
                   decoration: InputDecoration(
-                    labelText: 'Username',
+                    labelText: 'Username*',
                     prefixIcon: const Icon(Icons.person),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -820,7 +820,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter username';
+                      return 'Please enter username*';
                     }
                     if (value.length < 3) {
                       return 'Username must be at least 3 characters';
@@ -833,7 +833,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Email',
+                    labelText: 'Email*',
                     prefixIcon: const Icon(Icons.email),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -853,7 +853,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: 'Password*',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
