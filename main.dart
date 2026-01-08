@@ -4165,7 +4165,7 @@ class _QuizPageState extends State<QuizPage> {
     }
   }
 
-  // ----- startQuiz ----- (Helper function to navigate to the quiz-taking page)
+  // ----- startQuiz -----
   void _startQuiz(
     BuildContext context,
     String title,
@@ -4178,12 +4178,11 @@ class _QuizPageState extends State<QuizPage> {
             TakeQuizPage(quizTitle: title, questions: questions),
       ),
     ).then((_) {
-      // When returning from a quiz, refresh the state to show new quiz history
       setState(() {});
     });
   }
 
-  // ----- deleteQuiz ----- (Helper function to delete a quiz from Firestore)
+  // ----- deleteQuiz -----
   void _deleteQuiz(Quiz quiz) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -4230,18 +4229,17 @@ class _QuizPageState extends State<QuizPage> {
     }
   }
 
-  // ----- editQuiz ----- (Helper function to edit quiz)
+  // ----- editQuiz -----
   void _editQuiz(Quiz quiz) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => CreateQuizPage(quizToEdit: quiz)),
     ).then((_) {
-      // Refresh the list in case changes were made
       setState(() {});
     });
   }
 
-  // ----- reviewQuiz ----- (Helper function to review quiz)
+  // ----- reviewQuiz -----
   void _reviewQuiz(Quiz quiz) {
     Navigator.push(
       context,
@@ -4254,7 +4252,6 @@ class _QuizPageState extends State<QuizPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Get user type to show/hide teacher buttons
     final user = context.watch<FirebaseUserState>().currentUser;
     final isTeacher = user?.userType == UserType.teacher;
 
@@ -4275,7 +4272,6 @@ class _QuizPageState extends State<QuizPage> {
                     builder: (context) => const CreateQuizPage(),
                   ),
                 ).then((_) {
-                  // Refresh list when returning from create page
                   setState(() {});
                 });
               },
@@ -4288,7 +4284,7 @@ class _QuizPageState extends State<QuizPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              // --- 1. System Quizzes ---
+              // --- System Quizzes ---
               _buildSectionTitle('System Quizzes'),
               Card(
                 elevation: 2,
@@ -4319,7 +4315,7 @@ class _QuizPageState extends State<QuizPage> {
                   ),
                   trailing: Icon(
                     isTeacher ? Icons.visibility : Icons.play_arrow,
-                  ), // ✅ MODIFIED
+                  ),
                   onTap: () {
                     if (isTeacher) {
                       Navigator.push(
@@ -4344,7 +4340,7 @@ class _QuizPageState extends State<QuizPage> {
 
               const Divider(height: 30, thickness: 1),
 
-              // --- 2. Teacher-Created Quizzes ---
+              // --- Teacher-Created Quizzes ---
               _buildSectionTitle('Teacher Quizzes'),
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -4470,7 +4466,7 @@ class _QuizPageState extends State<QuizPage> {
                 ),
               ],
               const Divider(height: 30, thickness: 1),
-              // --- 3. Student Quiz History (US006-02) ---
+              // --- Student Quiz History ---
               if (!isTeacher) ...[
                 _buildSectionTitle('My Quiz History'),
                 userQuizAttempts.isEmpty
@@ -4488,7 +4484,7 @@ class _QuizPageState extends State<QuizPage> {
                         itemCount: userQuizAttempts.length,
                         itemBuilder: (context, index) {
                           final attempt = userQuizAttempts.reversed
-                              .toList()[index]; // Show newest first
+                              .toList()[index];
                           return Card(
                             elevation: 2,
                             child: ListTile(
@@ -4562,7 +4558,6 @@ class SystemQuizListPage extends StatelessWidget {
                 subtitle: Text('${generatedQuestions.length} Questions'),
                 trailing: Icon(isTeacher ? Icons.visibility : Icons.play_arrow),
                 onTap: () {
-                  // ✅ MODIFIED: Teacher ALWAYS reviews, never takes quiz
                   if (isTeacher) {
                     Navigator.push(
                       context,
@@ -4706,7 +4701,7 @@ class ReviewQuizPage extends StatelessWidget {
 
 // ========== Quiz Creation / EDIT Page ==========
 class CreateQuizPage extends StatefulWidget {
-  final Quiz? quizToEdit; // If not null, we are in "Edit" mode
+  final Quiz? quizToEdit;
   const CreateQuizPage({super.key, this.quizToEdit});
 
   @override
@@ -4765,7 +4760,6 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Question Type Dropdown (Read-only)
                   DropdownButtonFormField<QuestionType>(
                     value: editType,
                     decoration: const InputDecoration(
@@ -4781,233 +4775,122 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                         child: Text('Short Answer'),
                       ),
                     ],
-                    onChanged: null,
+                    onChanged: (val) => setDialogState(() => editType = val!),
                   ),
                   const SizedBox(height: 10),
-
-                  // Question Text
                   TextFormField(
                     controller: editQuestionController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Question Text',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(),
                     ),
-                    maxLines: 5,
-                    minLines: 3,
+                    maxLines: 3,
                   ),
                   const SizedBox(height: 10),
-
                   if (editType == QuestionType.mcq) ...[
-                    // MCQ Options
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'MCQ Options:',
-                          style: TextStyle(fontWeight: FontWeight.w500),
+                          'Options:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         IconButton(
                           icon: const Icon(
                             Icons.add_circle,
                             color: Colors.green,
                           ),
-                          onPressed: () {
-                            setDialogState(() {
-                              editMcqControllers.add(TextEditingController());
-                            });
-                          },
+                          onPressed: () => setDialogState(
+                            () =>
+                                editMcqControllers.add(TextEditingController()),
+                          ),
                         ),
                       ],
                     ),
                     ...List.generate(editMcqControllers.length, (i) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
-                          children: [
-                            Radio<int>(
-                              value: i,
-                              groupValue: editCorrectIndex,
-                              onChanged: (int? value) {
-                                setDialogState(() => editCorrectIndex = value!);
-                              },
-                            ),
-                            Expanded(
-                              child: TextFormField(
-                                controller: editMcqControllers[i],
-                                decoration: InputDecoration(
-                                  labelText: 'Option ${i + 1}',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                maxLines: 2,
-                                minLines: 1,
+                      return Row(
+                        children: [
+                          Radio<int>(
+                            value: i,
+                            groupValue: editCorrectIndex,
+                            onChanged: (val) =>
+                                setDialogState(() => editCorrectIndex = val!),
+                          ),
+                          Expanded(
+                            child: TextFormField(
+                              controller: editMcqControllers[i],
+                              decoration: InputDecoration(
+                                labelText: 'Option ${i + 1}',
                               ),
                             ),
-                            if (editMcqControllers.length > 2)
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.remove_circle,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () {
-                                  if (editMcqControllers.length <= 2) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Minimum 2 options required',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  setDialogState(() {
-                                    editMcqControllers[i].dispose();
-                                    editMcqControllers.removeAt(i);
-                                    if (editCorrectIndex >=
-                                        editMcqControllers.length) {
-                                      editCorrectIndex =
-                                          editMcqControllers.length - 1;
-                                    }
-                                  });
-                                },
+                          ),
+                          if (editMcqControllers.length > 2)
+                            IconButton(
+                              icon: const Icon(
+                                Icons.remove_circle,
+                                color: Colors.red,
                               ),
-                          ],
-                        ),
+                              onPressed: () => setDialogState(
+                                () => editMcqControllers.removeAt(i),
+                              ),
+                            ),
+                        ],
                       );
                     }),
                   ] else ...[
-                    // Short Answer
                     TextFormField(
                       controller: editAnswerController,
-                      decoration: InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Correct Answer',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        border: OutlineInputBorder(),
                       ),
-                      maxLines: 3,
-                      minLines: 2,
                     ),
                   ],
-
                   const SizedBox(height: 10),
-
-                  // Explanation
                   TextFormField(
                     controller: editExplanationController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Explanation (Optional)',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      border: OutlineInputBorder(),
                     ),
-                    maxLines: 5,
-                    minLines: 3,
                   ),
                 ],
               ),
             ),
             actions: [
               TextButton(
-                onPressed: () {
-                  // Dispose controllers
-                  editQuestionController.dispose();
-                  editAnswerController.dispose();
-                  editExplanationController.dispose();
-                  for (var c in editMcqControllers) {
-                    c.dispose();
-                  }
-                  Navigator.pop(context);
-                },
+                onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
                 onPressed: () {
-                  // Validate
-                  if (editQuestionController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Question text cannot be empty'),
-                      ),
-                    );
-                    return;
-                  }
-
                   String updatedAnswer;
                   List<String> updatedOptions = [];
 
                   if (editType == QuestionType.mcq) {
                     updatedOptions = editMcqControllers
                         .map((c) => c.text.trim())
+                        .where((t) => t.isNotEmpty)
                         .toList();
-                    final nonEmptyOptions = updatedOptions
-                        .where((opt) => opt.isNotEmpty)
-                        .toList();
-
-                    if (nonEmptyOptions.length < 2) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please fill at least 2 MCQ options'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    updatedOptions = nonEmptyOptions;
-                    if (editCorrectIndex >= updatedOptions.length) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please select a valid correct answer'),
-                        ),
-                      );
-                      return;
-                    }
+                    if (updatedOptions.length < 2) return;
                     updatedAnswer = updatedOptions[editCorrectIndex];
                   } else {
-                    if (editAnswerController.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Answer cannot be empty')),
-                      );
-                      return;
-                    }
                     updatedAnswer = editAnswerController.text.trim();
                   }
 
-                  // Update the question
                   setState(() {
                     _questions[index] = Question(
-                      id: question.id, // Keep the same ID
+                      id: question.id,
                       questionText: editQuestionController.text.trim(),
                       type: editType,
                       options: updatedOptions,
                       answer: updatedAnswer,
-                      explanation: editExplanationController.text.trim().isEmpty
-                          ? null
-                          : editExplanationController.text.trim(),
+                      explanation: editExplanationController.text.trim(),
                     );
                   });
-
-                  // Dispose controllers
-                  editQuestionController.dispose();
-                  editAnswerController.dispose();
-                  editExplanationController.dispose();
-                  for (var c in editMcqControllers) {
-                    c.dispose();
-                  }
-
                   Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Question updated successfully'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
                 },
-                child: const Text('Save Changes'),
+                child: const Text('Save'),
               ),
             ],
           );
@@ -5060,7 +4943,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     });
   }
 
-  // Remove MCQ option (minimum 2)
+  // Remove MCQ option
   void _removeMcqOption(int index) {
     if (_mcqOptionControllers.length <= 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -5078,8 +4961,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   }
 
   void _addQuestion() {
-    if (_newQuestionTextController.text.isEmpty) {
-      _showError('Please enter the question text.');
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -5088,25 +4970,21 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
 
     if (_newQuestionType == QuestionType.mcq) {
       options = _mcqOptionControllers.map((c) => c.text.trim()).toList();
-
-      // Check only non-empty options
       final nonEmptyOptions = options.where((opt) => opt.isNotEmpty).toList();
+
       if (nonEmptyOptions.length < 2) {
-        _showError('Please fill at least 2 MCQ options.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please fill at least 2 MCQ options.'),
+            backgroundColor: Colors.red,
+          ),
+        );
         return;
       }
 
       options = nonEmptyOptions;
-      if (_correctMcqOptionIndex >= options.length) {
-        _showError('Please select a valid correct answer.');
-        return;
-      }
       answer = options[_correctMcqOptionIndex];
     } else {
-      if (_newAnswerController.text.isEmpty) {
-        _showError('Please enter the correct answer.');
-        return;
-      }
       answer = _newAnswerController.text;
     }
 
@@ -5125,12 +5003,9 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       );
     });
 
-    // Reset controllers
     _newQuestionTextController.clear();
     _newAnswerController.clear();
     _newExplanationController.clear();
-
-    // Reset to 2 empty options
     for (var c in _mcqOptionControllers) {
       c.dispose();
     }
@@ -5139,13 +5014,28 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
   }
 
   Future<void> _saveQuiz(QuizStatus status) async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_questions.isEmpty) {
-      _showError('Please add at least one question.');
+    // Validate ONLY the top-level Title and Topic controllers
+    if (_titleController.text.trim().isEmpty ||
+        _topicController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a Quiz Title and Topic.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
-    _formKey.currentState!.save();
+    // Check if at least one question has been added to the list
+    if (_questions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add at least one question to the quiz.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     final user = context.read<FirebaseUserState>().currentUser;
     if (user == null) {
@@ -5158,8 +5048,8 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     try {
       if (_isEditing) {
         final quiz = widget.quizToEdit!;
-        quiz.title = _titleController.text;
-        quiz.topic = _topicController.text;
+        quiz.title = _titleController.text.trim();
+        quiz.topic = _topicController.text.trim();
         quiz.questions = _questions;
         quiz.status = status;
 
@@ -5170,10 +5060,8 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       } else {
         final newQuiz = Quiz(
           id: '',
-          title: _titleController.text,
-          topic: _topicController.text.isEmpty
-              ? 'General'
-              : _topicController.text,
+          title: _titleController.text.trim(),
+          topic: _topicController.text.trim(),
           questions: _questions,
           status: status,
           createdBy: user.id,
@@ -5225,25 +5113,27 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                       TextFormField(
                         controller: _titleController,
                         decoration: InputDecoration(
-                          labelText: 'Quiz Title',
+                          labelText: 'Quiz Title *',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        validator: (v) =>
-                            v!.isEmpty ? 'Please enter a title' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter a title'
+                            : null,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _topicController,
                         decoration: InputDecoration(
-                          labelText: 'Topic (e.g., 1.1)',
+                          labelText: 'Topic (e.g., 1.1) *',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        validator: (v) =>
-                            v!.isEmpty ? 'Please enter a topic' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter a topic'
+                            : null,
                       ),
                       const Divider(height: 30, thickness: 2),
 
@@ -5278,7 +5168,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                       TextFormField(
                         controller: _newQuestionTextController,
                         decoration: InputDecoration(
-                          labelText: 'Question Text',
+                          labelText: 'Question Text *',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -5286,29 +5176,28 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                         ),
                         maxLines: 5,
                         minLines: 3,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter the question text'
+                            : null,
                       ),
-                      const SizedBox(height: 10),
 
                       if (_newQuestionType == QuestionType.mcq) ...[
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              'MCQ Options (Select correct one):',
+                              'MCQ Options (Select correct one) *',
                               style: TextStyle(fontWeight: FontWeight.w500),
                             ),
-                            //Add option button
                             IconButton(
                               icon: const Icon(
                                 Icons.add_circle,
                                 color: Colors.green,
                               ),
-                              tooltip: 'Add Option',
                               onPressed: _addMcqOption,
                             ),
                           ],
                         ),
-                        //Dynamic MCQ options with delete button
                         ...List.generate(_mcqOptionControllers.length, (index) {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8.0),
@@ -5325,23 +5214,24 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                                   child: TextFormField(
                                     controller: _mcqOptionControllers[index],
                                     decoration: InputDecoration(
-                                      labelText: 'Option ${index + 1}',
+                                      labelText: 'Option ${index + 1} *',
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                     ),
-                                    maxLines: 2,
-                                    minLines: 1,
+                                    // Inline validation for each MCQ option
+                                    validator: (v) =>
+                                        (v == null || v.trim().isEmpty)
+                                        ? 'Enter option text'
+                                        : null,
                                   ),
                                 ),
-                                //Delete option button (only if more than 2)
                                 if (_mcqOptionControllers.length > 2)
                                   IconButton(
                                     icon: const Icon(
                                       Icons.remove_circle,
                                       color: Colors.red,
                                     ),
-                                    tooltip: 'Remove Option',
                                     onPressed: () => _removeMcqOption(index),
                                   ),
                               ],
@@ -5349,11 +5239,10 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                           );
                         }),
                       ] else ...[
-                        //Multiline short answer
                         TextFormField(
                           controller: _newAnswerController,
                           decoration: InputDecoration(
-                            labelText: 'Correct Short Answer',
+                            labelText: 'Correct Short Answer *',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -5361,11 +5250,13 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                           ),
                           maxLines: 3,
                           minLines: 2,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Please enter the correct answer'
+                              : null,
                         ),
                       ],
 
                       const SizedBox(height: 10),
-                      // Multiline explanation
                       TextFormField(
                         controller: _newExplanationController,
                         decoration: InputDecoration(
@@ -5512,7 +5403,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
   final Map<String, String> _userAnswers = {}; // Map<QuestionID, UserAnswer>
   final Map<String, TextEditingController> _shortAnswerControllers = {};
   int _currentPage = 0;
-  bool _isSubmitting = false; // Loading state for AI marking
+  bool _isSubmitting = false;
 
   // AI Model for marking
   late final GenerativeModel _markingModel;
@@ -5526,9 +5417,6 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
         _shortAnswerControllers[q.id] = TextEditingController();
       }
     }
-
-    // Initialize AI model for marking
-    //final googleAI = FirebaseAI.googleAI();
 
     const apiKey = 'AIzaSyCuK3UhKRM3oHAUcB8J7TGp3YU4kYSOQxo';
     _markingModel = GenerativeModel(
@@ -5574,11 +5462,11 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
 
       if (!mounted) return;
 
-      // 2. Add points
+      // Add points
       final earnedPoints = (score / total * 100).toInt();
       await userState.addPoints(earnedPoints);
 
-      // 3. Check for automatic badge (80% or above)
+      // Check for automatic badge (80% or above)
       if (score / total >= 0.8) {
         const badgeName = 'Quiz Master';
         const badgeDescription = 'Scored 80% or above in a system quiz';
@@ -5689,7 +5577,6 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
           aiFeedback[q.id] = "✅ Jawapan sempurna!";
         } else {
           try {
-            // IMPROVED: Better AI prompt that explicitly handles case sensitivity
             final prompt =
                 'Anda sedang menilai jawapan pendek pelajar.\n\n'
                 'Soalan: ${q.questionText}\n'
@@ -5724,7 +5611,6 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
                 ? lines.sublist(1).join(' ').trim()
                 : "Tiada maklum balas tersedia.";
 
-            // Accept both "YA" (Malay) and "YES" (English) from AI
             if (verdict == 'YA' || verdict == 'YES') {
               score++;
               aiFeedback[q.id] = "✅ $feedback";
@@ -5822,7 +5708,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
       body: BackgroundWrapper(
         child: PageView.builder(
           controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(), // Disable swiping
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: widget.questions.length,
           itemBuilder: (context, index) {
             final question = widget.questions[index];
@@ -5856,7 +5742,6 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
                           curve: Curves.easeIn,
                         );
                       } else {
-                        // Last page, show submit dialog
                         _showSubmitDialog();
                       }
                     },
@@ -5884,7 +5769,7 @@ class _TakeQuizPageState extends State<TakeQuizPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
+              Navigator.pop(context);
               _submitQuiz();
             },
             child: const Text('Submit'),
@@ -5947,14 +5832,14 @@ class QuizResultsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Results: ${attempt.quizTitle}'),
-        automaticallyImplyLeading: false, // No back button
+        automaticallyImplyLeading: false,
       ),
       body: BackgroundWrapper(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // --- 1. Score Summary ---
+              // --- Score Summary ---
               Text(
                 'Quiz Complete!',
                 style: TextStyle(
@@ -5973,7 +5858,7 @@ class QuizResultsPage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // --- 2. Detailed Feedback List ---
+              // --- Detailed Feedback List ---
               const Text(
                 'Detailed Feedback',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -6106,7 +5991,6 @@ class QuizResultsPage extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
             onPressed: () {
-              // Pop back to the main Quiz Page
               Navigator.pop(context);
             },
             child: const Text('Back to Quiz Home'),
@@ -9290,204 +9174,204 @@ class _AchievementsPageState extends State<AchievementsPage> {
   }
 
   @override
-Widget build(BuildContext context) {
-  // Rely exclusively on live FirebaseUserState
-  final userState = context.watch<FirebaseUserState>();
-  final isLoggedIn = userState.isLoggedIn;
-  final user = userState.currentUser;
-  final bool isTeacher = user?.userType == UserType.teacher ?? false;
-  final bool isStudent = user?.userType == UserType.student ?? false;
+  Widget build(BuildContext context) {
+    // Rely exclusively on live FirebaseUserState
+    final userState = context.watch<FirebaseUserState>();
+    final isLoggedIn = userState.isLoggedIn;
+    final user = userState.currentUser;
+    final bool isTeacher = user?.userType == UserType.teacher ?? false;
+    final bool isStudent = user?.userType == UserType.student ?? false;
 
-  // Page title
-  final String pageTitle = isLoggedIn
-      ? '🏆 Achievement'
-      : '🏅 Community Achievement';
+    // Page title
+    final String pageTitle = isLoggedIn
+        ? '🏆 Achievement'
+        : '🏅 Community Achievement';
 
-  // If not logged in, show a simplified message
-  if (!isLoggedIn) {
+    // If not logged in, show a simplified message
+    if (!isLoggedIn) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(pageTitle),
+          backgroundColor: Colors.amber,
+          foregroundColor: Colors.white,
+        ),
+        body: BackgroundWrapper(
+          child: const Center(
+            child: Text(
+              'Please log in to view personalized achievements or community feed.',
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(pageTitle),
-        backgroundColor: Colors.amber,
+        backgroundColor: Colors.lightBlue,
         foregroundColor: Colors.white,
+        actions: [
+          if (isTeacher)
+            IconButton(
+              icon: const Icon(Icons.add_box),
+              tooltip: 'Add Achievement',
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddAchievementPage(),
+                  ),
+                );
+
+                if (result != null &&
+                    result['success'] == true &&
+                    context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(result['message']),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+            ),
+        ],
       ),
       body: BackgroundWrapper(
-        child: const Center(
-          child: Text(
-            'Please log in to view personalized achievements or community feed.',
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Logic to show the 'unlocked message'
+            if (userState.lastUnlockedMessage != null)
+              Builder(
+                builder: (ctx) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    final msg = userState.lastUnlockedMessage;
+                    if (msg != null) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(
+                          content: Text(msg),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      context
+                          .read<FirebaseUserState>()
+                          .consumeLastUnlockedMessage();
+                    }
+                  });
+                  return const SizedBox.shrink();
+                },
+              ),
+
+            // === START US0010-02 SEARCH UI ===
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: 'Search achievements by name...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+              ),
+            ),
+            // === END US0010-02 SEARCH UI ===
+
+            // === MODIFIED: Show category filter for BOTH students AND teachers ===
+            if (isStudent || isTeacher) _buildCategoryFilter(),
+
+            // === END US013-01 FILTER UI ===
+            Expanded(
+              // Use live StreamBuilder
+              child: StreamBuilder<QuerySnapshot>(
+                stream: getAchievementStream(
+                  user,
+                ), // Fetch achievements for current user
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error loading achievements: ${snapshot.error}',
+                      ),
+                    );
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // Map DocumentSnapshot list to Map list, including the document ID
+                  var achievements = snapshot.data!.docs
+                      .map(
+                        (doc) => {
+                          'id': doc.id,
+                          ...doc.data() as Map<String, dynamic>,
+                        },
+                      )
+                      .toList();
+
+                  // === START FILTERING LOGIC (Applied to list after loading) ===
+
+                  // 1. Apply Search Filter (US0010-02)
+                  if (_searchQuery.isNotEmpty) {
+                    achievements = achievements.where((a) {
+                      final title = (a['title'] ?? '').toString().toLowerCase();
+                      return title.contains(_searchQuery);
+                    }).toList();
+                  }
+
+                  // 2. Apply Category Filter (US013-01) - Now for BOTH Students AND Teachers
+                  if ((isStudent || isTeacher) && _selectedCategory != 'All') {
+                    achievements = achievements.where((a) {
+                      final type = (a['type'] ?? 'Other').toString();
+                      if (_selectedCategory == 'Badge' &&
+                          (type.toLowerCase().contains('badge') ||
+                              type.toLowerCase().contains('auto')))
+                        return true;
+                      if (_selectedCategory == 'Certificate' &&
+                          type.toLowerCase().contains('certificate'))
+                        return true;
+                      if (_selectedCategory == 'Milestone' &&
+                          type.toLowerCase().contains('milestone'))
+                        return true;
+                      if (_selectedCategory == 'Other' &&
+                          !type.toLowerCase().contains('badge') &&
+                          !type.toLowerCase().contains('certificate') &&
+                          !type.toLowerCase().contains('milestone'))
+                        return true;
+                      return false;
+                    }).toList();
+                  }
+                  // === END FILTERING LOGIC ===
+                  final totalAchievements = snapshot.data!.docs.length;
+
+                  final isFilteredEmpty =
+                      totalAchievements > 0 && achievements.isEmpty;
+
+                  return _buildAchievementListView(
+                    achievements,
+                    isLoggedIn,
+                    isTeacher,
+                    user!.id,
+                    isFilteredEmpty,
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-
-  return Scaffold(
-    appBar: AppBar(
-      title: Text(pageTitle),
-      backgroundColor: Colors.lightBlue,
-      foregroundColor: Colors.white,
-      actions: [
-        if (isTeacher)
-          IconButton(
-            icon: const Icon(Icons.add_box),
-            tooltip: 'Add Achievement',
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddAchievementPage(),
-                ),
-              );
-
-              if (result != null &&
-                  result['success'] == true &&
-                  context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(result['message']),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            },
-          ),
-      ],
-    ),
-    body: BackgroundWrapper(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Logic to show the 'unlocked message'
-          if (userState.lastUnlockedMessage != null)
-            Builder(
-              builder: (ctx) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  final msg = userState.lastUnlockedMessage;
-                  if (msg != null) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(
-                        content: Text(msg),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                    context
-                        .read<FirebaseUserState>()
-                        .consumeLastUnlockedMessage();
-                  }
-                });
-                return const SizedBox.shrink();
-              },
-            ),
-
-          // === START US0010-02 SEARCH UI ===
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Search achievements by name...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
-            ),
-          ),
-          // === END US0010-02 SEARCH UI ===
-
-          // === MODIFIED: Show category filter for BOTH students AND teachers ===
-          if (isStudent || isTeacher) _buildCategoryFilter(),
-
-          // === END US013-01 FILTER UI ===
-          Expanded(
-            // Use live StreamBuilder
-            child: StreamBuilder<QuerySnapshot>(
-              stream: getAchievementStream(
-                user,
-              ), // Fetch achievements for current user
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error loading achievements: ${snapshot.error}',
-                    ),
-                  );
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                // Map DocumentSnapshot list to Map list, including the document ID
-                var achievements = snapshot.data!.docs
-                    .map(
-                      (doc) => {
-                        'id': doc.id,
-                        ...doc.data() as Map<String, dynamic>,
-                      },
-                    )
-                    .toList();
-
-                // === START FILTERING LOGIC (Applied to list after loading) ===
-
-                // 1. Apply Search Filter (US0010-02)
-                if (_searchQuery.isNotEmpty) {
-                  achievements = achievements.where((a) {
-                    final title = (a['title'] ?? '').toString().toLowerCase();
-                    return title.contains(_searchQuery);
-                  }).toList();
-                }
-
-                // 2. Apply Category Filter (US013-01) - Now for BOTH Students AND Teachers
-                if ((isStudent || isTeacher) && _selectedCategory != 'All') {
-                  achievements = achievements.where((a) {
-                    final type = (a['type'] ?? 'Other').toString();
-                    if (_selectedCategory == 'Badge' &&
-                        (type.toLowerCase().contains('badge') ||
-                            type.toLowerCase().contains('auto')))
-                      return true;
-                    if (_selectedCategory == 'Certificate' &&
-                        type.toLowerCase().contains('certificate'))
-                      return true;
-                    if (_selectedCategory == 'Milestone' &&
-                        type.toLowerCase().contains('milestone'))
-                      return true;
-                    if (_selectedCategory == 'Other' &&
-                        !type.toLowerCase().contains('badge') &&
-                        !type.toLowerCase().contains('certificate') &&
-                        !type.toLowerCase().contains('milestone'))
-                      return true;
-                    return false;
-                  }).toList();
-                }
-                // === END FILTERING LOGIC ===
-                final totalAchievements = snapshot.data!.docs.length;
-
-                final isFilteredEmpty =
-                    totalAchievements > 0 && achievements.isEmpty;
-
-                return _buildAchievementListView(
-                  achievements,
-                  isLoggedIn,
-                  isTeacher,
-                  user!.id,
-                  isFilteredEmpty,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
 
   // === START US013-01 NEW WIDGETS ===
   Widget _buildCategoryFilter() {
