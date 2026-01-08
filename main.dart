@@ -9806,7 +9806,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
                 // 2. Title Input
                 TextFormField(
                   decoration: InputDecoration(
-                    labelText: 'Achievement Title',
+                    labelText: 'Achievement Title*',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -9850,7 +9850,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
                 // 4. Description Input
                 TextFormField(
                   decoration: InputDecoration(
-                    labelText: 'Description',
+                    labelText: 'Description*',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -9949,7 +9949,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
           ),
           initialValue: _selectedStudentId,
           items: studentItems,
-          hint: const Text('Choose a student'),
+          hint: const Text('Choose a student*'),
           validator: (value) {
             if (value == null) {
               return 'You must select a student.';
