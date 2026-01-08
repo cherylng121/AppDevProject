@@ -283,98 +283,119 @@ setState(() {
     final creatorName = (m['creatorName'] as String).isNotEmpty ? m['creatorName'] as String : 'Anonymous';
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      color: pinned ? Colors.yellow[50] : null,
-      child: ListTile(
-        title: Row(
-          children: [
-            Expanded(child: Text(title)),
-            if (pinned)
-              Container(
-                margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(6)),
-                child: const Text('PIN', style: TextStyle(color: Colors.white, fontSize: 12)),
+  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  color: pinned ? Colors.yellow[50] : null,
+  child: InkWell(
+  onTap: () => _openPostDetailsById(id),
+  child: Padding(
+    padding: const EdgeInsets.all(12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+
+        // LEFT CONTENT
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              // Title
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
               ),
-            if (edited)
-              Container(
-                margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.blueGrey, borderRadius: BorderRadius.circular(6)),
-                child: const Text('Edited', style: TextStyle(color: Colors.white, fontSize: 10)),
+
+              const SizedBox(height: 6),
+
+              // Description
+              Text(
+                description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Tags
+              Wrap(
+                spacing: 6,
+                children: [
+                  Chip(label: Text(tag), visualDensity: VisualDensity.compact),
+                  if (pinned)
+                    const Chip(
+                      label: Text('PIN'),
+                      backgroundColor: Colors.orange,
+                      labelStyle: TextStyle(color: Colors.white),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  if (edited)
+                    const Chip(
+                      label: Text('Edited'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
+              ),
+
+              const SizedBox(height: 6),
+
+              // Author (BOTTOM ✅)
+              Text(
+                '$creatorName${timestamp != null ? ' · ${DateFormat('dd/MM/yyyy').format(timestamp)}' : ''}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(width: 8),
+
+        // RIGHT ACTIONS
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+
+            IconButton(
+              tooltip: 'Buka topik',
+              icon: const Icon(Icons.open_in_new, size: 22),
+              onPressed: () => _openPostDetailsById(id),
+            ),
+
+            if (_currentUid == creatorId)
+              IconButton(
+                tooltip: 'Edit topik',
+                icon: const Icon(Icons.edit, size: 22, color: Colors.blue),
+                onPressed: () => _editTopicById(id),
+              ),
+
+            if (_currentUid == creatorId)
+              IconButton(
+                tooltip: 'Padam topik',
+                icon: const Icon(Icons.delete, size: 22, color: Colors.red),
+                onPressed: () => _tryDeleteTopicById(id),
+              ),
+
+            if (_currentUserRole == 'teacher')
+              IconButton(
+                tooltip: pinned ? 'Unpin topik' : 'Pin topik',
+                icon: Icon(
+                  pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                  color: Colors.orange,
+                ),
+                onPressed: () => _togglePinById(id, pinned),
               ),
           ],
         ),
-        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(description, maxLines: 2, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 6),
-          Wrap(
-  spacing: 8,
-  runSpacing: 4,
-  children: [
-    Chip(label: Text(tag)),
-    Text('By $creatorName'),
-    if (timestamp != null)
-      Text(
-        '· ${DateFormat('dd/MM/yyyy').format(timestamp)}',
-        style: const TextStyle(fontSize: 12, color: Colors.black54),
-      ),
-  ],
-)
-
-        ]),
-        trailing: Row(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-    // Open topic (everyone)
-    Tooltip(
-      message: 'Buka topik',
-      child: IconButton(
-        icon: const Icon(Icons.open_in_new, size: 22),
-        onPressed: () => _openPostDetailsById(id),
-      ),
+      ],
     ),
-
-    // ✏️ Edit — OWNER ONLY
-    if (_currentUid != null && _currentUid == creatorId)
-      Tooltip(
-        message: 'Edit topik',
-        child: IconButton(
-          icon: const Icon(Icons.edit, size: 22, color: Colors.blue),
-          onPressed: () => _editTopicById(id),
-        ),
-      ),
-
-    // 🗑 Delete — OWNER ONLY
-    if (_currentUid != null && _currentUid == creatorId)
-      Tooltip(
-        message: 'Padam topik',
-        child: IconButton(
-          icon: const Icon(Icons.delete, size: 22, color: Colors.red),
-          onPressed: () => _tryDeleteTopicById(id),
-        ),
-      ),
-
-    // 📌 Pin / Unpin — TEACHER ONLY
-    if (_currentUserRole == 'teacher')
-      Tooltip(
-        message: pinned ? 'Unpin topik' : 'Pin topik',
-        child: IconButton(
-          icon: Icon(
-            pinned ? Icons.push_pin : Icons.push_pin_outlined,
-            color: Colors.orange,
-          ),
-          onPressed: () => _togglePinById(id, pinned),
-        ),
-      ),
-
-    const SizedBox(width: 6),
-    const Icon(Icons.arrow_forward_ios_rounded, size: 16),
-  ],
+  ),
 ),
 
-        onTap: () => _openPostDetailsById(id),
-      ),
     );
   }
 
