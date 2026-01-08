@@ -9075,12 +9075,11 @@ class AchievementsPage extends StatefulWidget {
 }
 
 class _AchievementsPageState extends State<AchievementsPage> {
-  // FIX: Initialize the filter state variable
   String _selectedCategory =
       'All'; // 'All', 'Badge', 'Certificate', 'Milestone', 'Other'
 
   String _searchQuery = '';
-  // Helper function to get the correct achievement stream (Your original code)
+  // Helper function to get the correct achievement stream
   Stream<QuerySnapshot> getAchievementStream(AppUser? user) {
     var query = FirebaseFirestore.instance.collection('achievements');
 
@@ -9149,7 +9148,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
     }
   }
 
-  // ⚠️ Function to show edit dialog
+  // Function to show edit dialog
   Future<void> _showEditAchievementDialog(
     Map<String, dynamic> achievement,
   ) async {
@@ -9241,7 +9240,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Logic to show the 'unlocked message'
             if (userState.lastUnlockedMessage != null)
               Builder(
                 builder: (ctx) {
@@ -9263,7 +9261,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 },
               ),
 
-            // === START US0010-02 SEARCH UI ===
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: TextField(
@@ -9285,14 +9282,10 @@ class _AchievementsPageState extends State<AchievementsPage> {
                 },
               ),
             ),
-            // === END US0010-02 SEARCH UI ===
 
-            // === MODIFIED: Show category filter for BOTH students AND teachers ===
             if (isStudent || isTeacher) _buildCategoryFilter(),
 
-            // === END US013-01 FILTER UI ===
             Expanded(
-              // Use live StreamBuilder
               child: StreamBuilder<QuerySnapshot>(
                 stream: getAchievementStream(
                   user,
@@ -9319,9 +9312,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       )
                       .toList();
 
-                  // === START FILTERING LOGIC (Applied to list after loading) ===
-
-                  // 1. Apply Search Filter (US0010-02)
                   if (_searchQuery.isNotEmpty) {
                     achievements = achievements.where((a) {
                       final title = (a['title'] ?? '').toString().toLowerCase();
@@ -9329,7 +9319,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     }).toList();
                   }
 
-                  // 2. Apply Category Filter (US013-01) - Now for BOTH Students AND Teachers
                   if ((isStudent || isTeacher) && _selectedCategory != 'All') {
                     achievements = achievements.where((a) {
                       final type = (a['type'] ?? 'Other').toString();
@@ -9351,7 +9340,7 @@ class _AchievementsPageState extends State<AchievementsPage> {
                       return false;
                     }).toList();
                   }
-                  // === END FILTERING LOGIC ===
+
                   final totalAchievements = snapshot.data!.docs.length;
 
                   final isFilteredEmpty =
@@ -9373,7 +9362,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
     );
   }
 
-  // === START US013-01 NEW WIDGETS ===
   Widget _buildCategoryFilter() {
     // Categories based on types used in database
     final categories = ['All', 'Badge', 'Certificate', 'Milestone', 'Other'];
@@ -9413,9 +9401,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
       ),
     );
   }
-  // === END US013-01 NEW WIDGETS ===
-
-  // Note: Include _buildAchievementListView, _deleteAchievement, _showEditAchievementDialog logic here from your file
 
   Widget _buildAchievementListView(
     List<Map<String, dynamic>> achievements,
@@ -9448,7 +9433,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Text(
-                // MODIFIED: Use the new flag to show the correct message
                 isFilteredEmpty
                     ? 'No achievements match your search or filter criteria.'
                     : (isLoggedIn
@@ -9511,7 +9495,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
                     Chip(label: Text(type)),
                     const SizedBox(width: 8),
                     if (when != null)
-                      // FIX: Wrap the date text in Expanded to prevent overflow
                       Expanded(
                         child: Text(
                           'Earned: ${when.toLocal().toString().split(' ')[0]}',
@@ -9556,8 +9539,6 @@ class _AchievementsPageState extends State<AchievementsPage> {
 class AddAchievementPage extends StatefulWidget {
   const AddAchievementPage({super.key});
 
-  // ⚠️ FIX: Removed duplicate createState function from the previous erroneous code.
-
   @override
   State<AddAchievementPage> createState() => _AddAchievementPageState();
 }
@@ -9578,17 +9559,15 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
     'Other',
   ];
 
-  // ⚠️ Function to fetch live student list from Firestore
+  // Function to fetch live student list from Firestore
   Future<List<AppUser>> _getStudentsList() async {
     try {
-      // ✅ FIX: Simplified query - remove orderBy to avoid index requirement
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('userType', isEqualTo: 'UserType.student')
           .limit(50)
           .get();
 
-      // ✅ Sort in code instead of in query
       final students = snapshot.docs
           .map((doc) => AppUser.fromMap(doc.id, doc.data()))
           .toList();
@@ -9604,7 +9583,7 @@ class _AddAchievementPageState extends State<AddAchievementPage> {
     }
   }
 
-  // ⚠️ Function to submit the achievement to Firestore (Live Write)
+  // Function to submit the achievement to Firestore (Live Write)
   Future<void> _submitAchievement() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -9955,7 +9934,7 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Achievement'),
-        backgroundColor: Colors.amber, // Matches the Add page's AppBar color
+        backgroundColor: Colors.amber,
       ),
       body: BackgroundWrapper(
         child: SingleChildScrollView(
@@ -9965,7 +9944,6 @@ class _EditAchievementPageState extends State<EditAchievementPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                // Display Student Name (Replaces the student selector from AddAchievementPage)
                 Card(
                   color: Colors.blue[50],
                   shape: RoundedRectangleBorder(
