@@ -35,6 +35,8 @@ class _ForumPageState extends State<ForumPage> {
   // Firestore / Auth
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final _createFormKey = GlobalKey<FormState>();
+
 
   // Controllers
   final TextEditingController _titleController = TextEditingController();
@@ -378,74 +380,133 @@ setState(() {
 
   // Create dialog
   void _showCreateTopicDialog() {
-   _selectedCreateTag = 'General';
+  _selectedCreateTag = 'General';
+  _titleController.clear();
+  _descController.clear();
 
-    _titleController.clear();
-    _descController.clear();
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Create New Discussion'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _createFormKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Create New Discussion'),
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
-            const SizedBox(height: 8),
-            TextField(controller: _descController, maxLines: 4, decoration: const InputDecoration(labelText: 'Description')),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _selectedCreateTag,
-              items: tags.where((t) => t != 'All').map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-              onChanged: (v) => _selectedCreateTag = v ?? _selectedCreateTag,
-              decoration: const InputDecoration(labelText: 'Tag'),
-            ),
-          ]),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final title = _titleController.text.trim();
-              final desc = _descController.text.trim();
-              if (title.isEmpty || desc.isEmpty) return;
+              // 🔴 TITLE (REQUIRED)
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Material Name *',
+                  hintText: 'Enter a name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Material name is required';
+                  }
+                  return null;
+                },
+              ),
 
-              final creatorId = _currentUid ?? '';
-              final creatorName = _currentUserName ?? '';
+              const SizedBox(height: 12),
 
-              // ensure non-null client-side createdAt so ordering works immediately
-              final clientCreatedAt = DateTime.now();
+              // 🔴 DESCRIPTION (REQUIRED)
+              TextFormField(
+                controller: _descController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Description *',
+                  hintText: 'Enter a description',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Description is required';
+                  }
+                  return null;
+                },
+              ),
 
-              final docRef = await _db.collection('forumTopics').add({
-                'title': title,
-                'description': desc,
-                'tag': _selectedCreateTag,
-                'creatorId': creatorId,
-                'creatorName': creatorName,
-                'createdAt': clientCreatedAt,
-                'serverTs': FieldValue.serverTimestamp(), // canonical time
-                'edited': false,
-                'pinned': false,
-              });
+              const SizedBox(height: 12),
 
-              // simple broadcast notification doc (optional)
-              await _db.collection('notifications').add({
-                'title': 'New forum topic',
-                'message': title,
-                'topicId': docRef.id,
-                'broadcast': true,
-                'timestamp': FieldValue.serverTimestamp(),
-              });
-
-              _titleController.clear();
-              _descController.clear();
-              if (mounted) Navigator.pop(context);
-            },
-            child: const Text('Submit'),
+              // TAG (OPTIONAL)
+              DropdownButtonFormField<String>(
+                value: _selectedCreateTag,
+                decoration: InputDecoration(
+                  labelText: 'Tag',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                items: tags
+                    .where((t) => t != 'All')
+                    .map(
+                      (t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(t),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => _selectedCreateTag = v ?? _selectedCreateTag,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    );
-  }
+
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+
+        ElevatedButton(
+          onPressed: () async {
+            // ✅ VALIDATE FORM
+            if (!_createFormKey.currentState!.validate()) {
+              return; // stop if invalid
+            }
+
+            final creatorId = _currentUid ?? '';
+            final creatorName = _currentUserName ?? '';
+            final clientCreatedAt = DateTime.now();
+
+            final docRef = await _db.collection('forumTopics').add({
+              'title': _titleController.text.trim(),
+              'description': _descController.text.trim(),
+              'tag': _selectedCreateTag,
+              'creatorId': creatorId,
+              'creatorName': creatorName,
+              'createdAt': clientCreatedAt,
+              'serverTs': FieldValue.serverTimestamp(),
+              'edited': false,
+              'pinned': false,
+            });
+
+            await _db.collection('notifications').add({
+              'title': 'New forum topic',
+              'message': _titleController.text.trim(),
+              'topicId': docRef.id,
+              'broadcast': true,
+              'timestamp': FieldValue.serverTimestamp(),
+            });
+
+            if (mounted) Navigator.pop(context);
+          },
+          child: const Text('Submit'),
+        ),
+      ],
+    ),
+  );
+}
+
 
   // Edit helpers
   Future<void> _editTopicById(String docId) async {
